@@ -1,0 +1,17 @@
+/**
+ * Cloudflare Workers の設定ファイル。
+ *
+ * このアプリは「静的アセットのみ」の Worker として動きます:
+ *  - npm run build で dist/ に出力される
+ *  - dist/ の中身を Cloudflare の CDN に配信する
+ *  - SPA なので、未知の URL は index.html を返す（クライアントルーティング対応）
+ */
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "gv-science",
+  "compatibility_date": "2025-05-28",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}
