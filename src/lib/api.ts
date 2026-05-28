@@ -4,8 +4,10 @@
  * VITE_GAS_ENDPOINT が設定されているときだけ実際の fetch を行う。
  * 未設定（または通信失敗）の場合は mock データを返す。
  *
- * 認証: `liff.getIDToken()` を Authorization ヘッダに乗せる想定。
- *      GAS 側は `Authorization: Bearer <id_token>` を verify する。
+ * 認証: `liff.getIDToken()` を `?token=` クエリパラメータで送る。
+ *   GAS の doGet では Authorization ヘッダが取得できないため、
+ *   クエリで渡す方針に統一している。GAS 側は LINE の verify エンドポイントへ
+ *   POST して検証する。
  */
 import {
   ARTICLES,
@@ -31,17 +33,24 @@ async function gasGet<T>(
   params: Record<string, string> = {}
 ): Promise<T> {
   if (!GAS) throw new Error('NO_ENDPOINT');
-  const usp = new URLSearchParams({ action, ...params });
-  const headers: Record<string, string> = {};
   const t = getLiffStatus().idToken;
-  if (t) headers.Authorization = `Bearer ${t}`;
+  const usp = new URLSearchParams({
+    action,
+    ...(t ? { token: t } : {}),
+    ...params,
+  });
   const res = await fetch(`${GAS}?${usp.toString()}`, {
     method: 'GET',
-    headers,
     credentials: 'omit',
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json() as Promise<T>;
+  const data = (await res.json()) as { error?: string } & T;
+  // GAS 側はエラーも 200 で返す（HTTP code を変えにくい仕様）
+  // body.error がある場合は例外化してフォールバックへ流す
+  if (data && (data as { error?: string }).error) {
+    throw new Error(`GAS_ERROR: ${(data as { error?: string }).error}`);
+  }
+  return data as T;
 }
 
 /* ──────────────────────────────────────────────────────
