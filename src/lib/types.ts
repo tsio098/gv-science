@@ -6,6 +6,15 @@
 
 export type Subject = 'chemistry' | 'biology' | 'earth';
 
+/**
+ * 教材リンク。スプレッドシートの列名がそのまま label になり、
+ * セル値が url になる。列が追加されても自動で配列に追加される。
+ */
+export interface ResourceLink {
+  label: string;
+  url: string;
+}
+
 export interface Schedule {
   id: string;
   /** chemistry / biology のみ。地学は授業対象外 */
@@ -16,11 +25,18 @@ export interface Schedule {
   dow: string;
   title: string;
   desc: string;
+  /** 後方互換: materials の最初の URL が入っていれば true */
   material: boolean;
   materialUrl?: string;
+  /** 後方互換: videos の最初の URL が入っていれば true */
   video: boolean;
   videoUrl?: string;
+  /** 教材リンク一覧（練習問題・解答・リードLight 等を列名ごと集約） */
+  materials?: ResourceLink[];
+  /** 動画系リンク一覧（スタサプ等） */
+  videos?: ResourceLink[];
   isNew: boolean;
+  isFavorited?: boolean;
 }
 
 export interface Problem {
@@ -33,7 +49,10 @@ export interface Problem {
   answer: string;
   explanation: string;
   figureUrl?: string;
+  /** Glide テーブル「化学基礎 / 生物基礎 / 地学基礎」の PDF リンク */
+  pdfUrl?: string;
   isNew: boolean;
+  isFavorited?: boolean;
 }
 
 export interface Article {
@@ -45,8 +64,11 @@ export interface Article {
   /** YYYY/MM/DD or "—" */
   date: string;
   url: string;
-  /** 1..4 — サムネのパターン番号 */
+  /** 1..4 — サムネのパターン番号（image が空のときフォールバックで使う） */
   thumb: 1 | 2 | 3 | 4;
+  /** Glide テーブルの実画像 URL（あれば thumb より優先したい） */
+  image?: string;
+  isFavorited?: boolean;
 }
 
 export interface User {
