@@ -14,8 +14,8 @@ interface LogoMarkProps {
   variant?: Variant;
 }
 
-const CRAB_SRC = `${import.meta.env.BASE_URL}assets/crab-cutout-orange.svg`;
-const CRAB_APP_ICON_SRC = `${import.meta.env.BASE_URL}assets/crab-orange.svg`;
+const CRAB_SRC = `${import.meta.env.BASE_URL}assets/crab-cutout-orange.png`;
+const CRAB_APP_ICON_SRC = `${import.meta.env.BASE_URL}assets/crab-orange.png`;
 
 export function LogoMark({ size = 28, variant = 'badge' }: LogoMarkProps) {
   if (variant === 'plain') {
