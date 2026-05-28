@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!--
+    App-icon variant — 背景込み（不採用バリエーション。互換のため残置）。
+  -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3C4E3A"/>
+      <stop offset="100%" stop-color="#2D3A2A"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="58" fill="url(#bg)"/>
+  <g transform="translate(33,33) scale(1.0)">
+    <use href="crab-cutout-orange.svg#root"/>
+  </g>
+  <!-- Fallback: inline the same shape directly so it works without <use> -->
+  <g transform="translate(128,140)">
+    <ellipse cx="0" cy="6" rx="62" ry="54" fill="#F47A30"/>
+    <ellipse cx="-14" cy="-14" rx="26" ry="12" fill="#FFFFFF" fill-opacity="0.22"/>
+    <circle cx="-16" cy="-6" r="5" fill="#2D3A2A"/>
+    <circle cx="16"  cy="-6" r="5" fill="#2D3A2A"/>
+  </g>
+</svg>

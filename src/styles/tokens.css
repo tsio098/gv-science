@@ -1,0 +1,72 @@
+/* ============================================================
+   GV Science — Design Tokens & Base
+   (README で「styles.css 冒頭の :root のトークン値はそのまま使う」と
+    指定されているので、ハンドオフの値をそのまま転記しています)
+   ============================================================ */
+
+:root {
+  /* Brand palette */
+  --c-primary: #7a9b76;
+  --c-primary-soft: #cfe1c9;
+  --c-primary-deep: #5f8159;
+
+  /* Accent — burnt orange, matched to the crab mascot */
+  --c-accent: #f26b1d;
+  --c-accent-soft: #f7c59f;
+
+  /* Surface */
+  --c-bg: #f9f7f2;
+  --c-bg-warm: #f4efe6;
+  --c-surface: #ffffff;
+  --c-surface-glass: rgba(255, 255, 255, 0.72);
+  --c-surface-glass-strong: rgba(255, 255, 255, 0.86);
+
+  /* Text */
+  --c-text: #2d3a2a;
+  --c-text-sub: #6b7869;
+  --c-text-mute: #97a092;
+  --c-divider: #e8e5de;
+  --c-divider-soft: rgba(45, 58, 42, 0.06);
+  --c-danger: #c95b3b;
+
+  /* Type */
+  --f-jp: "Hiragino Sans", "ヒラギノ角ゴシック", "Yu Gothic UI",
+    "Noto Sans JP", system-ui, sans-serif;
+  --f-en: "IBM Plex Sans", "Inter", "SF Pro Text", -apple-system, system-ui,
+    sans-serif;
+  --f-mono: "IBM Plex Mono", "SF Mono", ui-monospace, monospace;
+
+  /* Density — 本番は regular 固定で OK (README) */
+  --row-h: 64px;
+  --row-gap: 10px;
+  --pad-x: 20px;
+  --card-r: 22px;
+  --pill-r: 999px;
+
+  /* Shadows */
+  --sh-card: 0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 8px 24px -10px rgba(45, 58, 42, 0.18),
+    0 2px 6px -2px rgba(45, 58, 42, 0.08);
+  --sh-cta: 0 1px 0 rgba(255, 255, 255, 0.35) inset,
+    0 10px 24px -8px rgba(122, 155, 118, 0.55),
+    0 2px 6px -2px rgba(95, 129, 89, 0.3);
+  --sh-pop: 0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 20px 60px -16px rgba(45, 58, 42, 0.28);
+}
+
+/* density variants */
+.dens-comfy {
+  --row-h: 72px;
+  --row-gap: 14px;
+  --pad-x: 22px;
+}
+.dens-regular {
+  --row-h: 64px;
+  --row-gap: 10px;
+  --pad-x: 20px;
+}
+.dens-tight {
+  --row-h: 54px;
+  --row-gap: 8px;
+  --pad-x: 18px;
+}

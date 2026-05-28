@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 190 190" width="190" height="190">
+  <!--
+    GV Science — temporary crab placeholder.
+    実物は design/assets/crab-cutout-orange.png（190x190 透過）に差し替えてください。
+    色味はバーントオレンジ (#F26B1D / #F47A30) に合わせています。
+  -->
+  <defs>
+    <radialGradient id="body" cx="50%" cy="55%" r="55%">
+      <stop offset="0%" stop-color="#FFB47A"/>
+      <stop offset="55%" stop-color="#F47A30"/>
+      <stop offset="100%" stop-color="#D85A12"/>
+    </radialGradient>
+    <radialGradient id="claw" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#FFA86A"/>
+      <stop offset="100%" stop-color="#E0660F"/>
+    </radialGradient>
+  </defs>
+
+  <g transform="translate(95,100)">
+    <!-- legs (left) -->
+    <g fill="#E66614">
+      <ellipse cx="-58" cy="6"  rx="14" ry="6" transform="rotate(-22 -58 6)"/>
+      <ellipse cx="-66" cy="28" rx="14" ry="6" transform="rotate(-8 -66 28)"/>
+      <ellipse cx="-60" cy="50" rx="14" ry="6" transform="rotate(14 -60 50)"/>
+      <ellipse cx="-44" cy="68" rx="14" ry="6" transform="rotate(34 -44 68)"/>
+    </g>
+    <!-- legs (right) -->
+    <g fill="#E66614">
+      <ellipse cx="58"  cy="6"  rx="14" ry="6" transform="rotate(22 58 6)"/>
+      <ellipse cx="66"  cy="28" rx="14" ry="6" transform="rotate(8 66 28)"/>
+      <ellipse cx="60"  cy="50" rx="14" ry="6" transform="rotate(-14 60 50)"/>
+      <ellipse cx="44"  cy="68" rx="14" ry="6" transform="rotate(-34 44 68)"/>
+    </g>
+
+    <!-- claw arms -->
+    <g fill="#E66614">
+      <ellipse cx="-50" cy="-38" rx="10" ry="6" transform="rotate(-30 -50 -38)"/>
+      <ellipse cx="50"  cy="-38" rx="10" ry="6" transform="rotate(30 50 -38)"/>
+    </g>
+
+    <!-- claws -->
+    <g fill="url(#claw)" stroke="#C24A0A" stroke-width="1.2">
+      <!-- left claw -->
+      <g transform="translate(-66,-58) rotate(-20)">
+        <path d="M0,0 q-10,-14 4,-22 q16,-6 22,8 q4,12 -10,18 z"/>
+        <path d="M-2,2 q-10,-2 -16,4 q-4,6 6,10 q10,2 14,-4 z" fill="#FFB47A" stroke="none"/>
+      </g>
+      <!-- right claw (mirror) -->
+      <g transform="translate(66,-58) rotate(20) scale(-1,1)">
+        <path d="M0,0 q-10,-14 4,-22 q16,-6 22,8 q4,12 -10,18 z"/>
+        <path d="M-2,2 q-10,-2 -16,4 q-4,6 6,10 q10,2 14,-4 z" fill="#FFB47A" stroke="none"/>
+      </g>
+    </g>
+
+    <!-- body (round shell) -->
+    <ellipse cx="0" cy="6" rx="50" ry="44" fill="url(#body)"/>
+
+    <!-- subtle highlight on shell -->
+    <ellipse cx="-12" cy="-12" rx="22" ry="10" fill="#FFFFFF" fill-opacity="0.22"/>
+
+    <!-- eyes -->
+    <g>
+      <circle cx="-14" cy="-6" r="4.2" fill="#2D3A2A"/>
+      <circle cx="14"  cy="-6" r="4.2" fill="#2D3A2A"/>
+      <circle cx="-12.5" cy="-7.4" r="1.4" fill="#FFFFFF"/>
+      <circle cx="15.5"  cy="-7.4" r="1.4" fill="#FFFFFF"/>
+    </g>
+
+    <!-- mouth -->
+    <path d="M-5,8 q5,5 10,0" fill="none" stroke="#2D3A2A" stroke-width="1.6" stroke-linecap="round"/>
+  </g>
+</svg>
