@@ -729,7 +729,21 @@ body,
     ),
     linear-gradient(135deg, #e8e5de 0%, var(--c-primary-soft) 130%);
 }
+.c-feed-thumb-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  /* favicon 等の透明部分はページ背景と同じトーンで塗りつぶす */
+  background-color: var(--c-bg);
+  /* 取得失敗時は JS で display:none に切り替えてストライプ柄を出す */
+}
 .c-feed-thumb .kind {
+  /* img の上に重ねるため z-index を持たせる */
+  position: relative;
+  z-index: 1;
   font-family: var(--f-en);
   font-size: 10px;
   font-weight: 600;
@@ -980,6 +994,9 @@ body,
   height: 100%;
   object-fit: cover;
   display: block;
+  /* favicon など透過 PNG の透明部分がページ背景と馴染むよう、
+     img 自体に背景色を敷く。透明領域はこの色で塗られて見える */
+  background-color: var(--c-bg);
   /* 取得失敗時は JS で display:none に切り替えてストライプ柄を出す */
 }
 .art-thumb.v2 {

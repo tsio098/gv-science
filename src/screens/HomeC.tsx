@@ -180,6 +180,19 @@ export function HomeC({ nav }: HomeCProps) {
               onClick={() => nav('ext', { url: a.url })}
             >
               <div className={`c-feed-thumb var${(a.thumb % 3) + 1}`}>
+                {a.image && (
+                  <img
+                    className="c-feed-thumb-img"
+                    src={a.image}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                )}
                 <span className="kind">{a.tag}</span>
               </div>
               <div className="c-feed-body">
