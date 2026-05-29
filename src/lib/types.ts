@@ -4,7 +4,63 @@
  * GAS シート列とほぼ 1:1。README の "データモデル" セクションと合わせている。
  */
 
+/**
+ * 基礎問題シート用の科目キー（化学基礎/生物基礎/地学基礎 PDF リスト）。
+ * Problem.subject は引き続きこれを使う。
+ */
 export type Subject = 'chemistry' | 'biology' | 'earth';
+
+/**
+ * 授業カレンダー用の科目キー。生徒1人ごとに `user.subjects` に列挙される。
+ *   - 化学 → chemistry
+ *   - 化学基礎 → chemistry-basic
+ *   - 生物 → biology
+ *   - 生物基礎 → biology-basic
+ *   - 物理 → physics
+ *   - 物理基礎 → physics-basic
+ *   - 地学基礎 → earth-basic
+ */
+export type ScheduleSubject =
+  | 'chemistry'
+  | 'chemistry-basic'
+  | 'biology'
+  | 'biology-basic'
+  | 'physics'
+  | 'physics-basic'
+  | 'earth-basic';
+
+/** 全 ScheduleSubject の列挙順（HomeC のタイル並び順と一致） */
+export const SCHEDULE_SUBJECT_ORDER: ScheduleSubject[] = [
+  'chemistry',
+  'chemistry-basic',
+  'biology',
+  'biology-basic',
+  'physics',
+  'physics-basic',
+  'earth-basic',
+];
+
+/** subject キー → 日本語表記 */
+export const SUBJECT_JA: Record<ScheduleSubject, string> = {
+  'chemistry':       '化学',
+  'chemistry-basic': '化学基礎',
+  'biology':         '生物',
+  'biology-basic':   '生物基礎',
+  'physics':         '物理',
+  'physics-basic':   '物理基礎',
+  'earth-basic':     '地学基礎',
+};
+
+/** subject キー → 英字大文字（記事タグ等で使う） */
+export const SUBJECT_EN: Record<ScheduleSubject, string> = {
+  'chemistry':       'CHEMISTRY',
+  'chemistry-basic': 'CHEMISTRY · 基礎',
+  'biology':         'BIOLOGY',
+  'biology-basic':   'BIOLOGY · 基礎',
+  'physics':         'PHYSICS',
+  'physics-basic':   'PHYSICS · 基礎',
+  'earth-basic':     'GEOLOGY · 基礎',
+};
 
 /**
  * 教材リンク。スプレッドシートの列名がそのまま label になり、
@@ -17,8 +73,8 @@ export interface ResourceLink {
 
 export interface Schedule {
   id: string;
-  /** chemistry / biology のみ。地学は授業対象外 */
-  subject: Exclude<Subject, 'earth'>;
+  /** 7 種類の科目キー。それぞれが個別の授業カレンダーシートを参照する */
+  subject: ScheduleSubject;
   /** YYYY/MM/DD */
   date: string;
   /** 曜日（日本語） */
@@ -77,11 +133,17 @@ export interface User {
   name: string;
   /** 学年（例: "高2"） */
   grade: string;
+  /**
+   * 生徒の理科使用科目（生徒IDシート E 列由来）。
+   * 例: ['chemistry', 'biology'] / ['chemistry-basic', 'biology-basic']
+   * 未設定または未回答時は空配列。
+   */
+  subjects: ScheduleSubject[];
 }
 
 export interface NextClass {
   id: string;
-  subject: Exclude<Subject, 'earth'>;
+  subject: ScheduleSubject;
   title: string;
   date: string;
   dow: string;
@@ -99,10 +161,10 @@ export interface NextClass {
    ────────────────────────────────────────────────────── */
 export type Route =
   | { name: 'home' }
-  | { name: 'schedules'; params: { subject: Exclude<Subject, 'earth'> } }
+  | { name: 'schedules'; params: { subject: ScheduleSubject } }
   | {
       name: 'schedule';
-      params: { id: string; subject: Exclude<Subject, 'earth'> };
+      params: { id: string; subject: ScheduleSubject };
     }
   | { name: 'problems'; params: { subject: Subject } }
   | { name: 'problem'; params: { id: string; subject: Subject } }
@@ -126,11 +188,11 @@ export type NavFn = {
   (name: 'ext', params: { url: string }): void;
   (
     name: 'schedules',
-    params: { subject: Exclude<Subject, 'earth'> }
+    params: { subject: ScheduleSubject }
   ): void;
   (
     name: 'schedule',
-    params: { id: string; subject: Exclude<Subject, 'earth'> }
+    params: { id: string; subject: ScheduleSubject }
   ): void;
   (name: 'problems', params: { subject: Subject }): void;
   (

@@ -24,6 +24,7 @@ import type {
   HomeResponse,
   Problem,
   Schedule,
+  ScheduleSubject,
   Subject,
 } from './types';
 
@@ -68,24 +69,24 @@ export async function fetchHome(): Promise<HomeResponse> {
 }
 
 export async function fetchSchedules(
-  subject: Exclude<Subject, 'earth'>
+  subject: ScheduleSubject
 ): Promise<Schedule[]> {
   try {
     const r = await gasGet<{ items: Schedule[] }>('schedules', { subject });
     return r.items;
   } catch {
-    return SCHEDULES[subject];
+    return SCHEDULES[subject] ?? [];
   }
 }
 
 export async function fetchSchedule(
   id: string,
-  subject: Exclude<Subject, 'earth'>
+  subject: ScheduleSubject
 ): Promise<Schedule | undefined> {
   try {
     return await gasGet<Schedule>('schedule', { id });
   } catch {
-    return SCHEDULES[subject].find((s) => s.id === id);
+    return (SCHEDULES[subject] ?? []).find((s) => s.id === id);
   }
 }
 

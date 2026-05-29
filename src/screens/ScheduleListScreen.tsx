@@ -1,26 +1,43 @@
 import { fetchSchedules } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
-import type { NavFn, Subject } from '../lib/types';
+import type { NavFn, ScheduleSubject } from '../lib/types';
+import { SUBJECT_EN, SUBJECT_JA } from '../lib/types';
 import { TopNav } from '../components/TopNav';
 import { Spinner } from '../components/Spinner';
 import { EmptyState } from '../components/EmptyState';
 import {
+  BookIcon,
   ChevRow,
+  EarthIcon,
   FlaskIcon,
   LeafIcon,
   SearchIcon,
 } from '../components/Icon';
 
 interface Props {
-  subject: Exclude<Subject, 'earth'>;
+  subject: ScheduleSubject;
   nav: NavFn;
+}
+
+/** subject キー → row-icon に出すアイコン */
+function subjectIcon(s: ScheduleSubject) {
+  if (s === 'chemistry' || s === 'chemistry-basic') return <FlaskIcon size={20} />;
+  if (s === 'biology'   || s === 'biology-basic')   return <LeafIcon size={20} />;
+  if (s === 'earth-basic') return <EarthIcon size={20} />;
+  return <BookIcon size={20} />;
+}
+
+/** subject キー → row-icon の accent クラス（生物・地学系を accent に） */
+function subjectAccent(s: ScheduleSubject) {
+  return s === 'chemistry' || s === 'chemistry-basic' ? '' : 'accent';
 }
 
 export function ScheduleListScreen({ subject, nav }: Props) {
   const { data, loading } = useAsync(() => fetchSchedules(subject), [subject]);
-  const isChem = subject === 'chemistry';
-  const label = isChem ? '化学' : '生物';
-  const eyebrow = isChem ? 'CHEMISTRY' : 'BIOLOGY';
+  const label = SUBJECT_JA[subject];
+  const eyebrow = SUBJECT_EN[subject];
+  const icon = subjectIcon(subject);
+  const accent = subjectAccent(subject);
   const list = data ?? [];
 
   return (
@@ -58,9 +75,7 @@ export function ScheduleListScreen({ subject, nav }: Props) {
                   className="row"
                   onClick={() => nav('schedule', { id: row.id, subject })}
                 >
-                  <div className={`row-icon ${isChem ? '' : 'accent'}`}>
-                    {isChem ? <FlaskIcon size={20} /> : <LeafIcon size={20} />}
-                  </div>
+                  <div className={`row-icon ${accent}`}>{icon}</div>
                   <div className="row-body">
                     <div className="row-title">
                       <span>{row.title}</span>

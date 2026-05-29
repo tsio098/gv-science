@@ -5,19 +5,32 @@
  */
 import { fetchArticles, fetchHome } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
-import type { NavFn } from '../lib/types';
+import type { NavFn, ScheduleSubject } from '../lib/types';
+import { SUBJECT_JA } from '../lib/types';
 import { Logo } from '../components/Logo';
 import { Greeting } from '../components/Greeting';
 import { Spinner } from '../components/Spinner';
 import {
+  BookIcon,
   ChartIcon,
   ChevRightIcon,
   ChevRow,
+  EarthIcon,
   FlaskIcon,
   LeafIcon,
-  PencilIcon,
   QrIcon,
 } from '../components/Icon';
+
+/** 科目キー → タイルに表示するアイコン */
+const SUBJECT_ICON: Record<ScheduleSubject, JSX.Element> = {
+  'chemistry':       <FlaskIcon size={20} />,
+  'chemistry-basic': <FlaskIcon size={20} />,
+  'biology':         <LeafIcon size={20} />,
+  'biology-basic':   <LeafIcon size={20} />,
+  'physics':         <BookIcon size={20} />,
+  'physics-basic':   <BookIcon size={20} />,
+  'earth-basic':     <EarthIcon size={20} />,
+};
 
 interface HomeCProps {
   nav: NavFn;
@@ -37,30 +50,30 @@ export function HomeC({ nav }: HomeCProps) {
   }
 
   const { user, nextClass } = home.data;
-  const feed = (arts.data ?? []).slice(0, 4);
+  // 日付降順で並んでいる前提だが、念のためフロントでも安定ソート
+  const feed = [...(arts.data ?? [])]
+    .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+    .slice(0, 4);
+
+  // user.subjects に応じて授業タイルを動的生成。subjects が空なら
+  // フォールバックで 化学 + 生物 を出す（未登録ユーザー向け）。
+  const subjects =
+    user.subjects && user.subjects.length > 0
+      ? user.subjects
+      : (['chemistry', 'biology'] as ScheduleSubject[]);
 
   const quick = [
-    {
-      l: '化学 授業',
-      ic: <FlaskIcon size={20} />,
-      go: () => nav('schedules', { subject: 'chemistry' }),
-    },
-    {
-      l: '生物 授業',
-      ic: <LeafIcon size={20} />,
-      go: () => nav('schedules', { subject: 'biology' }),
-    },
-    {
-      l: '基礎問題',
-      ic: <PencilIcon size={20} />,
-      go: () => nav('problems', { subject: 'chemistry' }),
-    },
+    ...subjects.map((s) => ({
+      l: `${SUBJECT_JA[s]} 授業`,
+      ic: SUBJECT_ICON[s],
+      go: () => nav('schedules', { subject: s }),
+    })),
     {
       l: '点数報告',
       ic: <ChartIcon size={20} />,
       go: () =>
         nav('ext', {
-          url: 'https://example.com/score-report',
+          url: 'https://script.google.com/macros/s/AKfycbwEvKrlRh_kjcVwhiVK9X3FJ2RHQlR4iOzZCu7mFZFq1CVFIvDIJX5Y5MNYNDowTeJUJw/exec',
         }),
     },
   ];

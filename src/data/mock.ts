@@ -11,7 +11,8 @@ import type {
   User,
 } from '../lib/types';
 
-export const SCHEDULES: Record<Exclude<Subject, 'earth'>, Schedule[]> = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const SCHEDULES: Record<string, Schedule[]> = {
   chemistry: [
     {
       id: 'SCH001',
@@ -345,4 +346,4 @@ export const NEXT_CLASS: NextClass = {
   series: '化学 · 第 3 回',
 };
 
-export const USER: User = { name: '太郎', grade: '高2' };
+export const USER: User = { name: '太郎', grade: '高2', subjects: ['chemistry', 'biology'] };
