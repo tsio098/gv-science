@@ -5,8 +5,8 @@
  */
 import { fetchArticles, fetchHome } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
-import type { NavFn, ScheduleSubject, Subject } from '../lib/types';
-import { SUBJECT_JA, basicSubjectFor } from '../lib/types';
+import type { NavFn, ScheduleSubject } from '../lib/types';
+import { SUBJECT_JA } from '../lib/types';
 import { Logo } from '../components/Logo';
 import { Greeting } from '../components/Greeting';
 import { Spinner } from '../components/Spinner';
@@ -60,14 +60,6 @@ export function HomeC({ nav }: HomeCProps) {
       ? user.subjects
       : (['chemistry', 'biology'] as ScheduleSubject[]);
 
-  // 基礎問題タイルが押されたときの遷移先科目:
-  // 1) 生徒の使う科目内の最初の「基礎問題シートがある科目」
-  // 2) 何も基礎系を使っていなければ chemistry にフォールバック
-  const basicProblemTarget: Subject =
-    subjects
-      .map((s) => basicSubjectFor(s))
-      .find((b): b is Subject => b !== null) ?? 'chemistry';
-
   const quick = [
     ...subjects.map((s) => ({
       l: `${SUBJECT_JA[s]} 授業`,
@@ -77,7 +69,7 @@ export function HomeC({ nav }: HomeCProps) {
     {
       l: '基礎問題',
       ic: <PencilIcon size={20} />,
-      go: () => nav('problems', { subject: basicProblemTarget }),
+      go: () => nav('studyBooks'),
     },
     {
       l: '点数報告',

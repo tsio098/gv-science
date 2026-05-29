@@ -25,6 +25,7 @@ import type {
   Problem,
   Schedule,
   ScheduleSubject,
+  StudyBook,
   Subject,
 } from './types';
 
@@ -116,6 +117,19 @@ export async function fetchArticles(): Promise<Article[]> {
     return r.items;
   } catch {
     return ARTICLES;
+  }
+}
+
+/**
+ * 考察問題集（基礎問題タイル）。
+ * GAS 側で生徒の理科使用科目に応じて自動フィルタされる。
+ */
+export async function fetchStudyBooks(): Promise<StudyBook[]> {
+  try {
+    const r = await gasGet<{ items: StudyBook[] }>('studyBooks');
+    return r.items;
+  } catch {
+    return [];
   }
 }
 

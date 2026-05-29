@@ -110,6 +110,25 @@ export interface Problem {
   isFavorited?: boolean;
 }
 
+/**
+ * 考察問題集の 1 行（基礎問題タイルで表示する）。
+ * GAS の `studyBooks` エンドポイントから取得。
+ */
+export interface StudyBook {
+  id: string;
+  /** 表示タイトル */
+  title: string;
+  /** 開く先（PDF or Drive 共有 URL） */
+  url: string;
+  /** D列のサムネイル画像 URL（=IMAGE() 式の URL もしくは直 URL） */
+  image?: string;
+  /** subject 列をパースした ScheduleSubject 配列 */
+  subjects: ScheduleSubject[];
+  /** subjects の日本語表示（例 ["化学基礎", "化学"]） */
+  subjectsJa: string[];
+  isFavorited?: boolean;
+}
+
 export interface Article {
   id: string;
   /** "CHEMISTRY" / "BIOLOGY" / "GEOLOGY" / "PHYSICS" 等の大文字英字 */
@@ -169,6 +188,7 @@ export type Route =
   | { name: 'problem'; params: { id: string; subject: Subject } }
   | { name: 'articles' }
   | { name: 'share' }
+  | { name: 'studyBooks' }
   | { name: 'qr' };
 
 export type RouteName = Route['name'];
@@ -200,6 +220,7 @@ export type NavFn = {
   ): void;
   (name: 'articles'): void;
   (name: 'share'): void;
+  (name: 'studyBooks'): void;
   (name: 'qr'): void;
 };
 
