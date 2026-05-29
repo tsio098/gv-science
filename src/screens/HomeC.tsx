@@ -221,7 +221,6 @@ export function HomeC({ nav }: HomeCProps) {
               </div>
               <div className="row-body">
                 <div className="row-title">点数報告フォーム</div>
-                <div className="row-sub">外部リンク（Google フォーム）</div>
               </div>
               <div className="row-trail">
                 <ChevRow />
