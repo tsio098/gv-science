@@ -17,7 +17,6 @@ import {
   LeafIcon,
   PencilIcon,
   QrIcon,
-  ShareIcon,
 } from '../components/Icon';
 
 interface HomeCProps {
@@ -209,22 +208,12 @@ export function HomeC({ nav }: HomeCProps) {
             <span className="label-text">その他</span>
           </div>
           <div className="glass">
-            <div className="row" onClick={() => nav('share')}>
-              <div className="row-icon">
-                <ShareIcon size={18} />
-              </div>
-              <div className="row-body">
-                <div className="row-title">シェア</div>
-                <div className="row-sub">体験授業のお知らせなど</div>
-              </div>
-              <div className="row-trail">
-                <ChevRow />
-              </div>
-            </div>
             <div
               className="row"
               onClick={() =>
-                nav('ext', { url: 'https://example.com/score-report' })
+                nav('ext', {
+                  url: 'https://script.google.com/macros/s/AKfycbwEvKrlRh_kjcVwhiVK9X3FJ2RHQlR4iOzZCu7mFZFq1CVFIvDIJX5Y5MNYNDowTeJUJw/exec',
+                })
               }
             >
               <div className="row-icon accent">
