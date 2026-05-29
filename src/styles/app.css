@@ -973,6 +973,15 @@ body,
   position: relative;
   overflow: hidden;
 }
+.art-thumb-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  /* 取得失敗時は JS で display:none に切り替えてストライプ柄を出す */
+}
 .art-thumb.v2 {
   background:
     repeating-linear-gradient(

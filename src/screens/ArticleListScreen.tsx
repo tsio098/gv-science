@@ -118,18 +118,22 @@ export function ArticleListScreen({ kind, nav }: Props) {
                   className="art-card"
                   onClick={() => nav('ext', { url: a.url })}
                 >
-                  {a.image ? (
-                    <div
-                      className={`art-thumb v${a.thumb}`}
-                      style={{
-                        backgroundImage: `url(${a.image})`,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                      }}
-                    />
-                  ) : (
-                    <div className={`art-thumb v${a.thumb}`} />
-                  )}
+                  <div className={`art-thumb v${a.thumb}`}>
+                    {a.image && (
+                      <img
+                        className="art-thumb-img"
+                        src={a.image}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          // 画像取得失敗時はストライプ柄プレースホルダに戻す
+                          (e.currentTarget as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    )}
+                  </div>
                   <div className="art-body">
                     <div className="art-tag">
                       {displayTags.map((t, i) => (
