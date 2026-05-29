@@ -157,19 +157,6 @@ export interface User {
    * 未設定または未回答時は空配列。
    */
   subjects: ScheduleSubject[];
-  /**
-   * 生徒IDシートで現在の LIFF userId が見つからなかった場合 true。
-   * フロントは PairingScreen に切り替え、コード入力で紐付けてもらう。
-   */
-  needsPairing?: boolean;
-}
-
-/** ペアリング API のレスポンス */
-export interface PairResponse {
-  ok: boolean;
-  error?: string;
-  name?: string;
-  grade?: string;
 }
 
 export interface NextClass {

@@ -3,10 +3,8 @@
  *   safe-top → ロゴ + HOME crumb → 挨拶 → Today カード →
  *   クイック 4 タイル → 記事フィード（横スクロール） → その他
  */
-import { useState } from 'react';
 import { fetchArticles, fetchHome } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
-import { PairingScreen } from './PairingScreen';
 import type { NavFn, ScheduleSubject } from '../lib/types';
 import { SUBJECT_JA } from '../lib/types';
 import { Logo } from '../components/Logo';
@@ -37,9 +35,7 @@ interface HomeCProps {
 }
 
 export function HomeC({ nav }: HomeCProps) {
-  // ペアリング成功時に home を強制再フェッチするための reload key
-  const [reloadKey, setReloadKey] = useState(0);
-  const home = useAsync(fetchHome, [reloadKey]);
+  const home = useAsync(fetchHome, []);
   const arts = useAsync(fetchArticles, []);
 
   if (home.loading || !home.data) {
@@ -52,11 +48,6 @@ export function HomeC({ nav }: HomeCProps) {
   }
 
   const { user, nextClass } = home.data;
-
-  // 生徒IDシートに userId が見つからない場合はペアリング画面を表示
-  if (user.needsPairing) {
-    return <PairingScreen onPaired={() => setReloadKey((k) => k + 1)} />;
-  }
   // 日付降順で並んでいる前提だが、念のためフロントでも安定ソート
   const feed = [...(arts.data ?? [])]
     .sort((a, b) => (b.date || '').localeCompare(a.date || ''))

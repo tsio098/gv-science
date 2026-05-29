@@ -22,7 +22,6 @@ import type {
   Article,
   AttendanceQR,
   HomeResponse,
-  PairResponse,
   Problem,
   Schedule,
   ScheduleSubject,
@@ -140,35 +139,6 @@ export async function fetchShares(): Promise<Article[]> {
     return r.items;
   } catch {
     return SHARES;
-  }
-}
-
-/**
- * ペアリング: 2 方式を受け付ける
- *   1) pair=<トークン> （webhook 経由で自動発行された HMAC 署名付きトークン）
- *   2) code=<D 列 ID>  （生徒の手入力）
- * GAS 側で該当行の LIFF_USERID 列に現在の LIFF userId を書き込む。
- * gasGet は { error } を throw 化するので、ここは直接 fetch する。
- */
-export async function pairAccount(args: {
-  code?: string;
-  pair?: string;
-}): Promise<PairResponse> {
-  if (!GAS) return { ok: false, error: 'NO_ENDPOINT' };
-  try {
-    const t = getLiffStatus().idToken;
-    const usp = new URLSearchParams({ action: 'pair' });
-    if (t) usp.set('token', t);
-    if (args.code) usp.set('code', args.code);
-    if (args.pair) usp.set('pair', args.pair);
-    const res = await fetch(`${GAS}?${usp.toString()}`, {
-      method: 'GET',
-      credentials: 'omit',
-    });
-    if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
-    return (await res.json()) as PairResponse;
-  } catch (e) {
-    return { ok: false, error: String(e) };
   }
 }
 

@@ -20,7 +20,18 @@ export interface LiffStatus {
   error?: string;
 }
 
-const LIFF_ID = import.meta.env.VITE_LIFF_ID;
+const LIFF_ID_A = import.meta.env.VITE_LIFF_ID;
+const LIFF_ID_B = import.meta.env.VITE_LIFF_ID_B;
+
+/** パスから初期化に使うべき LIFF_ID を判定する。
+ *  /pair-b で始まるパスなら別プロバイダ用 LIFF-B、それ以外はメインの LIFF-A。 */
+function pickLiffId(): string | undefined {
+  if (typeof window !== 'undefined' &&
+      window.location.pathname.startsWith('/pair-b')) {
+    return LIFF_ID_B;
+  }
+  return LIFF_ID_A;
+}
 
 let _status: LiffStatus = {
   mode: 'skipped',
@@ -29,6 +40,7 @@ let _status: LiffStatus = {
 };
 
 export async function initLiff(): Promise<LiffStatus> {
+  const LIFF_ID = pickLiffId();
   // LIFF_ID が未設定 → 開発ブラウザ用のフォールバック
   if (!LIFF_ID) {
     _status = { mode: 'skipped', idToken: null, profile: null };
