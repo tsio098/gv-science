@@ -283,7 +283,7 @@ export const ARTICLES: Article[] = [
   },
   {
     id: 'ART003',
-    tag: 'EARTH',
+    tag: 'GEOLOGY',
     title: 'なぜ富士山はあの形になったのか',
     summary: '成層火山の構造と、噴出物の粘性。地形を読むと地球の動きが見える。',
     date: '2026/05/08',

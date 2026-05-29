@@ -50,21 +50,45 @@ export function ArticleListScreen({ kind, nav }: Props) {
           />
         ) : (
           <div>
-            {list.map((a) => (
-              <div
-                key={a.id}
-                className="art-card"
-                onClick={() => nav('ext', { url: a.url })}
-              >
-                <div className={`art-thumb v${a.thumb}`} />
-                <div className="art-body">
-                  <div className="art-tag">{a.tag}</div>
-                  <div className="art-title">{a.title}</div>
-                  <div className="art-sum">{a.summary}</div>
-                  <div className="art-date gv-num">{a.date}</div>
+            {list.map((a) => {
+              const displayTags =
+                a.tags && a.tags.length > 0 ? a.tags : a.tag ? [a.tag] : [];
+              return (
+                <div
+                  key={a.id}
+                  className="art-card"
+                  onClick={() => nav('ext', { url: a.url })}
+                >
+                  {a.image ? (
+                    <div
+                      className={`art-thumb v${a.thumb}`}
+                      style={{
+                        backgroundImage: `url(${a.image})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                      }}
+                    />
+                  ) : (
+                    <div className={`art-thumb v${a.thumb}`} />
+                  )}
+                  <div className="art-body">
+                    <div className="art-tag">
+                      {displayTags.map((t, i) => (
+                        <span key={t} style={{ marginRight: i < displayTags.length - 1 ? 6 : 0 }}>
+                          {t}
+                          {i < displayTags.length - 1 && (
+                            <span style={{ marginLeft: 6, opacity: 0.5 }}>·</span>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="art-title">{a.title}</div>
+                    {a.summary && <div className="art-sum">{a.summary}</div>}
+                    {a.date && <div className="art-date gv-num">{a.date}</div>}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
         <div className="empty-pad-bottom" />

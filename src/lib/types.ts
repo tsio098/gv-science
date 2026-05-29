@@ -57,8 +57,10 @@ export interface Problem {
 
 export interface Article {
   id: string;
-  /** "CHEMISTRY" / "BIOLOGY" / "EARTH" / "PHYSICS" 等の大文字英字 */
+  /** "CHEMISTRY" / "BIOLOGY" / "GEOLOGY" / "PHYSICS" 等の大文字英字 */
   tag: string;
+  /** 複数科目（例: ["BIOLOGY", "CHEMISTRY"]）。空なら tag を使う */
+  tags?: string[];
   title: string;
   summary: string;
   /** YYYY/MM/DD or "—" */
