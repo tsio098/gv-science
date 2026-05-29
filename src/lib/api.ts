@@ -144,20 +144,23 @@ export async function fetchShares(): Promise<Article[]> {
 }
 
 /**
- * ペアリング: 生徒の D 列 ID（USERID_学年 形式）を渡し、
+ * ペアリング: 2 方式を受け付ける
+ *   1) pair=<トークン> （webhook 経由で自動発行された HMAC 署名付きトークン）
+ *   2) code=<D 列 ID>  （生徒の手入力）
  * GAS 側で該当行の LIFF_USERID 列に現在の LIFF userId を書き込む。
- * 別プロバイダ運用で userId が一致しない生徒の初回紐付けに使う。
  * gasGet は { error } を throw 化するので、ここは直接 fetch する。
  */
-export async function pairAccount(code: string): Promise<PairResponse> {
+export async function pairAccount(args: {
+  code?: string;
+  pair?: string;
+}): Promise<PairResponse> {
   if (!GAS) return { ok: false, error: 'NO_ENDPOINT' };
   try {
     const t = getLiffStatus().idToken;
-    const usp = new URLSearchParams({
-      action: 'pair',
-      code,
-      ...(t ? { token: t } : {}),
-    });
+    const usp = new URLSearchParams({ action: 'pair' });
+    if (t) usp.set('token', t);
+    if (args.code) usp.set('code', args.code);
+    if (args.pair) usp.set('pair', args.pair);
     const res = await fetch(`${GAS}?${usp.toString()}`, {
       method: 'GET',
       credentials: 'omit',

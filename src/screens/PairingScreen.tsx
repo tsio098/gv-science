@@ -31,7 +31,7 @@ export function PairingScreen({ onPaired }: Props) {
     }
     setSubmitting(true);
     setError(null);
-    const res = await pairAccount(trimmed);
+    const res = await pairAccount({ code: trimmed });
     setSubmitting(false);
     if (res.ok) {
       setSuccess(`${res.name || '生徒'}さん、紐付けが完了しました。`);

@@ -4,9 +4,10 @@
  *  - 前画面を裏に重ねて translateX(-30%) + opacity 0.6 する iOS 風遷移。
  *  - 外部リンクは ExternalLinkModal を経由。
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavProvider, useNav } from './lib/nav';
 import type { Route } from './lib/types';
+import { pairAccount } from './lib/api';
 import { HomeC } from './screens/HomeC';
 import { ScheduleListScreen } from './screens/ScheduleListScreen';
 import { ScheduleDetailScreen } from './screens/ScheduleDetailScreen';
@@ -93,6 +94,27 @@ function Stack() {
 
 export function App() {
   const [modalUrl, setModalUrl] = useState<string | null>(null);
+
+  /*
+   * URL クエリ ?pair=<token> が付いていたら、自動でペアリング API を呼ぶ。
+   * Provider B の webhook が発行したリンクから生徒が起動した想定。
+   * 成功・失敗どちらの場合も URL からパラメータを除去（履歴汚染防止）。
+   * 完了後、HomeC は useAsync(fetchHome) が次回マウントで最新状態を取りに行く。
+   */
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const pair = url.searchParams.get('pair');
+    if (!pair) return;
+
+    (async () => {
+      await pairAccount({ pair });
+      url.searchParams.delete('pair');
+      window.history.replaceState({}, '', url.toString());
+      // 強制リロードして home を再フェッチ。LIFF 内なので reload は許容範囲
+      // とはいえ React の再描画でも反映されるはずだが、確実性のため一度だけリロード
+      window.location.reload();
+    })();
+  }, []);
 
   return (
     <div className="gv-root dens-regular">
