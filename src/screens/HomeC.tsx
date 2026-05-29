@@ -67,7 +67,7 @@ export function HomeC({ nav }: HomeCProps) {
       go: () => nav('schedules', { subject: s }),
     })),
     {
-      l: '基礎問題',
+      l: '問題集',
       ic: <PencilIcon size={20} />,
       go: () => nav('studyBooks'),
     },

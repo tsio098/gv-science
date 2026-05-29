@@ -18,6 +18,24 @@ interface Props {
   nav: NavFn;
 }
 
+/**
+ * Google Drive の view URL を <img src> で表示できる thumbnail URL に変換。
+ * GAS 側でも同じ変換をするが、未デプロイの場合や手元キャッシュへの保険。
+ */
+function toThumbUrl(url: string | undefined): string | undefined {
+  if (!url) return url;
+  const patterns = [
+    /drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/,
+    /drive\.google\.com\/open\?(?:[^=]+=[^&]+&)*id=([a-zA-Z0-9_-]+)/,
+    /drive\.google\.com\/uc\?(?:[^=]+=[^&]+&)*id=([a-zA-Z0-9_-]+)/,
+  ];
+  for (const p of patterns) {
+    const m = url.match(p);
+    if (m) return `https://drive.google.com/thumbnail?id=${m[1]}&sz=w400`;
+  }
+  return url;
+}
+
 export function StudyBookListScreen({ nav }: Props) {
   const { data, loading } = useAsync(fetchStudyBooks, []);
   const list = data ?? [];
@@ -39,14 +57,14 @@ export function StudyBookListScreen({ nav }: Props) {
     <div className="app">
       <div className="safe-top" />
       <TopNav
-        crumb="GV / 基礎問題"
+        crumb="GV / 問題集"
         onBack={() => nav('back')}
         backLabel="ホーム"
       />
       <div className="app-scroll">
         <div className="page-head">
-          <div className="page-eyebrow">STUDY · 基礎問題</div>
-          <h1 className="page-title">基礎問題</h1>
+          <div className="page-eyebrow">STUDY · 問題集</div>
+          <h1 className="page-title">問題集</h1>
           <p className="page-sub">
             あなたの理科使用科目に応じた問題集を表示しています。
           </p>
@@ -106,7 +124,7 @@ export function StudyBookListScreen({ nav }: Props) {
                   {b.image && (
                     <img
                       className="art-thumb-img"
-                      src={b.image}
+                      src={toThumbUrl(b.image)}
                       alt=""
                       loading="lazy"
                       decoding="async"
