@@ -13,6 +13,7 @@ import { ScheduleDetailScreen } from './screens/ScheduleDetailScreen';
 import { ProblemListScreen } from './screens/ProblemListScreen';
 import { ProblemDetailScreen } from './screens/ProblemDetailScreen';
 import { ArticleListScreen } from './screens/ArticleListScreen';
+import { AttendanceQRScreen } from './screens/AttendanceQRScreen';
 import { ExternalLinkModal } from './components/ExternalLinkModal';
 
 function renderRoute(route: Route, nav: ReturnType<typeof useNav>['nav']) {
@@ -43,6 +44,8 @@ function renderRoute(route: Route, nav: ReturnType<typeof useNav>['nav']) {
       return <ArticleListScreen kind="articles" nav={nav} />;
     case 'share':
       return <ArticleListScreen kind="share" nav={nav} />;
+    case 'qr':
+      return <AttendanceQRScreen nav={nav} />;
   }
 }
 

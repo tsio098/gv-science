@@ -1,9 +1,11 @@
+import { useMemo, useState } from 'react';
 import { fetchArticles, fetchShares } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
 import type { NavFn } from '../lib/types';
 import { TopNav } from '../components/TopNav';
 import { Spinner } from '../components/Spinner';
 import { EmptyState } from '../components/EmptyState';
+import { CloseIcon, SearchIcon } from '../components/Icon';
 
 interface Props {
   kind: 'articles' | 'share';
@@ -18,6 +20,21 @@ export function ArticleListScreen({ kind, nav }: Props) {
 
   const title = isArticles ? '理科関連記事' : 'シェア';
   const eyebrow = isArticles ? 'ARTICLES · 外部リンク' : 'SHARE · お知らせ';
+
+  // 検索状態（記事タブのみ表示）
+  const [query, setQuery] = useState('');
+  const q = query.trim().toLowerCase();
+  const results = useMemo(() => {
+    if (!q) return list;
+    return list.filter((a) => {
+      const inTitle = a.title.toLowerCase().includes(q);
+      const inTag =
+        (a.tags && a.tags.some((t) => t.toLowerCase().includes(q))) ||
+        (a.tag && a.tag.toLowerCase().includes(q));
+      return inTitle || inTag;
+    });
+  }, [list, q]);
+  const showSearch = isArticles;
 
   return (
     <div className="app">
@@ -38,6 +55,38 @@ export function ArticleListScreen({ kind, nav }: Props) {
           </p>
         </div>
 
+        {showSearch && (
+          <>
+            <div className={`search-box live ${q ? 'filled' : ''}`}>
+              <SearchIcon size={16} />
+              <input
+                className="search-input"
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="タイトル・科目で検索"
+                autoComplete="off"
+                spellCheck={false}
+              />
+              {q && (
+                <button
+                  type="button"
+                  className="search-clear"
+                  aria-label="検索条件をクリア"
+                  onClick={() => setQuery('')}
+                >
+                  <CloseIcon size={12} />
+                </button>
+              )}
+            </div>
+            {q && (
+              <div className="search-meta">
+                「{query.trim()}」の検索結果 · {results.length} 件
+              </div>
+            )}
+          </>
+        )}
+
         {loading ? (
           <Spinner />
         ) : list.length === 0 ? (
@@ -48,9 +97,19 @@ export function ArticleListScreen({ kind, nav }: Props) {
                 : 'まだお知らせはありません。'
             }
           />
+        ) : showSearch && results.length === 0 ? (
+          <div className="search-empty">
+            <div className="search-empty-ic">
+              <SearchIcon size={20} />
+            </div>
+            <div className="search-empty-t1">該当する記事がありません</div>
+            <div className="search-empty-t2">
+              キーワードを変えて検索してみてください。
+            </div>
+          </div>
         ) : (
           <div>
-            {list.map((a) => {
+            {results.map((a) => {
               const displayTags =
                 a.tags && a.tags.length > 0 ? a.tags : a.tag ? [a.tag] : [];
               return (

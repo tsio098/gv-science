@@ -148,6 +148,43 @@ export const CheckIcon = ({ size = 16, ...rest }: IconBaseProps) => (
   </svg>
 );
 
+export const QrIcon = ({ size = 22, ...rest }: IconBaseProps) => (
+  <svg {...svgProps(size)} {...rest}>
+    <rect x="3.5" y="3.5" width="6" height="6" rx="1" />
+    <rect x="14.5" y="3.5" width="6" height="6" rx="1" />
+    <rect x="3.5" y="14.5" width="6" height="6" rx="1" />
+    <path d="M14.5 14.5h2v2h-2zM18.5 14.5h2v2h-2zM14.5 18.5h2v2h-2zM18.5 18.5h2v2h-2z" fill="currentColor" stroke="none" />
+  </svg>
+);
+
+export const UserIcon = ({ size = 22, ...rest }: IconBaseProps) => (
+  <svg {...svgProps(size)} {...rest}>
+    <circle cx="12" cy="8" r="3.8" />
+    <path d="M4.5 20c1.4-3.6 4.4-5.6 7.5-5.6s6.1 2 7.5 5.6" />
+  </svg>
+);
+
+export const RefreshIcon = ({ size = 18, ...rest }: IconBaseProps) => (
+  <svg {...svgProps(size)} {...rest}>
+    <path d="M20 11a8 8 0 1 0-2.5 6" />
+    <path d="M20 4v6h-6" />
+  </svg>
+);
+
+export const InfoIcon = ({ size = 16, ...rest }: IconBaseProps) => (
+  <svg {...svgProps(size)} {...rest}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M12 10.5v6" />
+    <circle cx="12" cy="7.8" r="0.7" fill="currentColor" stroke="none" />
+  </svg>
+);
+
+export const CloseIcon = ({ size = 14, ...rest }: IconBaseProps) => (
+  <svg {...svgProps(size)} {...rest}>
+    <path d="M5 5l14 14M19 5 5 19" />
+  </svg>
+);
+
 /** リスト行で使う右向きシェブロン（薄め）。`.chev` クラスを当てる用 */
 export const ChevRow = (props: SVGProps<SVGSVGElement>) => (
   <svg className="chev" viewBox="0 0 8 14" fill="none" {...props}>

@@ -16,6 +16,7 @@ import {
   FlaskIcon,
   LeafIcon,
   PencilIcon,
+  QrIcon,
   ShareIcon,
 } from '../components/Icon';
 
@@ -126,6 +127,24 @@ export function HomeC({ nav }: HomeCProps) {
             </span>
           </div>
         </div>
+
+        {/* 出席用 QR — 次回授業カード直後・クイックアクセスの上 */}
+        <button
+          className="qr-cta"
+          type="button"
+          onClick={() => nav('qr')}
+        >
+          <div className="qr-cta-ic">
+            <QrIcon size={22} />
+          </div>
+          <div className="qr-cta-tx">
+            <div className="t1">出席用QRコード</div>
+            <div className="t2">受付でこの画面を提示</div>
+          </div>
+          <div className="qr-cta-ar">
+            <ChevRightIcon size={14} />
+          </div>
+        </button>
 
         {/* クイックアクセス */}
         <div className="c-feed-head">

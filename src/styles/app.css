@@ -1189,6 +1189,268 @@ body,
   font-size: 14px;
 }
 
+/* live = 実入力可能な検索バー（理科関連記事） */
+.search-box.live {
+  transition: border-color 0.18s ease, background 0.18s ease,
+    box-shadow 0.18s ease;
+}
+.search-box.live:focus-within {
+  border-color: var(--c-primary);
+  background: var(--c-surface-glass-strong);
+  box-shadow: 0 0 0 3px rgba(122, 155, 118, 0.18);
+  color: var(--c-text);
+}
+.search-box.live.filled {
+  color: var(--c-text);
+}
+.search-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  padding: 0;
+}
+.search-input::placeholder {
+  color: var(--c-text-mute);
+}
+.search-clear {
+  appearance: none;
+  border: 0;
+  background: rgba(45, 58, 42, 0.08);
+  color: var(--c-text-sub);
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.search-clear:active {
+  background: rgba(45, 58, 42, 0.16);
+}
+.search-meta {
+  margin: -8px var(--pad-x) 14px;
+  font-size: 12.5px;
+  color: var(--c-text-sub);
+  letter-spacing: 0.01em;
+}
+
+/* 検索 0 件の空状態カード */
+.search-empty {
+  margin: 4px var(--pad-x) 16px;
+  padding: 28px 20px;
+  background: var(--c-surface-glass);
+  border-radius: var(--card-r);
+  border: 0.5px solid rgba(255, 255, 255, 0.7);
+  text-align: center;
+}
+.search-empty-ic {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: rgba(122, 155, 118, 0.15);
+  color: var(--c-primary-deep);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+.search-empty-t1 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--c-text);
+  margin-bottom: 4px;
+}
+.search-empty-t2 {
+  font-size: 13px;
+  color: var(--c-text-sub);
+  line-height: 1.6;
+}
+
+/* ============================================================
+   出席用 QR コード
+   ============================================================ */
+
+/* ホームの CTA ボタン（次回授業カード直後・クイックアクセスの上） */
+.qr-cta {
+  appearance: none;
+  border: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: calc(100% - var(--pad-x) * 2);
+  margin: 4px var(--pad-x) 18px;
+  padding: 14px 18px;
+  border-radius: 18px;
+  background: linear-gradient(
+    135deg,
+    var(--c-primary) 0%,
+    var(--c-primary-deep) 100%
+  );
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  box-shadow: var(--sh-cta);
+}
+.qr-cta:active {
+  transform: translateY(1px);
+}
+.qr-cta-ic {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.qr-cta-tx {
+  flex: 1;
+  min-width: 0;
+}
+.qr-cta-tx .t1 {
+  font-size: 15.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.qr-cta-tx .t2 {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.78);
+  margin-top: 1px;
+  letter-spacing: 0.02em;
+}
+.qr-cta-ar {
+  color: rgba(255, 255, 255, 0.75);
+  display: inline-flex;
+  align-items: center;
+}
+
+/* 本人確認ストリップ */
+.qr-id {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 4px var(--pad-x) 14px;
+  padding: 12px 14px;
+  background: var(--c-surface-glass);
+  border-radius: 16px;
+  border: 0.5px solid rgba(255, 255, 255, 0.7);
+}
+.qr-id-av {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: var(--c-primary-soft);
+  color: var(--c-primary-deep);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.qr-id-tx {
+  flex: 1;
+  min-width: 0;
+}
+.qr-id-tx .hi {
+  font-size: 11.5px;
+  color: var(--c-text-mute);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.qr-id-tx .nm {
+  font-size: 15.5px;
+  font-weight: 600;
+  color: var(--c-text);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.qr-id-tx .grade {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--c-primary-deep);
+  background: rgba(122, 155, 118, 0.16);
+  padding: 2px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+
+/* QR カード */
+.qr-card {
+  margin: 6px var(--pad-x) 16px;
+  padding: 22px 22px 16px;
+  background: var(--c-surface);
+  border-radius: var(--card-r);
+  border: 0.5px solid var(--c-divider);
+  box-shadow: var(--sh-card);
+}
+.qr-frame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  margin-bottom: 16px;
+}
+.qr-empty {
+  width: 232px;
+  height: 232px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 13.5px;
+  color: var(--c-text-sub);
+  background: var(--c-bg-warm);
+  border-radius: 14px;
+  line-height: 1.6;
+}
+.qr-note {
+  padding-top: 14px;
+  border-top: 0.5px solid var(--c-divider);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--c-text-sub);
+  letter-spacing: 0.01em;
+}
+.qr-note svg {
+  flex-shrink: 0;
+  color: var(--c-text-mute);
+}
+
+/* 更新ボタン */
+.qr-refresh {
+  appearance: none;
+  border: 0.5px solid var(--c-divider);
+  background: var(--c-surface-glass);
+  color: var(--c-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 var(--pad-x) 8px;
+  width: calc(100% - var(--pad-x) * 2);
+  padding: 13px;
+  border-radius: 14px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.qr-refresh:active {
+  background: var(--c-surface-glass-strong);
+}
+
 /* Boot screen (LIFF init) */
 .boot {
   width: 100%;

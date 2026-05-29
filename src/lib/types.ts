@@ -107,7 +107,8 @@ export type Route =
   | { name: 'problems'; params: { subject: Subject } }
   | { name: 'problem'; params: { id: string; subject: Subject } }
   | { name: 'articles' }
-  | { name: 'share' };
+  | { name: 'share' }
+  | { name: 'qr' };
 
 export type RouteName = Route['name'];
 
@@ -138,6 +139,7 @@ export type NavFn = {
   ): void;
   (name: 'articles'): void;
   (name: 'share'): void;
+  (name: 'qr'): void;
 };
 
 /* ──────────────────────────────────────────────────────
@@ -146,4 +148,13 @@ export type NavFn = {
 export interface HomeResponse {
   user: User;
   nextClass: NextClass;
+}
+
+export interface AttendanceQR {
+  /** 氏名（生徒IDシート A列） */
+  name: string;
+  /** 学年（生徒IDシート C列） */
+  grade: string;
+  /** QR にエンコードする文字列（生徒IDシート D列の ID。空なら未登録） */
+  qrText: string;
 }

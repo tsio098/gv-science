@@ -20,6 +20,7 @@ import {
 import { getLiffStatus } from './liff';
 import type {
   Article,
+  AttendanceQR,
   HomeResponse,
   Problem,
   Schedule,
@@ -123,5 +124,18 @@ export async function fetchShares(): Promise<Article[]> {
     return r.items;
   } catch {
     return SHARES;
+  }
+}
+
+/**
+ * 出席用 QR を取得。
+ * GAS が「生徒ID」シートで LINE userId を引き当て、A列(名前)・C列(学年)・
+ * D列(ID) を返す。失敗時は USER のモック値 + 空 qrText でフォールバック。
+ */
+export async function fetchAttendanceQR(): Promise<AttendanceQR> {
+  try {
+    return await gasGet<AttendanceQR>('qr');
+  } catch {
+    return { name: USER.name, grade: USER.grade, qrText: '' };
   }
 }
