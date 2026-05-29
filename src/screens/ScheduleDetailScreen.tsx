@@ -18,12 +18,11 @@ interface Props {
   nav: NavFn;
 }
 
-/** スケジュール科目 → 関連基礎問題の Subject（無ければ null で表示しない） */
-function relatedProblemSubject(s: ScheduleSubject): Subject | null {
+/** スケジュール科目 → 関連基礎問題の Subject */
+function relatedProblemSubject(s: ScheduleSubject): Subject {
   if (s === 'chemistry' || s === 'chemistry-basic') return 'chemistry';
   if (s === 'biology'   || s === 'biology-basic')   return 'biology';
-  if (s === 'earth-basic') return 'earth';
-  return null; // 物理 / 物理基礎 は基礎問題シート未整備
+  return 'earth';
 }
 
 /** URL からホスト名を取り出す（取れなければ空文字） */
@@ -174,26 +173,24 @@ export function ScheduleDetailScreen({ id, subject, nav }: Props) {
               );
             })()}
 
-            {problemSubject && (
-              <div className="detail-section">
-                <div className="detail-section-label">関連</div>
-                <div
-                  className="detail-link"
-                  onClick={() => nav('problems', { subject: problemSubject })}
-                >
-                  <div className="ic">
-                    <PencilIcon size={18} />
-                  </div>
-                  <div className="tx">
-                    <div className="t1">関連の基礎問題</div>
-                    <div className="t2">{label}基礎問題から探す</div>
-                  </div>
-                  <div className="ar">
-                    <ChevRightIcon size={14} />
-                  </div>
+            <div className="detail-section">
+              <div className="detail-section-label">関連</div>
+              <div
+                className="detail-link"
+                onClick={() => nav('problems', { subject: problemSubject })}
+              >
+                <div className="ic">
+                  <PencilIcon size={18} />
+                </div>
+                <div className="tx">
+                  <div className="t1">関連の基礎問題</div>
+                  <div className="t2">{label}基礎問題から探す</div>
+                </div>
+                <div className="ar">
+                  <ChevRightIcon size={14} />
                 </div>
               </div>
-            )}
+            </div>
             <div className="empty-pad-bottom" />
           </>
         )}

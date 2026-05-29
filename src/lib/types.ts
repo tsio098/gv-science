@@ -16,17 +16,14 @@ export type Subject = 'chemistry' | 'biology' | 'earth';
  *   - 化学基礎 → chemistry-basic
  *   - 生物 → biology
  *   - 生物基礎 → biology-basic
- *   - 物理 → physics
- *   - 物理基礎 → physics-basic
  *   - 地学基礎 → earth-basic
+ * （物理 / 物理基礎は授業カレンダー未整備のため非対応）
  */
 export type ScheduleSubject =
   | 'chemistry'
   | 'chemistry-basic'
   | 'biology'
   | 'biology-basic'
-  | 'physics'
-  | 'physics-basic'
   | 'earth-basic';
 
 /** 全 ScheduleSubject の列挙順（HomeC のタイル並び順と一致） */
@@ -35,8 +32,6 @@ export const SCHEDULE_SUBJECT_ORDER: ScheduleSubject[] = [
   'chemistry-basic',
   'biology',
   'biology-basic',
-  'physics',
-  'physics-basic',
   'earth-basic',
 ];
 
@@ -46,8 +41,6 @@ export const SUBJECT_JA: Record<ScheduleSubject, string> = {
   'chemistry-basic': '化学基礎',
   'biology':         '生物',
   'biology-basic':   '生物基礎',
-  'physics':         '物理',
-  'physics-basic':   '物理基礎',
   'earth-basic':     '地学基礎',
 };
 
@@ -57,10 +50,16 @@ export const SUBJECT_EN: Record<ScheduleSubject, string> = {
   'chemistry-basic': 'CHEMISTRY · 基礎',
   'biology':         'BIOLOGY',
   'biology-basic':   'BIOLOGY · 基礎',
-  'physics':         'PHYSICS',
-  'physics-basic':   'PHYSICS · 基礎',
   'earth-basic':     'GEOLOGY · 基礎',
 };
+
+/** ScheduleSubject → 対応する基礎問題シートの Subject（無ければ null） */
+export function basicSubjectFor(s: ScheduleSubject): Subject | null {
+  if (s === 'chemistry' || s === 'chemistry-basic') return 'chemistry';
+  if (s === 'biology' || s === 'biology-basic') return 'biology';
+  if (s === 'earth-basic') return 'earth';
+  return null;
+}
 
 /**
  * 教材リンク。スプレッドシートの列名がそのまま label になり、

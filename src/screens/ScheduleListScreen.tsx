@@ -6,7 +6,6 @@ import { TopNav } from '../components/TopNav';
 import { Spinner } from '../components/Spinner';
 import { EmptyState } from '../components/EmptyState';
 import {
-  BookIcon,
   ChevRow,
   EarthIcon,
   FlaskIcon,
@@ -23,8 +22,7 @@ interface Props {
 function subjectIcon(s: ScheduleSubject) {
   if (s === 'chemistry' || s === 'chemistry-basic') return <FlaskIcon size={20} />;
   if (s === 'biology'   || s === 'biology-basic')   return <LeafIcon size={20} />;
-  if (s === 'earth-basic') return <EarthIcon size={20} />;
-  return <BookIcon size={20} />;
+  return <EarthIcon size={20} />;
 }
 
 /** subject キー → row-icon の accent クラス（生物・地学系を accent に） */
