@@ -171,10 +171,15 @@ export async function fetchAttendanceQR(): Promise<AttendanceQR> {
  *
  * GAS 未設定 / 通信失敗 / NO_DATA 時はモックデータでフォールバック。
  * 画面側はモック表示でも UI を確認できるようにしている。
+ *
+ * @param fresh true なら GAS 側のキャッシュ（30 分）を破棄して再取得
  */
-export async function fetchScores(): Promise<ScoresResponse> {
+export async function fetchScores(fresh = false): Promise<ScoresResponse> {
   try {
-    return await gasGet<ScoresResponse>('scores');
+    return await gasGet<ScoresResponse>(
+      'scores',
+      fresh ? { fresh: '1' } : {}
+    );
   } catch {
     return SCORES_MOCK;
   }

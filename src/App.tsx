@@ -3,9 +3,13 @@
  *  - スタックを保持し、最新画面を slide-in アニメで描画。
  *  - 前画面を裏に重ねて translateX(-30%) + opacity 0.6 する iOS 風遷移。
  *  - 外部リンクは ExternalLinkModal を経由。
+ *  - 成績推移画面は SVG チャートを含む重めの画面のため、React.lazy で
+ *    遅延ロードする。HomeC マウント時にプリロードを発火するので、
+ *    実際にタップした瞬間にはチャンクが既にダウンロード済みであることが多い。
  */
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { NavProvider, useNav } from './lib/nav';
+import { ScoresProvider } from './lib/scoresStore';
 import type { Route } from './lib/types';
 import { HomeC } from './screens/HomeC';
 import { ScheduleListScreen } from './screens/ScheduleListScreen';
@@ -15,8 +19,15 @@ import { ProblemDetailScreen } from './screens/ProblemDetailScreen';
 import { ArticleListScreen } from './screens/ArticleListScreen';
 import { StudyBookListScreen } from './screens/StudyBookListScreen';
 import { AttendanceQRScreen } from './screens/AttendanceQRScreen';
-import { ScoresScreen } from './screens/ScoresScreen';
+import { Spinner } from './components/Spinner';
 import { ExternalLinkModal } from './components/ExternalLinkModal';
+
+// ── 成績推移は遅延ロード（初期バンドル軽量化） ──
+// preloadScoresScreen() は lib/lazyImports.ts に切り出している（循環参照回避）。
+import { importScoresScreen } from './lib/lazyImports';
+const ScoresScreen = lazy(() =>
+  importScoresScreen().then((m) => ({ default: m.ScoresScreen }))
+);
 
 function renderRoute(route: Route, nav: ReturnType<typeof useNav>['nav']) {
   switch (route.name) {
@@ -51,8 +62,22 @@ function renderRoute(route: Route, nav: ReturnType<typeof useNav>['nav']) {
     case 'qr':
       return <AttendanceQRScreen nav={nav} />;
     case 'scores':
-      return <ScoresScreen nav={nav} />;
+      return (
+        <Suspense fallback={<ScoresFallback />}>
+          <ScoresScreen nav={nav} />
+        </Suspense>
+      );
   }
+}
+
+/** lazy ScoresScreen 読み込み中の最小フォールバック（白地 + スピナー） */
+function ScoresFallback() {
+  return (
+    <div className="app">
+      <div className="safe-top" />
+      <Spinner />
+    </div>
+  );
 }
 
 function Stack() {
@@ -108,13 +133,15 @@ export function App() {
         }}
       >
         <NavProvider onExternalLink={(url) => setModalUrl(url)}>
-          <Stack />
-          {modalUrl !== null && (
-            <ExternalLinkModal
-              url={modalUrl}
-              onClose={() => setModalUrl(null)}
-            />
-          )}
+          <ScoresProvider>
+            <Stack />
+            {modalUrl !== null && (
+              <ExternalLinkModal
+                url={modalUrl}
+                onClose={() => setModalUrl(null)}
+              />
+            )}
+          </ScoresProvider>
         </NavProvider>
       </div>
     </div>

@@ -179,6 +179,35 @@
   white-space: nowrap;
 }
 
+/* 再読み込みアイコンボタン（合計点カード右上） */
+.gt-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--c-line);
+  background: transparent;
+  border-radius: 999px;
+  color: var(--c-text-mute);
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+.gt-refresh-btn:hover {
+  color: var(--c-primary-deep);
+  border-color: var(--c-primary);
+  background: var(--c-primary-soft, transparent);
+}
+.gt-refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+  animation: gt-refresh-spin 900ms linear infinite;
+}
+@keyframes gt-refresh-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ── summary ───────────────────────────────────────────── */
 .gt-summary {
   display: flex;

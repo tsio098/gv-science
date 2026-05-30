@@ -11,10 +11,10 @@
  *   - 偏差値:    合計点グラフに第2軸（右軸）で重ねる
  *   - データ取得: 履修科目分を 1 リクエストで取得（タブ切替で再フェッチ無し）
  */
-import { useEffect, useMemo, useState } from 'react';
-import { fetchScores } from '../lib/api';
-import { useAsync } from '../lib/useAsync';
+import { useEffect, useState } from 'react';
+import { useScores } from '../lib/scoresStore';
 import { monthShort } from '../data/scoresMock';
+import { fmt1, fmtSigned1 } from '../lib/format';
 import { SCORES_SUBJECT_LABEL } from '../lib/types';
 import type {
   NavFn,
@@ -79,9 +79,10 @@ interface ScoresScreenProps {
 }
 
 export function ScoresScreen({ nav }: ScoresScreenProps) {
-  const scores = useAsync<ScoresResponse>(fetchScores, []);
+  const scores = useScores();
 
-  if (scores.loading) {
+  // 初回ロード = キャッシュ無し & まだ fetch 中。データがあれば SWR で即描画。
+  if (scores.loading && !scores.data) {
     return (
       <ScoresFrame nav={nav}>
         <div className="gt-state">
@@ -117,10 +118,13 @@ export function ScoresScreen({ nav }: ScoresScreenProps) {
             type="button"
             className="btn btn-quiet btn-full"
             style={{ marginTop: 18 }}
-            onClick={() => window.location.reload()}
+            onClick={() => scores.refresh()}
+            disabled={scores.refreshing}
           >
             <RefreshIcon size={16} />
-            <span style={{ marginLeft: 6 }}>もう一度試す</span>
+            <span style={{ marginLeft: 6 }}>
+              {scores.refreshing ? '読み込み中…' : 'もう一度試す'}
+            </span>
           </button>
         </div>
       </ScoresFrame>
@@ -196,6 +200,7 @@ function ScoresContent({
   nav: NavFn;
   scores: ScoresResponse;
 }) {
+  const { refresh, refreshing } = useScores();
   const subjects = scores.subjects;
   const [subject, setSubject] = useState<ScoresSubject>(subjects[0]);
   const [metric, setMetric] = useState<Metric>('rate');
@@ -207,25 +212,23 @@ function ScoresContent({
 
   const subjectData = scores.data[subject];
 
-  const initialSel = useMemo(() => {
-    if (!subjectData) return new Set<string>();
-    return new Set(
-      defaultFields(subjectData.fields, subjectData.rate, subjectData.months)
-    );
-  }, [subjectData]);
+  // 初期状態は「分野が一つも選択されていない」。
+  // 「強弱6」プリセットボタンで上位3+下位3 を後付け選択できる。
+  const [sel, setSel] = useState<Set<string>>(new Set());
 
-  const [sel, setSel] = useState<Set<string>>(initialSel);
-
-  // 科目切替時にプリセットを再シード
+  // 科目切替時は選択をクリア
   useEffect(() => {
     if (!subjectData) return;
-    setSel(
-      new Set(
-        defaultFields(subjectData.fields, subjectData.rate, subjectData.months)
-      )
-    );
+    setSel(new Set());
     setRange('all');
   }, [subject, subjectData]);
+
+  // 折れ線→強み弱み に切替時、平均得点率が選ばれていれば得点率にフォールバック
+  useEffect(() => {
+    if (fv === 'strengths' && metric === 'avgRate') {
+      setMetric('rate');
+    }
+  }, [fv, metric]);
 
   if (!subjectData) {
     return (
@@ -343,7 +346,22 @@ function ScoresContent({
             <div className="gt-card">
               <div className="gt-card-head">
                 <div className="gt-card-title">合計点の推移</div>
-                <div className="gt-card-aux gv-en">{tt.length} TESTS</div>
+                <div
+                  className="gt-card-aux gv-en"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}
+                >
+                  <button
+                    type="button"
+                    className="gt-refresh-btn"
+                    onClick={() => refresh()}
+                    disabled={refreshing}
+                    aria-label="最新データに更新"
+                    title="最新データに更新"
+                  >
+                    <RefreshIcon size={14} />
+                  </button>
+                  <span>{tt.length} TESTS</span>
+                </div>
               </div>
 
               {/* サマリー */}
@@ -352,7 +370,7 @@ function ScoresContent({
                   <div className="gt-sum-main">
                     <div className="gt-sum-k">直近</div>
                     <div className="gt-sum-v">
-                      <span className="gv-num">{latest.total}</span>
+                      <span className="gv-num">{fmt1(latest.total)}</span>
                       <span className="gt-sum-u">点</span>
                     </div>
                     {prev && (
@@ -360,18 +378,18 @@ function ScoresContent({
                         className={`gt-sum-delta ${delta >= 0 ? 'up' : 'down'}`}
                       >
                         {delta >= 0 ? '▲' : '▼'}{' '}
-                        <span className="gv-num">{Math.abs(delta)}</span>
+                        <span className="gv-num">{fmt1(Math.abs(delta))}</span>
                       </div>
                     )}
                   </div>
                   <div className="gt-sum-sub">
                     <div className="gt-sum-cell">
                       <span className="k">平均</span>
-                      <span className="v gv-num">{latest.avg}</span>
+                      <span className="v gv-num">{fmt1(latest.avg)}</span>
                     </div>
                     <div className="gt-sum-cell acc">
                       <span className="k">偏差値</span>
-                      <span className="v gv-num">{latest.hensachi}</span>
+                      <span className="v gv-num">{fmt1(latest.hensachi)}</span>
                     </div>
                   </div>
                 </div>
@@ -445,11 +463,11 @@ function ScoresContent({
                       </span>
                       <span className="gt-test-name">{p.test}</span>
                       <span className="gt-test-score gv-num">
-                        {p.total}
+                        {fmt1(p.total)}
                         <small>点</small>
                       </span>
                       <span className="gt-test-hen gv-num">
-                        偏 {p.hensachi}
+                        偏 {fmt1(p.hensachi)}
                       </span>
                     </div>
                   ))}
@@ -491,9 +509,13 @@ function ScoresContent({
                 ))}
               </div>
 
-              {/* metric サブタブ */}
+              {/* metric サブタブ。「強み弱み」では「平均得点率」(クラス平均) を
+                  除外する — 個人の強み弱みではなくクラス全体の難易度になるため。 */}
               <div className="gt-seg gt-seg-sm">
-                {METRICS.map((m) => (
+                {(fv === 'strengths'
+                  ? METRICS.filter((m) => m.key !== 'avgRate')
+                  : METRICS
+                ).map((m) => (
                   <button
                     key={m.key}
                     type="button"
@@ -610,11 +632,11 @@ function ScoresContent({
                                       {monthShort(m)}
                                     </span>
                                     <span className="gt-fd-rate gv-num">
-                                      {r ?? '—'}
+                                      {fmt1(r)}
                                       <small>%</small>
                                     </span>
                                     <span className="gt-fd-hen gv-num">
-                                      偏 {h ?? '—'}
+                                      偏 {fmt1(h)}
                                     </span>
                                   </div>
                                 );
@@ -631,7 +653,7 @@ function ScoresContent({
                   </div>
 
                   <div className="gt-note gt-note-soft">
-                    チップをタップで分野の線を表示／非表示。初期は直近月の上位3・下位3分野。
+                    チップをタップで分野の線を表示／非表示。「強弱6」で直近月の上位3・下位3を一括選択。
                   </div>
                 </>
               )}
@@ -647,7 +669,7 @@ function ScoresContent({
                       const dv =
                         prev != null
                           ? Math.round((v - prev) * 10) / 10
-                          : 0;
+                          : null;
                       return (
                         <div key={f} className="gt-sw-row">
                           <span
@@ -659,14 +681,13 @@ function ScoresContent({
                           />
                           <span className="gt-sw-name">{f}</span>
                           <span className="gt-sw-v gv-num">
-                            {v}
+                            {fmt1(v)}
                             {curMetric.unit}
                           </span>
                           <span
-                            className={`gt-sw-d ${dv >= 0 ? 'up' : 'down'} gv-num`}
+                            className={`gt-sw-d ${(dv ?? 0) >= 0 ? 'up' : 'down'} gv-num`}
                           >
-                            {dv >= 0 ? '+' : ''}
-                            {dv}
+                            {fmtSigned1(dv)}
                           </span>
                         </div>
                       );
@@ -681,7 +702,7 @@ function ScoresContent({
                       const dv =
                         prev != null
                           ? Math.round((v - prev) * 10) / 10
-                          : 0;
+                          : null;
                       return (
                         <div key={f} className="gt-sw-row">
                           <span
@@ -693,14 +714,13 @@ function ScoresContent({
                           />
                           <span className="gt-sw-name">{f}</span>
                           <span className="gt-sw-v gv-num">
-                            {v}
+                            {fmt1(v)}
                             {curMetric.unit}
                           </span>
                           <span
-                            className={`gt-sw-d ${dv >= 0 ? 'up' : 'down'} gv-num`}
+                            className={`gt-sw-d ${(dv ?? 0) >= 0 ? 'up' : 'down'} gv-num`}
                           >
-                            {dv >= 0 ? '+' : ''}
-                            {dv}
+                            {fmtSigned1(dv)}
                           </span>
                         </div>
                       );

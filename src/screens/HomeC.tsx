@@ -3,8 +3,11 @@
  *   safe-top → ロゴ + HOME crumb → 挨拶 → Today カード →
  *   クイック 4 タイル → 記事フィード（横スクロール） → その他
  */
-import { fetchArticles, fetchHome, fetchScores } from '../lib/api';
+import { useEffect } from 'react';
+import { fetchArticles, fetchHome } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
+import { preloadScoresScreen } from '../lib/lazyImports';
+import { useScores } from '../lib/scoresStore';
 import type { NavFn, ScheduleSubject } from '../lib/types';
 import { SUBJECT_JA } from '../lib/types';
 import { Logo } from '../components/Logo';
@@ -39,9 +42,14 @@ interface HomeCProps {
 export function HomeC({ nav }: HomeCProps) {
   const home = useAsync(fetchHome, []);
   const arts = useAsync(fetchArticles, []);
-  // Sparkline 用に直近の合計点を 1 系列だけ取得。失敗時は無表示で済むよう
-  // null 戻りにしている（フックの依存配列で再フェッチもしない）。
-  const scores = useAsync(fetchScores, []);
+  // Sparkline 用に直近の合計点を 1 系列だけ取得。Provider 経由で
+  // ScoresScreen と共有するため、fetch は 1 回のみ。
+  const scores = useScores();
+
+  // ScoresScreen のチャンクを先読みしておく（タップ時に Suspense fallback を出さない）
+  useEffect(() => {
+    preloadScoresScreen();
+  }, []);
 
   if (home.loading || !home.data) {
     return (
