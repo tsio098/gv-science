@@ -8,3 +8,4 @@ dist
 .vite
 .idea
 .vscode
+vite.config.ts.timestamp-*

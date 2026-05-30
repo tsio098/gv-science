@@ -17,6 +17,7 @@ import {
   SHARES,
   USER,
 } from '../data/mock';
+import { SCORES_MOCK } from '../data/scoresMock';
 import { getLiffStatus } from './liff';
 import type {
   Article,
@@ -25,6 +26,7 @@ import type {
   Problem,
   Schedule,
   ScheduleSubject,
+  ScoresResponse,
   StudyBook,
   Subject,
 } from './types';
@@ -152,5 +154,28 @@ export async function fetchAttendanceQR(): Promise<AttendanceQR> {
     return await gasGet<AttendanceQR>('qr');
   } catch {
     return { name: USER.name, grade: USER.grade, qrText: '' };
+  }
+}
+
+/**
+ * 成績推移データを取得。
+ *
+ * GAS 側は「演習点数報告」スプレッドシート（生徒IDシートとは別ファイル）の
+ *   - 化学 成績
+ *   - 生物 成績
+ *   - 化学基礎 成績
+ *   - 生物基礎 成績
+ *   - 地学基礎 成績
+ * から、生徒名 (A列) で完全一致する行を集めて返す。
+ * 履修科目分すべてを 1 リクエストで返す（タブ切替後の再フェッチ不要）。
+ *
+ * GAS 未設定 / 通信失敗 / NO_DATA 時はモックデータでフォールバック。
+ * 画面側はモック表示でも UI を確認できるようにしている。
+ */
+export async function fetchScores(): Promise<ScoresResponse> {
+  try {
+    return await gasGet<ScoresResponse>('scores');
+  } catch {
+    return SCORES_MOCK;
   }
 }

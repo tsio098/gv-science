@@ -77,6 +77,15 @@ export const ChartIcon = ({ size = 22, ...rest }: IconBaseProps) => (
   </svg>
 );
 
+/** 成績推移用 — 右肩上がりの折れ線 + 軸 */
+export const TrendIcon = ({ size = 22, ...rest }: IconBaseProps) => (
+  <svg {...svgProps(size)} {...rest}>
+    <path d="M4 4v15.5a.5.5 0 0 0 .5.5H20" />
+    <path d="m7.5 15 3.5-4 3 2.5L20 7" />
+    <path d="M20 7h-3.2M20 7v3.2" />
+  </svg>
+);
+
 export const ChevRightIcon = ({ size = 14, ...rest }: IconBaseProps) => (
   <svg
     width={size * (8 / 14)}

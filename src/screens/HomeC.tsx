@@ -3,13 +3,14 @@
  *   safe-top → ロゴ + HOME crumb → 挨拶 → Today カード →
  *   クイック 4 タイル → 記事フィード（横スクロール） → その他
  */
-import { fetchArticles, fetchHome } from '../lib/api';
+import { fetchArticles, fetchHome, fetchScores } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
 import type { NavFn, ScheduleSubject } from '../lib/types';
 import { SUBJECT_JA } from '../lib/types';
 import { Logo } from '../components/Logo';
 import { Greeting } from '../components/Greeting';
 import { Spinner } from '../components/Spinner';
+import { Sparkline } from '../components/ScoreCharts';
 import {
   ChartIcon,
   ChevRightIcon,
@@ -19,6 +20,7 @@ import {
   LeafIcon,
   PencilIcon,
   QrIcon,
+  TrendIcon,
 } from '../components/Icon';
 
 /** 科目キー → タイルに表示するアイコン */
@@ -37,6 +39,9 @@ interface HomeCProps {
 export function HomeC({ nav }: HomeCProps) {
   const home = useAsync(fetchHome, []);
   const arts = useAsync(fetchArticles, []);
+  // Sparkline 用に直近の合計点を 1 系列だけ取得。失敗時は無表示で済むよう
+  // null 戻りにしている（フックの依存配列で再フェッチもしない）。
+  const scores = useAsync(fetchScores, []);
 
   if (home.loading || !home.data) {
     return (
@@ -179,6 +184,31 @@ export function HomeC({ nav }: HomeCProps) {
             </div>
           ))}
         </div>
+
+        {/* 成績推移 — 入口。直近の合計点スパークラインつき。
+            データ取得失敗時は Sparkline 部分を非表示でフォールバック。*/}
+        <button
+          type="button"
+          className="gt-home-cta"
+          onClick={() => nav('scores')}
+        >
+          <div className="gt-home-ic">
+            <TrendIcon size={22} />
+          </div>
+          <div className="gt-home-tx">
+            <div className="t1">成績推移を見る</div>
+            <div className="t2">テストごとの推移と分野別の得意・苦手</div>
+          </div>
+          <div className="gt-home-spark">
+            {(() => {
+              const d = scores.data;
+              if (!d || !d.subjects.length) return null;
+              const first = d.data[d.subjects[0]];
+              const vals = first?.totalTrend.map((t) => t.total) ?? [];
+              return vals.length >= 2 ? <Sparkline values={vals} /> : null;
+            })()}
+          </div>
+        </button>
 
         {/* 記事フィード（横スクロール） */}
         <div className="c-feed-head">

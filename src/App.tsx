@@ -15,6 +15,7 @@ import { ProblemDetailScreen } from './screens/ProblemDetailScreen';
 import { ArticleListScreen } from './screens/ArticleListScreen';
 import { StudyBookListScreen } from './screens/StudyBookListScreen';
 import { AttendanceQRScreen } from './screens/AttendanceQRScreen';
+import { ScoresScreen } from './screens/ScoresScreen';
 import { ExternalLinkModal } from './components/ExternalLinkModal';
 
 function renderRoute(route: Route, nav: ReturnType<typeof useNav>['nav']) {
@@ -49,6 +50,8 @@ function renderRoute(route: Route, nav: ReturnType<typeof useNav>['nav']) {
       return <StudyBookListScreen nav={nav} />;
     case 'qr':
       return <AttendanceQRScreen nav={nav} />;
+    case 'scores':
+      return <ScoresScreen nav={nav} />;
   }
 }
 

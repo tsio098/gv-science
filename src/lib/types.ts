@@ -189,7 +189,8 @@ export type Route =
   | { name: 'articles' }
   | { name: 'share' }
   | { name: 'studyBooks' }
-  | { name: 'qr' };
+  | { name: 'qr' }
+  | { name: 'scores' };
 
 export type RouteName = Route['name'];
 
@@ -222,6 +223,7 @@ export type NavFn = {
   (name: 'share'): void;
   (name: 'studyBooks'): void;
   (name: 'qr'): void;
+  (name: 'scores'): void;
 };
 
 /* ──────────────────────────────────────────────────────
@@ -239,4 +241,62 @@ export interface AttendanceQR {
   grade: string;
   /** QR にエンコードする文字列（生徒IDシート D列の ID。空なら未登録） */
   qrText: string;
+}
+
+/* ──────────────────────────────────────────────────────
+   成績推移（演習点数報告スプレッドシート由来）
+   ────────────────────────────────────────────────────── */
+
+/**
+ * 成績推移で扱える科目。ScheduleSubject の 5 種類と同じだが、
+ * 「対応する成績シートが存在する科目だけ」しか data に含まれない。
+ */
+export type ScoresSubject = ScheduleSubject;
+
+/** ScoresSubject → 表示用ラベル */
+export const SCORES_SUBJECT_LABEL: Record<ScoresSubject, { ja: string; en: string }> = {
+  'chemistry':       { ja: '化学',     en: 'CHEMISTRY' },
+  'chemistry-basic': { ja: '化学基礎', en: 'CHEM · BASIC' },
+  'biology':         { ja: '生物',     en: 'BIOLOGY' },
+  'biology-basic':   { ja: '生物基礎', en: 'BIO · BASIC' },
+  'earth-basic':     { ja: '地学基礎', en: 'GEO · BASIC' },
+};
+
+/** テストごとの合計点 1 行 */
+export interface ScoreTestPoint {
+  /** "2026/04/06" 形式 */
+  date: string;
+  test: string;
+  total: number;
+  avg: number;
+  hensachi: number;
+}
+
+/** 1 科目分の成績データ（チャート用にフラットに整形済み） */
+export interface ScoresPerSubject {
+  /** その科目の分野名（順序固定） */
+  fields: string[];
+  /** 合計点推移（実施日昇順） */
+  totalTrend: ScoreTestPoint[];
+  /** 月ラベル（"2026-04" 形式、昇順） */
+  months: string[];
+  /** 分野ごとの月次得点率（本人）— months と同じ長さ。null は欠測 */
+  rate: Record<string, Array<number | null>>;
+  /** 分野ごとの月次平均得点率（クラス）*/
+  avgRate: Record<string, Array<number | null>>;
+  /** 分野ごとの月次偏差値（本人）*/
+  hensachi: Record<string, Array<number | null>>;
+}
+
+/**
+ * 成績推移 API のレスポンス。
+ * 履修科目をまとめて返す（タブ切替で再フェッチ不要にする設計）。
+ */
+export interface ScoresResponse {
+  /** 生徒名（生徒IDシート由来） */
+  name: string;
+  /** 表示順（生徒の履修科目のうち、成績データが存在するものだけ）*/
+  subjects: ScoresSubject[];
+  /** 科目キー → その科目の集計データ */
+  data: Partial<Record<ScoresSubject, ScoresPerSubject>>;
 }

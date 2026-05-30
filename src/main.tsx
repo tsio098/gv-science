@@ -9,6 +9,7 @@ import { App } from './App';
 import { initLiff } from './lib/liff';
 import './styles/tokens.css';
 import './styles/app.css';
+import './styles/scores.css';
 
 const root = createRoot(document.getElementById('root')!);
 
