@@ -24,10 +24,26 @@ const LIFF_ID_A = import.meta.env.VITE_LIFF_ID;
 const LIFF_ID_B = import.meta.env.VITE_LIFF_ID_B;
 
 /** パスから初期化に使うべき LIFF_ID を判定する。
- *  /pair-b で始まるパスなら別プロバイダ用 LIFF-B、それ以外はメインの LIFF-A。 */
+ *
+ *  Provider B 用 LIFF (LIFF-B) のエンドポイント URL は
+ *  `https://gv-science.t-siotani.workers.dev/b/` （SETUP.md §別プロバイダ運用）。
+ *  /b または /b/... で来た場合は LIFF_ID_B で初期化する。
+ *
+ *  後方互換: 旧ペアリング画面のパス `/pair-b` も B 扱い。
+ *  どちらにも一致しなければ LIFF_ID_A（Provider A）。
+ */
 function pickLiffId(): string | undefined {
-  if (typeof window !== 'undefined' &&
-      window.location.pathname.startsWith('/pair-b')) {
+  if (typeof window === 'undefined') return LIFF_ID_A;
+  const p = window.location.pathname;
+  const isProviderB =
+    p === '/b' || p.startsWith('/b/') ||
+    p === '/pair-b' || p.startsWith('/pair-b/');
+  if (isProviderB) {
+    if (!LIFF_ID_B && import.meta.env.DEV) {
+      console.warn(
+        '[liff] Provider B のパスでアクセスされましたが VITE_LIFF_ID_B が未設定です。'
+      );
+    }
     return LIFF_ID_B;
   }
   return LIFF_ID_A;
