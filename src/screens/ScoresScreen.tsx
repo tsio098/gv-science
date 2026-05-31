@@ -7,7 +7,7 @@
  * 設計判断 (デザインブリーフ §4.2 / handoff README より):
  *   - 科目切替UI: 履修科目 3 以上 → 横スクロールチップ（案A）
  *                履修科目 2 以下 → セグメント・コントロール（案B）
- *   - 分野ビュー: 折れ線 / 強み弱み の 2 ビュー（ヒートマップは廃止）
+ *   - 分野ビュー: 折れ線 / 得点傾向 の 2 ビュー（ヒートマップは廃止）
  *   - 偏差値:    合計点グラフに第2軸（右軸）で重ねる
  *   - データ取得: 履修科目分を 1 リクエストで取得（タブ切替で再フェッチ無し）
  */
@@ -223,7 +223,7 @@ function ScoresContent({
     setRange('all');
   }, [subject, subjectData]);
 
-  // 折れ線→強み弱み に切替時、平均得点率が選ばれていれば得点率にフォールバック
+  // 折れ線→得点傾向 に切替時、平均得点率が選ばれていれば得点率にフォールバック
   useEffect(() => {
     if (fv === 'strengths' && metric === 'avgRate') {
       setMetric('rate');
@@ -265,7 +265,9 @@ function ScoresContent({
   }));
   const curMetric = METRICS.find((m) => m.key === metric)!;
 
-  // 強み弱み（直近月 + 現在の metric）
+  // 得点傾向（直近月 + 現在の metric）
+  // 化学・生物 → 上位/下位 5 件ずつ、基礎 3 科目 → 3 件ずつ。
+  // 分野総数が少ない基礎科目で 5 件取ると上位と下位が完全に被ってしまうため。
   const lastIdx = subjectData.months.length - 1;
   const rankAll = subjectData.fields
     .map((f) => ({
@@ -278,8 +280,13 @@ function ScoresContent({
         typeof x.v === 'number' && Number.isFinite(x.v)
     )
     .sort((a, b) => b.v - a.v);
-  const strong = rankAll.slice(0, 5);
-  const weak = rankAll.slice(-5).reverse();
+  const isBasicSubject =
+    subject === 'chemistry-basic' ||
+    subject === 'biology-basic' ||
+    subject === 'earth-basic';
+  const swCount = isBasicSubject ? 3 : 5;
+  const strong = rankAll.slice(0, swCount);
+  const weak = rankAll.slice(-swCount).reverse();
 
   const subjLabel = SCORES_SUBJECT_LABEL[subject];
 
@@ -489,12 +496,12 @@ function ScoresContent({
                 </div>
               </div>
 
-              {/* 分野ビュー切替（折れ線 / 強み弱み） */}
+              {/* 分野ビュー切替（折れ線 / 得点傾向） */}
               <div className="gt-vchips">
                 {(
                   [
                     ['lines', '折れ線'],
-                    ['strengths', '強み弱み'],
+                    ['strengths', '得点傾向'],
                   ] as Array<[FieldView, string]>
                 ).map(([v, lb]) => (
                   <button
@@ -509,8 +516,8 @@ function ScoresContent({
                 ))}
               </div>
 
-              {/* metric サブタブ。「強み弱み」では「平均得点率」(クラス平均) を
-                  除外する — 個人の強み弱みではなくクラス全体の難易度になるため。 */}
+              {/* metric サブタブ。「得点傾向」では「平均得点率」(クラス平均) を
+                  除外する — 個人の得点傾向ではなくクラス全体の難易度になるため。 */}
               <div className="gt-seg gt-seg-sm">
                 {(fv === 'strengths'
                   ? METRICS.filter((m) => m.key !== 'avgRate')

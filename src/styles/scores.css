@@ -95,7 +95,7 @@
   padding: 7px 4px;
 }
 
-/* 分野ビューの切替チップ（折れ線 / 強み弱み）*/
+/* 分野ビューの切替チップ（折れ線 / 得点傾向）*/
 .gt-vchips {
   display: flex;
   gap: 7px;
