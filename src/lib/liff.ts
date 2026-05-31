@@ -59,6 +59,21 @@ export async function initLiff(): Promise<LiffStatus> {
   const LIFF_ID = pickLiffId();
   // LIFF_ID が未設定 → 開発ブラウザ用のフォールバック
   if (!LIFF_ID) {
+    // Provider B のパスで来ているのに LIFF_ID_B が未設定 → 設定漏れ
+    // 黙ってモック表示にすると原因が分からないので明示的にエラー扱いにする。
+    const p = typeof window !== 'undefined' ? window.location.pathname : '';
+    const isProviderBPath =
+      p === '/b' || p.startsWith('/b/') ||
+      p === '/pair-b' || p.startsWith('/pair-b/');
+    if (isProviderBPath) {
+      _status = {
+        mode: 'error',
+        idToken: null,
+        profile: null,
+        error: 'VITE_LIFF_ID_B が未設定です。Cloudflare のビルド変数を確認してください。',
+      };
+      return _status;
+    }
     _status = { mode: 'skipped', idToken: null, profile: null };
     if (import.meta.env.DEV) {
       console.info(
