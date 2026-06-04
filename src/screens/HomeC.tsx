@@ -13,6 +13,7 @@ import { SUBJECT_JA } from '../lib/types';
 import { Logo } from '../components/Logo';
 import { Greeting } from '../components/Greeting';
 import { Spinner } from '../components/Spinner';
+import { ErrorState } from '../components/ErrorState';
 import { Sparkline } from '../components/ScoreCharts';
 import {
   ChartIcon,
@@ -50,6 +51,15 @@ export function HomeC({ nav }: HomeCProps) {
   useEffect(() => {
     preloadScoresScreen();
   }, []);
+
+  if (home.error && !home.loading) {
+    return (
+      <div className="app">
+        <div className="safe-top" />
+        <ErrorState onRetry={home.reload} />
+      </div>
+    );
+  }
 
   if (home.loading || !home.data) {
     return (

@@ -4,6 +4,7 @@ import type { NavFn, Subject } from '../lib/types';
 import { TopNav } from '../components/TopNav';
 import { Spinner } from '../components/Spinner';
 import { EmptyState } from '../components/EmptyState';
+import { ErrorState } from '../components/ErrorState';
 import { ChevRow } from '../components/Icon';
 
 interface Props {
@@ -18,7 +19,10 @@ const SUBJECT_LABEL: Record<Subject, string> = {
 };
 
 export function ProblemListScreen({ subject, nav }: Props) {
-  const { data, loading } = useAsync(() => fetchProblems(subject), [subject]);
+  const { data, loading, error, reload } = useAsync(
+    () => fetchProblems(subject),
+    [subject]
+  );
   const label = SUBJECT_LABEL[subject];
   const list = data ?? [];
 
@@ -41,6 +45,8 @@ export function ProblemListScreen({ subject, nav }: Props) {
 
         {loading ? (
           <Spinner />
+        ) : error ? (
+          <ErrorState onRetry={reload} />
         ) : list.length === 0 ? (
           <EmptyState hint="まだ問題は登録されていません。" />
         ) : (

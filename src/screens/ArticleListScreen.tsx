@@ -5,6 +5,7 @@ import type { NavFn } from '../lib/types';
 import { TopNav } from '../components/TopNav';
 import { Spinner } from '../components/Spinner';
 import { EmptyState } from '../components/EmptyState';
+import { ErrorState } from '../components/ErrorState';
 import { CloseIcon, SearchIcon } from '../components/Icon';
 
 interface Props {
@@ -15,7 +16,7 @@ interface Props {
 export function ArticleListScreen({ kind, nav }: Props) {
   const isArticles = kind === 'articles';
   const fetcher = isArticles ? fetchArticles : fetchShares;
-  const { data, loading } = useAsync(fetcher, [kind]);
+  const { data, loading, error, reload } = useAsync(fetcher, [kind]);
   const list = data ?? [];
 
   const title = isArticles ? '理科関連記事' : 'シェア';
@@ -89,6 +90,8 @@ export function ArticleListScreen({ kind, nav }: Props) {
 
         {loading ? (
           <Spinner />
+        ) : error ? (
+          <ErrorState onRetry={reload} />
         ) : list.length === 0 ? (
           <EmptyState
             hint={

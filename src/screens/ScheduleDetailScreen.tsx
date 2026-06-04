@@ -4,6 +4,7 @@ import type { NavFn, ResourceLink, ScheduleSubject, Subject } from '../lib/types
 import { SUBJECT_EN, SUBJECT_JA } from '../lib/types';
 import { TopNav } from '../components/TopNav';
 import { Spinner } from '../components/Spinner';
+import { ErrorState } from '../components/ErrorState';
 import {
   ChevRightIcon,
   DownloadIcon,
@@ -35,7 +36,7 @@ function hostnameOf(url: string): string {
 }
 
 export function ScheduleDetailScreen({ id, subject, nav }: Props) {
-  const { data, loading } = useAsync(
+  const { data, loading, error, reload } = useAsync(
     () => fetchSchedule(id, subject),
     [id, subject]
   );
@@ -52,7 +53,9 @@ export function ScheduleDetailScreen({ id, subject, nav }: Props) {
         backLabel={`${label}授業予定`}
       />
       <div className="app-scroll">
-        {loading || !data ? (
+        {error && !loading ? (
+          <ErrorState onRetry={reload} />
+        ) : loading || !data ? (
           <Spinner />
         ) : (
           <>

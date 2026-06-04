@@ -2,12 +2,20 @@
  * GAS Web App ラッパ。
  *
  * VITE_GAS_ENDPOINT が設定されているときだけ実際の fetch を行う。
- * 未設定（または通信失敗）の場合は mock データを返す。
+ * 未設定（= ローカル開発）の場合は mock データを返す。
  *
  * 認証: `liff.getIDToken()` を `?token=` クエリパラメータで送る。
  *   GAS の doGet では Authorization ヘッダが取得できないため、
  *   クエリで渡す方針に統一している。GAS 側は LINE の verify エンドポイントへ
  *   POST して検証する。
+ *
+ * 同時アクセス対策:
+ *   - 通信は withRetry で指数バックオフ付きリトライする。GAS は同時アクセスで
+ *     一時的に 429/5xx やタイムアウトを返すが、多くは数百ms〜数秒で回復するため。
+ *   - エンドポイント設定済み（= 本番）では、リトライしても失敗したときに
+ *     **モックを黙って返さず例外を投げる**。画面側がエラー表示＋再試行を出し、
+ *     ユーザーが「サンプルデータを本物と誤認する」事故を防ぐ。
+ *   - エンドポイント未設定（= 開発）でだけ、従来どおりモックでフォールバックする。
  */
 import {
   ARTICLES,
@@ -19,6 +27,7 @@ import {
 } from '../data/mock';
 import { SCORES_MOCK } from '../data/scoresMock';
 import { getLiffStatus } from './liff';
+import { withRetry, isTransientError } from './retry';
 import type {
   Article,
   AttendanceQR,
@@ -32,6 +41,9 @@ import type {
 } from './types';
 
 const GAS = import.meta.env.VITE_GAS_ENDPOINT;
+
+/** エンドポイント未設定（ローカル開発）のときだけモックで継続する。*/
+const USE_MOCK_FALLBACK = !GAS;
 
 async function gasGet<T>(
   action: string,
@@ -51,23 +63,46 @@ async function gasGet<T>(
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = (await res.json()) as { error?: string } & T;
   // GAS 側はエラーも 200 で返す（HTTP code を変えにくい仕様）
-  // body.error がある場合は例外化してフォールバックへ流す
+  // body.error がある場合は例外化してフォールバック/リトライ判定へ流す
   if (data && (data as { error?: string }).error) {
     throw new Error(`GAS_ERROR: ${(data as { error?: string }).error}`);
   }
   return data as T;
 }
 
+/** リトライ付きで GAS を呼ぶ。一時障害のみ自動リトライする。*/
+function callGas<T>(
+  action: string,
+  params: Record<string, string> = {}
+): Promise<T> {
+  return withRetry(() => gasGet<T>(action, params), {
+    retries: 3,
+    baseMs: 300,
+    maxMs: 4000,
+    shouldRetry: (e) => isTransientError(e),
+  });
+}
+
+/**
+ * 本番（エンドポイント設定済み）では例外を再送出し、画面にエラーを出す。
+ * 開発（未設定）では mock を返して継続する。
+ */
+function orMock<T>(err: unknown, mock: T): T {
+  if (USE_MOCK_FALLBACK) return mock;
+  throw err instanceof Error ? err : new Error(String(err));
+}
+
 /* ──────────────────────────────────────────────────────
    各エンドポイント。
-   GAS が落ちている / 未設定 のときは mock を返してフォールバック。
+   通信は callGas でリトライ。失敗時は orMock で
+   「開発ならモック / 本番なら例外」に振り分ける。
    ────────────────────────────────────────────────────── */
 
 export async function fetchHome(): Promise<HomeResponse> {
   try {
-    return await gasGet<HomeResponse>('home');
-  } catch {
-    return { user: USER, nextClass: NEXT_CLASS };
+    return await callGas<HomeResponse>('home');
+  } catch (e) {
+    return orMock(e, { user: USER, nextClass: NEXT_CLASS });
   }
 }
 
@@ -75,10 +110,10 @@ export async function fetchSchedules(
   subject: ScheduleSubject
 ): Promise<Schedule[]> {
   try {
-    const r = await gasGet<{ items: Schedule[] }>('schedules', { subject });
+    const r = await callGas<{ items: Schedule[] }>('schedules', { subject });
     return r.items;
-  } catch {
-    return SCHEDULES[subject] ?? [];
+  } catch (e) {
+    return orMock(e, SCHEDULES[subject] ?? []);
   }
 }
 
@@ -87,18 +122,18 @@ export async function fetchSchedule(
   subject: ScheduleSubject
 ): Promise<Schedule | undefined> {
   try {
-    return await gasGet<Schedule>('schedule', { id });
-  } catch {
-    return (SCHEDULES[subject] ?? []).find((s) => s.id === id);
+    return await callGas<Schedule>('schedule', { id });
+  } catch (e) {
+    return orMock(e, (SCHEDULES[subject] ?? []).find((s) => s.id === id));
   }
 }
 
 export async function fetchProblems(subject: Subject): Promise<Problem[]> {
   try {
-    const r = await gasGet<{ items: Problem[] }>('problems', { subject });
+    const r = await callGas<{ items: Problem[] }>('problems', { subject });
     return r.items;
-  } catch {
-    return PROBLEMS[subject];
+  } catch (e) {
+    return orMock(e, PROBLEMS[subject]);
   }
 }
 
@@ -107,18 +142,18 @@ export async function fetchProblem(
   subject: Subject
 ): Promise<Problem | undefined> {
   try {
-    return await gasGet<Problem>('problem', { id });
-  } catch {
-    return PROBLEMS[subject].find((p) => p.id === id);
+    return await callGas<Problem>('problem', { id });
+  } catch (e) {
+    return orMock(e, PROBLEMS[subject].find((p) => p.id === id));
   }
 }
 
 export async function fetchArticles(): Promise<Article[]> {
   try {
-    const r = await gasGet<{ items: Article[] }>('articles');
+    const r = await callGas<{ items: Article[] }>('articles');
     return r.items;
-  } catch {
-    return ARTICLES;
+  } catch (e) {
+    return orMock(e, ARTICLES);
   }
 }
 
@@ -128,32 +163,33 @@ export async function fetchArticles(): Promise<Article[]> {
  */
 export async function fetchStudyBooks(): Promise<StudyBook[]> {
   try {
-    const r = await gasGet<{ items: StudyBook[] }>('studyBooks');
+    const r = await callGas<{ items: StudyBook[] }>('studyBooks');
     return r.items;
-  } catch {
-    return [];
+  } catch (e) {
+    // 学習リストの mock は空配列。開発では空、本番では例外で再試行を出す。
+    return orMock(e, [] as StudyBook[]);
   }
 }
 
 export async function fetchShares(): Promise<Article[]> {
   try {
-    const r = await gasGet<{ items: Article[] }>('shares');
+    const r = await callGas<{ items: Article[] }>('shares');
     return r.items;
-  } catch {
-    return SHARES;
+  } catch (e) {
+    return orMock(e, SHARES);
   }
 }
 
 /**
  * 出席用 QR を取得。
  * GAS が「生徒ID」シートで LINE userId を引き当て、A列(名前)・C列(学年)・
- * D列(ID) を返す。失敗時は USER のモック値 + 空 qrText でフォールバック。
+ * D列(ID) を返す。失敗時は開発では USER のモック値、本番では例外。
  */
 export async function fetchAttendanceQR(): Promise<AttendanceQR> {
   try {
-    return await gasGet<AttendanceQR>('qr');
-  } catch {
-    return { name: USER.name, grade: USER.grade, qrText: '' };
+    return await callGas<AttendanceQR>('qr');
+  } catch (e) {
+    return orMock(e, { name: USER.name, grade: USER.grade, qrText: '' });
   }
 }
 
@@ -161,26 +197,23 @@ export async function fetchAttendanceQR(): Promise<AttendanceQR> {
  * 成績推移データを取得。
  *
  * GAS 側は「演習点数報告」スプレッドシート（生徒IDシートとは別ファイル）の
- *   - 化学 成績
- *   - 生物 成績
- *   - 化学基礎 成績
- *   - 生物基礎 成績
- *   - 地学基礎 成績
- * から、生徒名 (A列) で完全一致する行を集めて返す。
+ * 各科目の成績シートから、生徒名 (A列) で完全一致する行を集めて返す。
  * 履修科目分すべてを 1 リクエストで返す（タブ切替後の再フェッチ不要）。
  *
- * GAS 未設定 / 通信失敗 / NO_DATA 時はモックデータでフォールバック。
- * 画面側はモック表示でも UI を確認できるようにしている。
+ *  - NO_DATA（成績がまだ無い）: モックではなく「空の成績」を返す。
+ *    画面側は「データなし」表示になり、サンプルを本物と誤認しない。
+ *  - 通信失敗: 開発ではモック、本番では例外（scoresStore がエラー表示）。
  *
  * @param fresh true なら GAS 側のキャッシュ（30 分）を破棄して再取得
  */
 export async function fetchScores(fresh = false): Promise<ScoresResponse> {
   try {
-    return await gasGet<ScoresResponse>(
-      'scores',
-      fresh ? { fresh: '1' } : {}
-    );
-  } catch {
-    return SCORES_MOCK;
+    return await callGas<ScoresResponse>('scores', fresh ? { fresh: '1' } : {});
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/NO_DATA/.test(msg)) {
+      return { name: '', subjects: [], data: {} };
+    }
+    return orMock(e, SCORES_MOCK);
   }
 }

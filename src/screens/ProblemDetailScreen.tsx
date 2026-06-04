@@ -4,6 +4,7 @@ import { useAsync } from '../lib/useAsync';
 import type { NavFn, Subject } from '../lib/types';
 import { TopNav } from '../components/TopNav';
 import { Spinner } from '../components/Spinner';
+import { ErrorState } from '../components/ErrorState';
 import { CheckIcon, ChevRightIcon } from '../components/Icon';
 
 interface Props {
@@ -19,7 +20,7 @@ const SUBJECT_LABEL: Record<Subject, string> = {
 };
 
 export function ProblemDetailScreen({ id, subject, nav }: Props) {
-  const { data, loading } = useAsync(
+  const { data, loading, error, reload } = useAsync(
     () => fetchProblem(id, subject),
     [id, subject]
   );
@@ -35,7 +36,9 @@ export function ProblemDetailScreen({ id, subject, nav }: Props) {
         backLabel={`${label}基礎問題`}
       />
       <div className="app-scroll">
-        {loading || !data ? (
+        {error && !loading ? (
+          <ErrorState onRetry={reload} />
+        ) : loading || !data ? (
           <Spinner />
         ) : (
           <>

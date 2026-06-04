@@ -12,6 +12,7 @@ import type { NavFn } from '../lib/types';
 import { TopNav } from '../components/TopNav';
 import { Spinner } from '../components/Spinner';
 import { EmptyState } from '../components/EmptyState';
+import { ErrorState } from '../components/ErrorState';
 import { CloseIcon, SearchIcon } from '../components/Icon';
 
 interface Props {
@@ -37,7 +38,7 @@ function toThumbUrl(url: string | undefined): string | undefined {
 }
 
 export function StudyBookListScreen({ nav }: Props) {
-  const { data, loading } = useAsync(fetchStudyBooks, []);
+  const { data, loading, error, reload } = useAsync(fetchStudyBooks, []);
   const list = data ?? [];
 
   const [query, setQuery] = useState('');
@@ -100,6 +101,8 @@ export function StudyBookListScreen({ nav }: Props) {
 
         {loading ? (
           <Spinner />
+        ) : error ? (
+          <ErrorState onRetry={reload} />
         ) : list.length === 0 ? (
           <EmptyState hint="まだ問題集はありません。" />
         ) : results.length === 0 ? (

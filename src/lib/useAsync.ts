@@ -8,17 +8,25 @@ export interface AsyncState<T> {
   data: T | null;
   loading: boolean;
   error: Error | null;
+  /** 同じ条件で再フェッチする（エラー時の「再試行」ボタン用）。*/
+  reload: () => void;
 }
 
 export function useAsync<T>(
   fn: () => Promise<T>,
   deps: ReadonlyArray<unknown>
 ): AsyncState<T> {
-  const [state, setState] = useState<AsyncState<T>>({
+  const [state, setState] = useState<{
+    data: T | null;
+    loading: boolean;
+    error: Error | null;
+  }>({
     data: null,
     loading: true,
     error: null,
   });
+  // reload() で値を変えて useEffect を再発火させるためのカウンタ
+  const [nonce, setNonce] = useState(0);
   // fn は毎レンダ新インスタンス想定なので、deps で発火する
   const fnRef = useRef(fn);
   fnRef.current = fn;
@@ -43,7 +51,7 @@ export function useAsync<T>(
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+  }, [...deps, nonce]);
 
-  return state;
+  return { ...state, reload: () => setNonce((n) => n + 1) };
 }

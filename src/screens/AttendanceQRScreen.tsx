@@ -10,6 +10,7 @@ import { useAsync } from '../lib/useAsync';
 import type { NavFn } from '../lib/types';
 import { TopNav } from '../components/TopNav';
 import { Spinner } from '../components/Spinner';
+import { ErrorState } from '../components/ErrorState';
 import {
   InfoIcon,
   RefreshIcon,
@@ -23,7 +24,7 @@ interface Props {
 export function AttendanceQRScreen({ nav }: Props) {
   // 「最新の状態に更新」で useAsync を再実行するための再フェッチキー
   const [reloadKey, setReloadKey] = useState(0);
-  const { data, loading } = useAsync(fetchAttendanceQR, [reloadKey]);
+  const { data, loading, error } = useAsync(fetchAttendanceQR, [reloadKey]);
 
   return (
     <div className="app">
@@ -40,7 +41,9 @@ export function AttendanceQRScreen({ nav }: Props) {
           <p className="page-sub">受付でこの画面を提示してください。</p>
         </div>
 
-        {loading || !data ? (
+        {error && !loading ? (
+          <ErrorState onRetry={() => setReloadKey((k) => k + 1)} />
+        ) : loading || !data ? (
           <Spinner />
         ) : (
           <>

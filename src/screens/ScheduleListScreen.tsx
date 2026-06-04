@@ -5,6 +5,7 @@ import { SUBJECT_EN, SUBJECT_JA } from '../lib/types';
 import { TopNav } from '../components/TopNav';
 import { Spinner } from '../components/Spinner';
 import { EmptyState } from '../components/EmptyState';
+import { ErrorState } from '../components/ErrorState';
 import {
   ChevRow,
   EarthIcon,
@@ -31,7 +32,10 @@ function subjectAccent(s: ScheduleSubject) {
 }
 
 export function ScheduleListScreen({ subject, nav }: Props) {
-  const { data, loading } = useAsync(() => fetchSchedules(subject), [subject]);
+  const { data, loading, error, reload } = useAsync(
+    () => fetchSchedules(subject),
+    [subject]
+  );
   const label = SUBJECT_JA[subject];
   const eyebrow = SUBJECT_EN[subject];
   const icon = subjectIcon(subject);
@@ -56,6 +60,8 @@ export function ScheduleListScreen({ subject, nav }: Props) {
 
         {loading ? (
           <Spinner />
+        ) : error ? (
+          <ErrorState onRetry={reload} />
         ) : list.length === 0 ? (
           <EmptyState hint="授業予定はまだ登録されていません。" />
         ) : (
