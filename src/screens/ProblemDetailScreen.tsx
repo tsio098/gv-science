@@ -22,7 +22,8 @@ const SUBJECT_LABEL: Record<Subject, string> = {
 export function ProblemDetailScreen({ id, subject, nav }: Props) {
   const { data, loading, error, reload } = useAsync(
     () => fetchProblem(id, subject),
-    [id, subject]
+    [id, subject],
+    { cacheKey: 'problem:' + subject + ':' + id }
   );
   const [open, setOpen] = useState(false);
   const label = SUBJECT_LABEL[subject];

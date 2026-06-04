@@ -38,7 +38,8 @@ function hostnameOf(url: string): string {
 export function ScheduleDetailScreen({ id, subject, nav }: Props) {
   const { data, loading, error, reload } = useAsync(
     () => fetchSchedule(id, subject),
-    [id, subject]
+    [id, subject],
+    { cacheKey: 'schedule:' + subject + ':' + id }
   );
   const label = SUBJECT_JA[subject];
   const eyebrow = SUBJECT_EN[subject];

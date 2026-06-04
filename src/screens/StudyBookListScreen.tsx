@@ -38,7 +38,9 @@ function toThumbUrl(url: string | undefined): string | undefined {
 }
 
 export function StudyBookListScreen({ nav }: Props) {
-  const { data, loading, error, reload } = useAsync(fetchStudyBooks, []);
+  const { data, loading, error, reload } = useAsync(fetchStudyBooks, [], {
+    cacheKey: 'studyBooks',
+  });
   const list = data ?? [];
 
   const [query, setQuery] = useState('');

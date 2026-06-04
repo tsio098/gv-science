@@ -7,6 +7,7 @@
  *   "skipped" モードでフォールバックする。
  */
 import liff from '@line/liff';
+import { prefetch } from './swrCache';
 
 export type LiffMode = 'ready' | 'skipped' | 'error';
 
@@ -96,6 +97,19 @@ export async function initLiff(): Promise<LiffStatus> {
     }
 
     const idToken = liff.getIDToken();
+    // 先にトークンを反映しておく（この後の先読み fetchHome が参照する）。
+    _status = { mode: 'ready', idToken, profile: null };
+
+    // 起動高速化(B): getProfile() の通信を待つ間に、ホームデータの取得を
+    // 並行して先に走らせておく。アプリ表示時にはホームが揃っている（or 取得中で
+    // 画面側と共有される）ため、初回起動の体感が縮む。api は動的 import で
+    // 循環参照を避ける。
+    import('./api')
+      .then((m) => prefetch('home', m.fetchHome))
+      .catch(() => {
+        /* 先読み失敗は無視 */
+      });
+
     let profile: LiffStatus['profile'] = null;
     try {
       const p = await liff.getProfile();

@@ -16,7 +16,9 @@ interface Props {
 export function ArticleListScreen({ kind, nav }: Props) {
   const isArticles = kind === 'articles';
   const fetcher = isArticles ? fetchArticles : fetchShares;
-  const { data, loading, error, reload } = useAsync(fetcher, [kind]);
+  const { data, loading, error, reload } = useAsync(fetcher, [kind], {
+    cacheKey: isArticles ? 'articles' : 'shares',
+  });
   const list = data ?? [];
 
   const title = isArticles ? '理科関連記事' : 'シェア';

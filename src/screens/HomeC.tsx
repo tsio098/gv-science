@@ -4,8 +4,9 @@
  *   クイック 4 タイル → 記事フィード（横スクロール） → その他
  */
 import { useEffect } from 'react';
-import { fetchArticles, fetchHome } from '../lib/api';
+import { fetchArticles, fetchHome, fetchSchedules } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
+import { prefetch } from '../lib/swrCache';
 import { preloadScoresScreen } from '../lib/lazyImports';
 import { useScores } from '../lib/scoresStore';
 import type { NavFn, ScheduleSubject } from '../lib/types';
@@ -41,8 +42,8 @@ interface HomeCProps {
 }
 
 export function HomeC({ nav }: HomeCProps) {
-  const home = useAsync(fetchHome, []);
-  const arts = useAsync(fetchArticles, []);
+  const home = useAsync(fetchHome, [], { cacheKey: 'home' });
+  const arts = useAsync(fetchArticles, [], { cacheKey: 'articles' });
   // Sparkline 用に直近の合計点を 1 系列だけ取得。Provider 経由で
   // ScoresScreen と共有するため、fetch は 1 回のみ。
   const scores = useScores();
@@ -51,6 +52,20 @@ export function HomeC({ nav }: HomeCProps) {
   useEffect(() => {
     preloadScoresScreen();
   }, []);
+
+  // 履修科目が分かったら、授業予定をバックグラウンドで先読みしてキャッシュに入れる。
+  // → ホームから授業タイルをタップした瞬間にスピナー無しで表示できる。
+  const subjectsKey = (home.data?.user?.subjects ?? []).join(',');
+  useEffect(() => {
+    const u = home.data?.user;
+    if (!u) return;
+    const subs =
+      u.subjects && u.subjects.length > 0
+        ? u.subjects
+        : (['chemistry', 'biology'] as ScheduleSubject[]);
+    subs.forEach((s) => prefetch('schedules:' + s, () => fetchSchedules(s)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subjectsKey]);
 
   if (home.error && !home.loading) {
     return (

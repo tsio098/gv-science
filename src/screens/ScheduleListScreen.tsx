@@ -34,7 +34,8 @@ function subjectAccent(s: ScheduleSubject) {
 export function ScheduleListScreen({ subject, nav }: Props) {
   const { data, loading, error, reload } = useAsync(
     () => fetchSchedules(subject),
-    [subject]
+    [subject],
+    { cacheKey: 'schedules:' + subject }
   );
   const label = SUBJECT_JA[subject];
   const eyebrow = SUBJECT_EN[subject];

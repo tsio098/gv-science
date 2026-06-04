@@ -24,7 +24,9 @@ interface Props {
 export function AttendanceQRScreen({ nav }: Props) {
   // 「最新の状態に更新」で useAsync を再実行するための再フェッチキー
   const [reloadKey, setReloadKey] = useState(0);
-  const { data, loading, error } = useAsync(fetchAttendanceQR, [reloadKey]);
+  const { data, loading, error } = useAsync(fetchAttendanceQR, [reloadKey], {
+    cacheKey: 'qr',
+  });
 
   return (
     <div className="app">

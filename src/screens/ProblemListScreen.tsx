@@ -21,7 +21,8 @@ const SUBJECT_LABEL: Record<Subject, string> = {
 export function ProblemListScreen({ subject, nav }: Props) {
   const { data, loading, error, reload } = useAsync(
     () => fetchProblems(subject),
-    [subject]
+    [subject],
+    { cacheKey: 'problems:' + subject }
   );
   const label = SUBJECT_LABEL[subject];
   const list = data ?? [];
