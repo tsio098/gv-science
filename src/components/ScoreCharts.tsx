@@ -284,13 +284,17 @@ export function FieldLineChart({ months, series, unit = '%' }: FieldLineChartPro
   const Y = (v: number) => padT + iH * (1 - (v - B.min) / (B.max - B.min));
   const yT = ticks(B.min, B.max, 4);
 
-  /** 欠測 (null) を挟むと線を切る描画 */
+  /**
+   * 欠測 (null) の月は「点を打たずにスキップ」し、線は切らない。
+   * 存在する月同士を直接つないで連続した 1 本の線として描く
+   * （データのある月だけで繋ぐので、グラフが途中で途切れることはない）。
+   */
   const renderPath = (values: Array<number | null>): string => {
     let d = '';
     let started = false;
     values.forEach((v, i) => {
       if (v === null || !Number.isFinite(v)) {
-        started = false;
+        // 欠測月はスキップ（started は維持）。次の有効な月まで線が伸びる。
         return;
       }
       d += `${started ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(v as number).toFixed(1)} `;
