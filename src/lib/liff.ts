@@ -8,6 +8,7 @@
  */
 import liff from '@line/liff';
 import { prefetch } from './swrCache';
+import { setPersistUser } from './persist';
 
 export type LiffMode = 'ready' | 'skipped' | 'error';
 
@@ -99,6 +100,16 @@ export async function initLiff(): Promise<LiffStatus> {
     const idToken = liff.getIDToken();
     // 先にトークンを反映しておく（この後の先読み fetchHome が参照する）。
     _status = { mode: 'ready', idToken, profile: null };
+
+    // 永続キャッシュ（localStorage）の名前空間を userId で確定させる。
+    // getProfile より前に id_token から sub を取り出して即セットしておくことで、
+    // この後の画面描画（swrGet）がコールドでも前回データを即出しできる。
+    try {
+      const decoded = liff.getDecodedIDToken();
+      setPersistUser(decoded && decoded.sub ? decoded.sub : null);
+    } catch {
+      /* デコード不可時は永続層を使わない（no-op） */
+    }
 
     // 起動高速化(B): getProfile() の通信を待つ間に、ホームデータの取得を
     // 並行して先に走らせておく。アプリ表示時にはホームが揃っている（or 取得中で

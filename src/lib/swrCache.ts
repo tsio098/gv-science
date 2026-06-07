@@ -10,7 +10,13 @@
  *     ペアリング切替や別アカウントによるデータ混入リスクは小さい。
  *
  * scores は専用の scoresStore が同等の仕組みを持つため対象外。
+ *
+ * 3 層構成:
+ *   メモリ Map → sessionStorage（タブ内）→ localStorage（userId 単位・タブを超えて永続）。
+ *   3 層目はコールド再表示（新規タブ）でも前回データを即描画するための保険。
  */
+import { pcGet, pcSet } from './persist.ts';
+
 const mem = new Map<string, unknown>();
 const SS_PREFIX = 'swr:v1:';
 
@@ -28,6 +34,12 @@ export function swrGet<T>(key: string): T | undefined {
   } catch {
     /* JSON 壊れ / プライベートモード等は無視 */
   }
+  // 3 層目: userId 単位の永続キャッシュ（コールド再表示の即描画用）
+  const pv = pcGet<T>(key);
+  if (pv !== undefined) {
+    mem.set(key, pv);
+    return pv;
+  }
   return undefined;
 }
 
@@ -40,6 +52,8 @@ export function swrSet<T>(key: string, val: T): void {
   } catch {
     /* quota 超過などは無視。メモリには載るので機能は維持 */
   }
+  // userId 単位の永続層にも保存（タブを閉じても残す）
+  pcSet(key, val);
 }
 
 /**

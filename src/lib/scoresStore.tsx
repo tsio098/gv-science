@@ -23,9 +23,12 @@ import {
   type ReactNode,
 } from 'react';
 import { fetchScores } from './api';
+import { pcGet, pcSet } from './persist';
 import type { ScoresResponse } from './types';
 
 const STORAGE_KEY = 'scores:v1';
+/** userId 単位の永続キャッシュ名（localStorage, タブを超えて残る） */
+const PERSIST_NAME = 'scores';
 
 interface State {
   data: ScoresResponse | null;
@@ -45,23 +48,28 @@ interface ScoresContextValue extends State {
 const ScoresContext = createContext<ScoresContextValue | null>(null);
 
 function readCache(): ScoresResponse | null {
+  // タブ内（sessionStorage）→ userId 単位の永続（localStorage）の順で復元。
   try {
-    if (typeof sessionStorage === 'undefined') return null;
-    const raw = sessionStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as ScoresResponse;
+    if (typeof sessionStorage !== 'undefined') {
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw) as ScoresResponse;
+    }
   } catch {
-    return null;
+    /* 破損は無視して次段へ */
   }
+  return pcGet<ScoresResponse>(PERSIST_NAME) ?? null;
 }
 
 function writeCache(data: ScoresResponse): void {
   try {
-    if (typeof sessionStorage === 'undefined') return;
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
   } catch {
     /* quota / private mode などは無視。機能は維持される */
   }
+  // タブを閉じても残す永続層にも保存（コールド再表示の即描画用）
+  pcSet(PERSIST_NAME, data);
 }
 
 export function ScoresProvider({ children }: { children: ReactNode }) {
