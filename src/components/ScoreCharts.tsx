@@ -252,51 +252,74 @@ export function TotalTrendChart({ points }: TotalTrendChartProps) {
 }
 
 /* ────────────────────────────────────────────────────────
-   FieldLineChart — 月をX、分野ごとに 1 本の線
+   FieldLineChart — 分野別の月次推移（分野=色, 指標=線種, 偏差値=右軸）
+     ・得点率(本人)     : 太い実線 + 丸マーカー（左軸 %）
+     ・平均得点率(クラス): 破線（左軸 %）
+     ・偏差値(本人)     : 細い淡い実線（右軸）
+   先生用ダッシュボード(gv-science_staff)の分野別グラフ準拠。
+   3 指標を 1 つのグラフに重ね、分野ごとに同色で描き分ける。
    ──────────────────────────────────────────────────────── */
 export interface FieldSeries {
   name: string;
   color: string;
-  values: Array<number | null>;
+  /** 得点率（本人）— 左軸 % */
+  rate: Array<number | null>;
+  /** 平均得点率（クラス）— 左軸 % */
+  avgRate: Array<number | null>;
+  /** 偏差値（本人）— 右軸 */
+  hensachi: Array<number | null>;
 }
 interface FieldLineChartProps {
   months: string[];
   series: FieldSeries[];
-  unit?: string;
 }
-export function FieldLineChart({ months, series, unit = '%' }: FieldLineChartProps) {
+export function FieldLineChart({ months, series }: FieldLineChartProps) {
   const W = 336;
-  const H = 188;
-  const padL = 30;
-  const padR = 12;
+  const H = 196;
+  const padL = 28;
+  const padR = 30; // 右軸（偏差値）目盛の余白
   const padT = 14;
   const padB = 26;
   const iW = W - padL - padR;
   const iH = H - padT - padB;
   const n = months.length;
 
-  const all = series.flatMap((s) =>
-    s.values.filter((v): v is number => v !== null && Number.isFinite(v))
+  // 左軸 = 得点率 / 平均得点率（%）。
+  // データから上下限を算出しつつ、% の論理上限 100 / 下限 0 でクランプする。
+  // （範囲はデータに応じて変動するが、0% 未満・100% 超には広げない）
+  const pVals = series.flatMap((s) =>
+    [...s.rate, ...s.avgRate].filter(
+      (v): v is number => v !== null && Number.isFinite(v)
+    )
   );
-  const B = bounds(all.length ? all : [0, 100], 0.12, 5);
-  const X = (i: number) =>
-    padL + (n === 1 ? iW / 2 : (iW * i) / (n - 1));
-  const Y = (v: number) => padT + iH * (1 - (v - B.min) / (B.max - B.min));
-  const yT = ticks(B.min, B.max, 4);
+  const pB = pVals.length ? bounds(pVals, 0.12, 5) : { min: 0, max: 100 };
+  const pMin = Math.max(0, pB.min);
+  const pMax = Math.min(100, pB.max);
+  // 右軸 = 偏差値（データから算出。無ければ 35..75）
+  const hVals = series.flatMap((s) =>
+    s.hensachi.filter((v): v is number => v !== null && Number.isFinite(v))
+  );
+  const hB = hVals.length ? bounds(hVals, 0.16, 5) : { min: 35, max: 75 };
+
+  const X = (i: number) => padL + (n === 1 ? iW / 2 : (iW * i) / (n - 1));
+  const Yp = (v: number) => padT + iH * (1 - (v - pMin) / (pMax - pMin));
+  const Yh = (v: number) => padT + iH * (1 - (v - hB.min) / (hB.max - hB.min));
+
+  const pT = ticks(pMin, pMax, 4);
+  const hT = ticks(hB.min, hB.max, 4);
 
   /**
    * 欠測 (null) の月は「点を打たずにスキップ」し、線は切らない。
-   * 存在する月同士を直接つないで連続した 1 本の線として描く
-   * （データのある月だけで繋ぐので、グラフが途中で途切れることはない）。
+   * 存在する月同士を直接つないで連続した 1 本の線として描く。
    */
-  const renderPath = (values: Array<number | null>): string => {
+  const renderPath = (
+    values: Array<number | null>,
+    Y: (v: number) => number
+  ): string => {
     let d = '';
     let started = false;
     values.forEach((v, i) => {
-      if (v === null || !Number.isFinite(v)) {
-        // 欠測月はスキップ（started は維持）。次の有効な月まで線が伸びる。
-        return;
-      }
+      if (v === null || !Number.isFinite(v)) return; // 欠測はスキップ
       d += `${started ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(v as number).toFixed(1)} `;
       started = true;
     });
@@ -311,22 +334,36 @@ export function FieldLineChart({ months, series, unit = '%' }: FieldLineChartPro
       role="img"
       aria-label="分野別の推移グラフ"
     >
-      {yT.map((t, i) => (
+      {/* グリッド + 左軸（得点率 %）目盛 */}
+      {pT.map((t, i) => (
         <g key={`g${i}`}>
           <line
             x1={padL}
-            y1={Y(t)}
+            y1={Yp(t)}
             x2={padL + iW}
-            y2={Y(t)}
+            y2={Yp(t)}
             stroke="var(--c-divider)"
             strokeWidth="1"
             opacity="0.7"
           />
-          <text x={padL - 6} y={Y(t) + 3} textAnchor="end" className="gt-axis">
+          <text x={padL - 6} y={Yp(t) + 3} textAnchor="end" className="gt-axis">
             {t}
           </text>
         </g>
       ))}
+      {/* 右軸（偏差値）目盛 */}
+      {hT.map((t, i) => (
+        <text
+          key={`h${i}`}
+          x={padL + iW + 6}
+          y={Yh(t) + 3}
+          textAnchor="start"
+          className="gt-axis gt-axis-acc"
+        >
+          {t}
+        </text>
+      ))}
+      {/* X 軸ラベル（月） */}
       {months.map((m, i) => (
         <text
           key={`x${i}`}
@@ -351,38 +388,70 @@ export function FieldLineChart({ months, series, unit = '%' }: FieldLineChartPro
         </text>
       )}
 
+      {/* 偏差値（右軸・細い淡い実線）— 背面 */}
       {series.map((s) => {
-        const d = renderPath(s.values);
+        const d = renderPath(s.hensachi, Yh);
+        return d ? (
+          <path
+            key={`h-${s.name}`}
+            d={d}
+            fill="none"
+            stroke={s.color}
+            strokeWidth="1.3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity="0.4"
+          />
+        ) : null;
+      })}
+      {/* 平均得点率（左軸・破線） */}
+      {series.map((s) => {
+        const d = renderPath(s.avgRate, Yp);
+        return d ? (
+          <path
+            key={`a-${s.name}`}
+            d={d}
+            fill="none"
+            stroke={s.color}
+            strokeWidth="1.7"
+            strokeDasharray="5 4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity="0.8"
+          />
+        ) : null;
+      })}
+      {/* 得点率（左軸・太い実線 + 丸マーカー）— 前面 */}
+      {series.map((s) => {
+        const d = renderPath(s.rate, Yp);
         return (
-          <g key={s.name}>
+          <g key={`r-${s.name}`}>
             {d && (
               <path
                 d={d}
                 fill="none"
                 stroke={s.color}
-                strokeWidth="2.2"
+                strokeWidth="2.6"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
             )}
-            {s.values.map((v, i) =>
+            {s.rate.map((v, i) =>
               v === null || !Number.isFinite(v) ? null : (
                 <circle
                   key={i}
                   cx={X(i)}
-                  cy={Y(v as number)}
-                  r="2.4"
+                  cy={Yp(v as number)}
+                  r="2.6"
                   fill="#fff"
                   stroke={s.color}
-                  strokeWidth="1.6"
+                  strokeWidth="1.7"
                 />
               )
             )}
           </g>
         );
       })}
-      {/* unit を unused にしないため tooltip 用に保持 */}
-      <title>{`分野別の推移 (${unit})`}</title>
     </svg>
   );
 }

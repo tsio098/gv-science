@@ -258,10 +258,14 @@ function ScoresContent({
     });
 
   const orderedSelected = subjectData.fields.filter((f) => sel.has(f));
+  // 分野別チャートは 3 指標（得点率・平均得点率・偏差値）を 1 本にまとめて重ねる。
+  // 分野ごとに同色、指標は線種（実線 / 破線 / 細線=右軸）で描き分ける。
   const series: FieldSeries[] = orderedSelected.map((f) => ({
     name: f,
     color: colorForField(subjectData.fields, f),
-    values: subjectData[metric][f] ?? [],
+    rate: subjectData.rate[f] ?? [],
+    avgRate: subjectData.avgRate[f] ?? [],
+    hensachi: subjectData.hensachi[f] ?? [],
   }));
   const curMetric = METRICS.find((m) => m.key === metric)!;
 
@@ -516,23 +520,25 @@ function ScoresContent({
                 ))}
               </div>
 
-              {/* metric サブタブ。「得点傾向」では「平均得点率」(クラス平均) を
-                  除外する — 個人の得点傾向ではなくクラス全体の難易度になるため。 */}
-              <div className="gt-seg gt-seg-sm">
-                {(fv === 'strengths'
-                  ? METRICS.filter((m) => m.key !== 'avgRate')
-                  : METRICS
-                ).map((m) => (
-                  <button
-                    key={m.key}
-                    type="button"
-                    className={`gt-seg-btn ${m.key === metric ? 'on' : ''}`}
-                    onClick={() => setMetric(m.key)}
-                  >
-                    {m.label}
-                  </button>
-                ))}
-              </div>
+              {/* metric サブタブは「得点傾向」ビュー専用。
+                  「折れ線」ビューは 3 指標（得点率・平均得点率・偏差値）を
+                  1 つのグラフにまとめて表示するため、指標切替は不要。
+                  得点傾向では「平均得点率」(クラス平均) を除外する
+                  — 個人の得点傾向ではなくクラス全体の難易度になるため。 */}
+              {fv === 'strengths' && (
+                <div className="gt-seg gt-seg-sm">
+                  {METRICS.filter((m) => m.key !== 'avgRate').map((m) => (
+                    <button
+                      key={m.key}
+                      type="button"
+                      className={`gt-seg-btn ${m.key === metric ? 'on' : ''}`}
+                      onClick={() => setMetric(m.key)}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {fv === 'lines' && (
                 <>
@@ -575,8 +581,25 @@ function ScoresContent({
                   <FieldLineChart
                     months={subjectData.months}
                     series={series}
-                    unit={curMetric.unit}
                   />
+                  <div className="gt-legend">
+                    <span className="gt-leg">
+                      <span className="gt-leg-line solid-n" />
+                      得点率
+                    </span>
+                    <span className="gt-leg">
+                      <span className="gt-leg-line dash-n" />
+                      平均得点率
+                    </span>
+                    <span className="gt-leg">
+                      <span className="gt-leg-line thin-n" />
+                      偏差値{' '}
+                      <span className="gv-en" style={{ opacity: 0.6 }}>
+                        (右軸)
+                      </span>
+                    </span>
+                    <span className="gt-leg gt-leg-note">線の色＝分野</span>
+                  </div>
                   <div className="gt-fieldchips">
                     {subjectData.fields.map((f) => {
                       const on = sel.has(f);
