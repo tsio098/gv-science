@@ -1,6 +1,7 @@
 /**
  * 志望校調査を依頼 — 入力フォーム。
  *  入力: 希望地域(都道府県+希望なし, 複数) / 大学でやりたいこと / 入試形式(複数) / 補足
+ *  希望地域・入試形式はプルダウンで選び、選択をタグで積む（×で外せる・複数可）。
  *  送信: callGas('requestShibou', {region, want, examType, note})
  *  ※ USERID は id_token から GAS 側で確定。氏名はクライアントに出さない・保存しない。
  */
@@ -33,38 +34,65 @@ const EXAM_TYPES = [
   'まだ決めていない',
 ];
 
+const NO_PREF = '希望なし（どこでもよい）';
+
 type Phase = 'edit' | 'submitting' | 'done' | 'error';
 
+/** 選択済みタグ（×で削除） */
+function SelectedTags({ items, onRemove }: { items: string[]; onRemove: (v: string) => void }) {
+  if (items.length === 0) return null;
+  return (
+    <div style={S.tagWrap}>
+      {items.map((v) => (
+        <span key={v} style={S.tag}>
+          {v}
+          <button type="button" style={S.tagX} aria-label={`${v} を外す`} onClick={() => onRemove(v)}>
+            ×
+          </button>
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export function ShibouRequestScreen({ nav }: Props) {
-  const [prefs, setPrefs] = useState<Set<string>>(new Set());
+  const [prefs, setPrefs] = useState<string[]>([]);
   const [noPref, setNoPref] = useState(false);
   const [want, setWant] = useState('');
-  const [exams, setExams] = useState<Set<string>>(new Set());
+  const [exams, setExams] = useState<string[]>([]);
   const [note, setNote] = useState('');
   const [phase, setPhase] = useState<Phase>('edit');
   const [errMsg, setErrMsg] = useState('');
 
-  const togglePref = (p: string) => {
+  // 希望地域：プルダウンで追加
+  const addRegion = (v: string) => {
+    if (!v) return;
+    if (v === NO_PREF) {
+      setNoPref(true);
+      setPrefs([]);
+      return;
+    }
     setNoPref(false);
-    setPrefs((s) => {
-      const n = new Set(s);
-      n.has(p) ? n.delete(p) : n.add(p);
-      return n;
-    });
+    setPrefs((p) => (p.includes(v) ? p : [...p, v]));
   };
-  const toggleExam = (v: string) => {
-    setExams((s) => {
-      const n = new Set(s);
-      n.has(v) ? n.delete(v) : n.add(v);
-      return n;
-    });
+  const removeRegion = (v: string) => {
+    if (v === NO_PREF) { setNoPref(false); return; }
+    setPrefs((p) => p.filter((x) => x !== v));
   };
 
-  const regionStr = noPref ? '希望なし' : Array.from(prefs).join('、');
-  const examStr = Array.from(exams).join('、');
+  // 入試形式：プルダウンで追加
+  const addExam = (v: string) => {
+    if (!v) return;
+    setExams((e) => (e.includes(v) ? e : [...e, v]));
+  };
+  const removeExam = (v: string) => setExams((e) => e.filter((x) => x !== v));
+
+  const regionSelected = noPref ? [NO_PREF] : prefs;
+  const regionStr = noPref ? '希望なし' : prefs.join('、');
+  const examStr = exams.join('、');
   const canSubmit =
     phase !== 'submitting' &&
-    (noPref || prefs.size > 0 || want.trim() !== '' || exams.size > 0 || note.trim() !== '');
+    (noPref || prefs.length > 0 || want.trim() !== '' || exams.length > 0 || note.trim() !== '');
 
   const submit = async () => {
     if (!canSubmit) return;
@@ -123,26 +151,22 @@ export function ShibouRequestScreen({ nav }: Props) {
         {/* 希望地域 */}
         <section style={S.section}>
           <div style={S.label}>希望地域<span style={S.opt}>（複数選択可）</span></div>
-          <button
-            type="button"
-            style={chip(noPref)}
-            aria-pressed={noPref}
-            onClick={() => { setNoPref((v) => !v); setPrefs(new Set()); }}
+          <select
+            style={S.select}
+            value=""
+            onChange={(e) => { addRegion(e.target.value); e.currentTarget.selectedIndex = 0; }}
           >
-            希望なし（どこでもよい）
-          </button>
-          {!noPref && REGION_GROUPS.map((g) => (
-            <div key={g.region} style={{ marginTop: 12 }}>
-              <div style={S.regionName}>{g.region}</div>
-              <div style={S.chipWrap}>
-                {g.prefs.map((p) => (
-                  <button key={p} type="button" style={chip(prefs.has(p))} aria-pressed={prefs.has(p)} onClick={() => togglePref(p)}>
-                    {p}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
+            <option value="">＋ 地域を追加…</option>
+            <option value={NO_PREF}>{NO_PREF}</option>
+            {REGION_GROUPS.map((g) => (
+              <optgroup key={g.region} label={g.region}>
+                {g.prefs
+                  .filter((p) => !prefs.includes(p))
+                  .map((p) => <option key={p} value={p}>{p}</option>)}
+              </optgroup>
+            ))}
+          </select>
+          <SelectedTags items={regionSelected} onRemove={removeRegion} />
         </section>
 
         {/* やりたいこと */}
@@ -160,13 +184,17 @@ export function ShibouRequestScreen({ nav }: Props) {
         {/* 入試形式 */}
         <section style={S.section}>
           <div style={S.label}>希望する入試形式<span style={S.opt}>（複数選択可）</span></div>
-          <div style={S.chipWrap}>
-            {EXAM_TYPES.map((v) => (
-              <button key={v} type="button" style={chip(exams.has(v))} aria-pressed={exams.has(v)} onClick={() => toggleExam(v)}>
-                {v}
-              </button>
+          <select
+            style={S.select}
+            value=""
+            onChange={(e) => { addExam(e.target.value); e.currentTarget.selectedIndex = 0; }}
+          >
+            <option value="">＋ 入試形式を追加…</option>
+            {EXAM_TYPES.filter((v) => !exams.includes(v)).map((v) => (
+              <option key={v} value={v}>{v}</option>
             ))}
-          </div>
+          </select>
+          <SelectedTags items={exams} onRemove={removeExam} />
         </section>
 
         {/* 補足 */}
@@ -191,9 +219,6 @@ export function ShibouRequestScreen({ nav }: Props) {
         <button type="button" style={canSubmit ? S.primaryBtn : S.primaryBtnDisabled} disabled={!canSubmit} onClick={submit}>
           {phase === 'submitting' ? '送信中…' : 'この内容で依頼する'}
         </button>
-        <p style={S.privacyNote}>
-          ※ 氏名は送信されません（あなたのアカウントIDだけで処理します）。
-        </p>
 
         <div className="empty-pad-bottom" />
       </div>
@@ -202,28 +227,48 @@ export function ShibouRequestScreen({ nav }: Props) {
 }
 
 /* ── スタイル（既存デザインに馴染む最小インライン。トークンが無くても崩れないよう自己完結） ── */
-function chip(active: boolean): React.CSSProperties {
-  return {
-    display: 'inline-block',
-    padding: '7px 12px',
-    margin: '4px 6px 0 0',
-    borderRadius: 999,
-    border: active ? '1px solid var(--c-primary-deep, #3a7d5c)' : '1px solid var(--c-line, #d9d9d2)',
-    background: active ? 'var(--c-primary, #4e9b73)' : 'var(--c-surface, #fff)',
-    color: active ? '#fff' : 'var(--c-text, #2c2c2c)',
-    fontSize: 13.5,
-    fontWeight: active ? 600 : 400,
-    cursor: 'pointer',
-    lineHeight: 1.2,
-  };
-}
-
 const S: Record<string, React.CSSProperties> = {
   section: { marginTop: 22 },
   label: { fontSize: 14.5, fontWeight: 700, color: 'var(--c-text, #2c2c2c)', marginBottom: 8 },
   opt: { fontSize: 12, fontWeight: 400, color: 'var(--c-text-mute, #8a8a82)', marginLeft: 6 },
-  regionName: { fontSize: 12.5, color: 'var(--c-text-mute, #8a8a82)', marginBottom: 2 },
-  chipWrap: { display: 'flex', flexWrap: 'wrap' },
+  select: {
+    width: '100%',
+    boxSizing: 'border-box',
+    padding: '11px 12px',
+    borderRadius: 12,
+    border: '1px solid var(--c-line, #d9d9d2)',
+    background: 'var(--c-surface, #fff)',
+    color: 'var(--c-text, #2c2c2c)',
+    fontSize: 14.5,
+    fontFamily: 'inherit',
+    appearance: 'none',
+    WebkitAppearance: 'none',
+  },
+  tagWrap: { display: 'flex', flexWrap: 'wrap', marginTop: 8 },
+  tag: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    padding: '6px 6px 6px 12px',
+    margin: '0 6px 6px 0',
+    borderRadius: 999,
+    background: 'var(--c-primary, #4e9b73)',
+    color: '#fff',
+    fontSize: 13.5,
+    fontWeight: 600,
+  },
+  tagX: {
+    border: 'none',
+    background: 'rgba(255,255,255,0.25)',
+    color: '#fff',
+    width: 18,
+    height: 18,
+    lineHeight: '16px',
+    borderRadius: 999,
+    fontSize: 14,
+    cursor: 'pointer',
+    padding: 0,
+  },
   textarea: {
     width: '100%',
     boxSizing: 'border-box',
@@ -261,7 +306,6 @@ const S: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     cursor: 'not-allowed',
   },
-  privacyNote: { fontSize: 11.5, color: 'var(--c-text-mute, #8a8a82)', textAlign: 'center', marginTop: 10 },
   errBox: {
     marginTop: 20,
     padding: '12px 14px',

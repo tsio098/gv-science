@@ -282,10 +282,10 @@ export function HomeC({ nav }: HomeCProps) {
           ))}
         </div>
 
-        {/* その他 */}
+        {/* 志望校 */}
         <div className="group">
           <div className="group-label">
-            <span className="label-text">その他</span>
+            <span className="label-text">志望校</span>
           </div>
           <div className="glass">
             <div
@@ -302,6 +302,15 @@ export function HomeC({ nav }: HomeCProps) {
                 <ChevRow />
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* その他 */}
+        <div className="group">
+          <div className="group-label">
+            <span className="label-text">その他</span>
+          </div>
+          <div className="glass">
             <div
               className="row"
               onClick={() =>
