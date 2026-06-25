@@ -25,6 +25,7 @@ import {
   LeafIcon,
   PencilIcon,
   QrIcon,
+  SearchIcon,
   TrendIcon,
 } from '../components/Icon';
 
@@ -287,6 +288,20 @@ export function HomeC({ nav }: HomeCProps) {
             <span className="label-text">その他</span>
           </div>
           <div className="glass">
+            <div
+              className="row"
+              onClick={() => nav('shibouRequest')}
+            >
+              <div className="row-icon accent">
+                <SearchIcon size={18} />
+              </div>
+              <div className="row-body">
+                <div className="row-title">志望校調査を依頼</div>
+              </div>
+              <div className="row-trail">
+                <ChevRow />
+              </div>
+            </div>
             <div
               className="row"
               onClick={() =>

@@ -206,6 +206,28 @@ export async function fetchAttendanceQR(): Promise<AttendanceQR> {
  *
  * @param fresh true なら GAS 側のキャッシュ（30 分）を破棄して再取得
  */
+/**
+ * 志望校調査を依頼する。フォーム入力を「志望校調査依頼」タブへ1行追記する。
+ * 認証は callGas が自動付与する id_token（GAS 側で USERID を確定）。
+ * 氏名はクライアントから送らない・保存しない（USERID のみで処理）。
+ */
+export async function requestShibou(input: {
+  region: string;
+  want: string;
+  examType: string;
+  note: string;
+}): Promise<{ ok: boolean }> {
+  // 本番(エンドポイント設定済み)では失敗時に例外を投げ、画面側でエラー表示。
+  // 開発(未設定)では送信せず成功扱いにして UI を確認できるようにする。
+  if (USE_MOCK_FALLBACK) return { ok: true };
+  return await callGas<{ ok: boolean }>('requestShibou', {
+    region: input.region,
+    want: input.want,
+    examType: input.examType,
+    note: input.note,
+  });
+}
+
 export async function fetchScores(fresh = false): Promise<ScoresResponse> {
   try {
     return await callGas<ScoresResponse>('scores', fresh ? { fresh: '1' } : {});

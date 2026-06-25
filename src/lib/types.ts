@@ -190,7 +190,8 @@ export type Route =
   | { name: 'share' }
   | { name: 'studyBooks' }
   | { name: 'qr' }
-  | { name: 'scores' };
+  | { name: 'scores' }
+  | { name: 'shibouRequest' };
 
 export type RouteName = Route['name'];
 
@@ -224,6 +225,7 @@ export type NavFn = {
   (name: 'studyBooks'): void;
   (name: 'qr'): void;
   (name: 'scores'): void;
+  (name: 'shibouRequest'): void;
 };
 
 /* ──────────────────────────────────────────────────────
