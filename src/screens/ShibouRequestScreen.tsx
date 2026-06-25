@@ -140,7 +140,8 @@ export function ShibouRequestScreen({ nav }: Props) {
       <div className="safe-top" />
       <TopNav crumb="GV / 志望校調査" onBack={() => nav('back')} backLabel="ホーム" />
       <div className="app-scroll">
-        <div className="page-head">
+        <div style={S.formPad}>
+        <div className="page-head" style={S.headFlush}>
           <div className="page-eyebrow">SHIBOU · 志望校調査</div>
           <h1 className="page-title">志望校調査を依頼</h1>
           <p className="page-sub">
@@ -219,6 +220,7 @@ export function ShibouRequestScreen({ nav }: Props) {
         <button type="button" style={canSubmit ? S.primaryBtn : S.primaryBtnDisabled} disabled={!canSubmit} onClick={submit}>
           {phase === 'submitting' ? '送信中…' : 'この内容で依頼する'}
         </button>
+        </div>
 
         <div className="empty-pad-bottom" />
       </div>
@@ -228,6 +230,9 @@ export function ShibouRequestScreen({ nav }: Props) {
 
 /* ── スタイル（既存デザインに馴染む最小インライン。トークンが無くても崩れないよう自己完結） ── */
 const S: Record<string, React.CSSProperties> = {
+  // 左右にゆとり：標準ガター(--pad-x)＋α でフォーム全体をくくる
+  formPad: { paddingLeft: 'calc(var(--pad-x) + 6px)', paddingRight: 'calc(var(--pad-x) + 6px)' },
+  headFlush: { paddingLeft: 0, paddingRight: 0 },
   section: { marginTop: 22 },
   label: { fontSize: 14.5, fontWeight: 700, color: 'var(--c-text, #2c2c2c)', marginBottom: 8 },
   opt: { fontSize: 12, fontWeight: 400, color: 'var(--c-text-mute, #8a8a82)', marginLeft: 6 },
