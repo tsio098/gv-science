@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { requestShibou } from '../lib/api';
 import type { NavFn } from '../lib/types';
 import { TopNav } from '../components/TopNav';
+import { FIELD_SYSTEMS, TARGET_GROUPS, EXAM_GROUPS, type TagGroup } from '../lib/tags';
 
 interface Props {
   nav: NavFn;
@@ -39,6 +40,35 @@ function OptRow({ label, checked, onToggle }: { label: string; checked: boolean;
   );
 }
 
+/** タグ群（見出し＋タグの2列グリッド）をパネル内に描画 */
+function TagGroups({ groups, selected, onToggle }: { groups: TagGroup[]; selected: string[]; onToggle: (t: string) => void }) {
+  return (
+    <>
+      {groups.map((g) => (
+        <div key={g.name}>
+          <div style={S.groupName}>{g.name}</div>
+          <div style={S.prefGrid}>
+            {g.tags.map((t) => (
+              <div key={t} style={S.prefCell}>
+                <OptRow label={t} checked={selected.includes(t)} onToggle={() => onToggle(t)} />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </>
+  );
+}
+
+/** タイトル横の「タグから選ぶ」トグル */
+function TagToggle({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+  return (
+    <button type="button" style={S.tagToggle} onClick={onToggle}>
+      タグから選ぶ <span style={S.tagCaret}>{open ? '▲' : '▼'}</span>
+    </button>
+  );
+}
+
 /** 開いたまま複数選択できるプルダウン */
 function MultiField({ open, onToggle, summary, children }: { open: boolean; onToggle: () => void; summary: string; children: React.ReactNode }) {
   return (
@@ -63,10 +93,14 @@ export function ShibouRequestScreen({ nav }: Props) {
   const [want, setWant] = useState('');
   const [exams, setExams] = useState<string[]>([]);
   const [note, setNote] = useState('');
+  const [fieldTags, setFieldTags] = useState<string[]>([]); // 興味タグ（分野・研究対象）→ want へ
+  const [condTags, setCondTags] = useState<string[]>([]);   // 条件タグ（入試条件）→ note へ
   const [phase, setPhase] = useState<Phase>('edit');
   const [errMsg, setErrMsg] = useState('');
   const [regionOpen, setRegionOpen] = useState(false);
   const [examOpen, setExamOpen] = useState(false);
+  const [fieldTagOpen, setFieldTagOpen] = useState(false);
+  const [condTagOpen, setCondTagOpen] = useState(false);
 
   const togglePref = (p: string) => {
     setNoPref(false);
@@ -74,19 +108,24 @@ export function ShibouRequestScreen({ nav }: Props) {
   };
   const toggleNoPref = () => { setNoPref((v) => !v); setPrefs([]); };
   const toggleExam = (v: string) => setExams((s) => (s.includes(v) ? s.filter((x) => x !== v) : [...s, v]));
+  const toggleFieldTag = (t: string) => setFieldTags((s) => (s.includes(t) ? s.filter((x) => x !== t) : [...s, t]));
+  const toggleCondTag = (t: string) => setCondTags((s) => (s.includes(t) ? s.filter((x) => x !== t) : [...s, t]));
 
   const regionStr = noPref ? '希望なし' : prefs.join('、');
   const examStr = exams.join('、');
   const regionSummary = noPref ? '希望なし' : prefs.length ? `${prefs.length}件：${prefs.join('・')}` : '';
   const examSummary = exams.length ? `${exams.length}件：${exams.join('・')}` : '';
+  // 自由記述＋選択タグを合成して送信（タグはエージェントの検索条件に効く）
+  const wantOut = [want.trim(), fieldTags.length ? `【興味タグ】${fieldTags.join('、')}` : ''].filter(Boolean).join('\n');
+  const noteOut = [note.trim(), condTags.length ? `【条件タグ】${condTags.join('、')}` : ''].filter(Boolean).join('\n');
   const canSubmit = phase !== 'submitting' &&
-    (noPref || prefs.length > 0 || want.trim() !== '' || exams.length > 0 || note.trim() !== '');
+    (noPref || prefs.length > 0 || wantOut !== '' || exams.length > 0 || noteOut !== '');
 
   const submit = async () => {
     if (!canSubmit) return;
     setPhase('submitting'); setErrMsg('');
     try {
-      await requestShibou({ region: regionStr, want: want.trim(), examType: examStr, note: note.trim() });
+      await requestShibou({ region: regionStr, want: wantOut, examType: examStr, note: noteOut });
       setPhase('done');
     } catch (e) {
       setErrMsg(e instanceof Error ? e.message : String(e));
@@ -146,9 +185,28 @@ export function ShibouRequestScreen({ nav }: Props) {
 
           {/* やりたいこと */}
           <section style={S.section}>
-            <div style={S.label}>大学でやりたいこと・興味のある分野</div>
+            <div style={S.labelRow}>
+              <div style={S.label}>大学でやりたいこと・興味のある分野</div>
+              <TagToggle open={fieldTagOpen} onToggle={() => setFieldTagOpen((v) => !v)} />
+            </div>
             <textarea style={S.textarea} rows={4} value={want} onChange={(e) => setWant(e.target.value)}
               placeholder="例：脳や神経の仕組みを研究したい／再生医療に興味がある／英語を活かせる学部がいい" />
+            {fieldTags.length > 0 && (
+              <div style={S.chips}>
+                {fieldTags.map((t) => (
+                  <button type="button" key={t} style={S.chip} onClick={() => toggleFieldTag(t)}>{t} <span style={S.chipX}>×</span></button>
+                ))}
+              </div>
+            )}
+            {fieldTagOpen && (
+              <div style={S.panel}>
+                <div style={S.subHead}>分野で選ぶ</div>
+                <TagGroups groups={FIELD_SYSTEMS} selected={fieldTags} onToggle={toggleFieldTag} />
+                <div style={{ ...S.subHead, marginTop: 12 }}>研究対象・生きもので選ぶ</div>
+                <TagGroups groups={TARGET_GROUPS} selected={fieldTags} onToggle={toggleFieldTag} />
+                <button type="button" style={S.doneBtn} onClick={() => setFieldTagOpen(false)}>選択を終える</button>
+              </div>
+            )}
           </section>
 
           {/* 入試形式 */}
@@ -163,9 +221,26 @@ export function ShibouRequestScreen({ nav }: Props) {
 
           {/* 補足 */}
           <section style={S.section}>
-            <div style={S.label}>補足・こだわり条件<span style={S.opt}>（任意）</span></div>
+            <div style={S.labelRow}>
+              <div style={S.label}>補足・こだわり条件<span style={S.opt}>（任意）</span></div>
+              <TagToggle open={condTagOpen} onToggle={() => setCondTagOpen((v) => !v)} />
+            </div>
             <textarea style={S.textarea} rows={3} value={note} onChange={(e) => setNote(e.target.value)}
               placeholder="例：理科の配点が高い大学がいい／面接がない大学がいい／自宅から通えるところ" />
+            {condTags.length > 0 && (
+              <div style={S.chips}>
+                {condTags.map((t) => (
+                  <button type="button" key={t} style={S.chip} onClick={() => toggleCondTag(t)}>{t} <span style={S.chipX}>×</span></button>
+                ))}
+              </div>
+            )}
+            {condTagOpen && (
+              <div style={S.panel}>
+                <div style={S.subHead}>入試の条件で選ぶ</div>
+                <TagGroups groups={EXAM_GROUPS} selected={condTags} onToggle={toggleCondTag} />
+                <button type="button" style={S.doneBtn} onClick={() => setCondTagOpen(false)}>選択を終える</button>
+              </div>
+            )}
           </section>
 
           {phase === 'error' && (
@@ -186,8 +261,23 @@ const S: Record<string, React.CSSProperties> = {
   pad: { paddingLeft: 'calc(var(--pad-x) + 6px)', paddingRight: 'calc(var(--pad-x) + 6px)' },
   headFlush: { paddingLeft: 0, paddingRight: 0 },
   section: { marginTop: 22 },
-  label: { fontSize: 14.5, fontWeight: 700, color: 'var(--c-text, #2c2c2c)', marginBottom: 8 },
+  labelRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 },
+  label: { fontSize: 14.5, fontWeight: 700, color: 'var(--c-text, #2c2c2c)' },
   opt: { fontSize: 12, fontWeight: 400, color: 'var(--c-text-mute, #8a8a82)', marginLeft: 6 },
+  tagToggle: {
+    flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 999,
+    border: '1px solid var(--c-primary, #4e9b73)', background: 'rgba(78,155,115,0.08)',
+    color: 'var(--c-primary-deep, #3a7d5c)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+  },
+  tagCaret: { fontSize: 9 },
+  subHead: { fontSize: 12, fontWeight: 700, color: 'var(--c-primary-deep, #3a7d5c)', margin: '2px 4px 4px' },
+  chips: { display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 },
+  chip: {
+    display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 9px', borderRadius: 999,
+    border: '1px solid var(--c-primary, #4e9b73)', background: 'var(--c-primary, #4e9b73)', color: '#fff',
+    fontSize: 12, fontWeight: 600, cursor: 'pointer',
+  },
+  chipX: { fontSize: 12, opacity: 0.85 },
   field: {
     width: '100%', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     gap: 8, padding: '11px 12px', borderRadius: 12, border: '1px solid var(--c-line, #d9d9d2)',
