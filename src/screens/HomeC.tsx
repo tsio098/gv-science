@@ -302,6 +302,20 @@ export function HomeC({ nav }: HomeCProps) {
                 <ChevRow />
               </div>
             </div>
+            <div
+              className="row"
+              onClick={() => nav('recoResults')}
+            >
+              <div className="row-icon accent">
+                <TrendIcon size={18} />
+              </div>
+              <div className="row-body">
+                <div className="row-title">おすすめ志望校</div>
+              </div>
+              <div className="row-trail">
+                <ChevRow />
+              </div>
+            </div>
           </div>
         </div>
 

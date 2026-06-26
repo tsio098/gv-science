@@ -191,7 +191,8 @@ export type Route =
   | { name: 'studyBooks' }
   | { name: 'qr' }
   | { name: 'scores' }
-  | { name: 'shibouRequest' };
+  | { name: 'shibouRequest' }
+  | { name: 'recoResults' };
 
 export type RouteName = Route['name'];
 
@@ -226,7 +227,22 @@ export type NavFn = {
   (name: 'qr'): void;
   (name: 'scores'): void;
   (name: 'shibouRequest'): void;
+  (name: 'recoResults'): void;
 };
+
+/** おすすめ志望校（recoResults）の1行。GAS が日本語ヘッダー名で返す。 */
+export interface RecoResult {
+  '調査日'?: string;
+  '順位'?: number | string;
+  '大学'?: string;
+  '学部学科/日程'?: string;
+  '判定'?: string;
+  '傾斜後得点率'?: number | string;
+  'ボーダー'?: number | string;
+  '研究適合'?: string;
+  '注意'?: string;
+  'item_id'?: string;
+}
 
 /* ──────────────────────────────────────────────────────
    GAS API レスポンス型

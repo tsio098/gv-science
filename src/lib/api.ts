@@ -34,6 +34,7 @@ import type {
   HomeResponse,
   Problem,
   Schedule,
+  RecoResult,
   ScheduleSubject,
   ScoresResponse,
   StudyBook,
@@ -226,6 +227,19 @@ export async function requestShibou(input: {
     examType: input.examType,
     note: input.note,
   });
+}
+
+/**
+ * おすすめ志望校（定期エージェントが書き込んだ自分の結果）を取得。
+ * action は recoResults（Proxyの "shibou" 接頭辞振り分けを避けるため）。氏名は含まれない。
+ */
+export async function fetchRecoResults(): Promise<RecoResult[]> {
+  try {
+    const r = await callGas<{ results: RecoResult[] }>('recoResults');
+    return r.results ?? [];
+  } catch (e) {
+    return orMock(e, [] as RecoResult[]);
+  }
 }
 
 export async function fetchScores(fresh = false): Promise<ScoresResponse> {

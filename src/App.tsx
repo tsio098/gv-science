@@ -20,6 +20,7 @@ import { ArticleListScreen } from './screens/ArticleListScreen';
 import { StudyBookListScreen } from './screens/StudyBookListScreen';
 import { AttendanceQRScreen } from './screens/AttendanceQRScreen';
 import { ShibouRequestScreen } from './screens/ShibouRequestScreen';
+import { ShibouResultsScreen } from './screens/ShibouResultsScreen';
 import { Spinner } from './components/Spinner';
 import { ExternalLinkModal } from './components/ExternalLinkModal';
 
@@ -64,6 +65,8 @@ function renderRoute(route: Route, nav: ReturnType<typeof useNav>['nav']) {
       return <AttendanceQRScreen nav={nav} />;
     case 'shibouRequest':
       return <ShibouRequestScreen nav={nav} />;
+    case 'recoResults':
+      return <ShibouResultsScreen nav={nav} />;
     case 'scores':
       return (
         <Suspense fallback={<ScoresFallback />}>
