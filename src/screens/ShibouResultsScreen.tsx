@@ -17,14 +17,14 @@ interface Props {
 
 type BandMeta = { label: string; sub: string; accent: string; soft: string; ink: string };
 
-/** 判定文字列（🟦安全/🟩適正/🟥挑戦/⬛再考/－成績未登録）→ 色とやさしいラベル。絵文字は使わない。 */
+/** 判定文字列（🟦安全/🟩適正/🟥挑戦/⬛再考/－成績未登録）→ 色とラベル（絵文字は使わない・語彙は大人向け）。 */
 function bandMeta(raw: string): BandMeta {
   const b = raw || '';
-  if (b.includes('安全')) return { label: '安全', sub: 'ねらいやすい', accent: '#4e9b73', soft: 'rgba(78,155,115,0.14)', ink: '#2f7d52' };
-  if (b.includes('適正')) return { label: '適正', sub: 'ちょうどよい', accent: '#7aa84a', soft: 'rgba(120,170,90,0.16)', ink: '#5a7d2a' };
-  if (b.includes('挑戦')) return { label: '挑戦', sub: 'がんばればとどく', accent: '#e0883c', soft: 'rgba(224,136,60,0.16)', ink: '#b5642a' };
-  if (b.includes('再考')) return { label: 'むずかしめ', sub: 'いまは遠い', accent: '#c95b5b', soft: 'rgba(201,91,91,0.14)', ink: '#a13b3b' };
-  return { label: '成績まち', sub: '模試の登録が必要', accent: '#a7a79c', soft: 'rgba(120,120,110,0.12)', ink: '#777' };
+  if (b.includes('安全')) return { label: '安全', sub: '合格圏', accent: '#4e9b73', soft: 'rgba(78,155,115,0.14)', ink: '#2f7d52' };
+  if (b.includes('適正')) return { label: '適正', sub: '実力相応', accent: '#7aa84a', soft: 'rgba(120,170,90,0.16)', ink: '#5a7d2a' };
+  if (b.includes('挑戦')) return { label: '挑戦', sub: 'やや上', accent: '#e0883c', soft: 'rgba(224,136,60,0.16)', ink: '#b5642a' };
+  if (b.includes('再考')) return { label: '要再考', sub: '現状は厳しい', accent: '#c95b5b', soft: 'rgba(201,91,91,0.14)', ink: '#a13b3b' };
+  return { label: '判定保留', sub: '模試成績が未登録', accent: '#a7a79c', soft: 'rgba(120,120,110,0.12)', ink: '#777' };
 }
 
 /** あなたの得点 vs 合格ライン のバー */
@@ -64,7 +64,7 @@ export function ShibouResultsScreen({ nav }: Props) {
           <div className="page-head" style={S.headFlush}>
             <div className="page-eyebrow">RECOMMEND</div>
             <h1 className="page-title">おすすめ志望校</h1>
-            <p className="page-sub">あなたのやりたいことと成績から、研究の内容をいちばん大事にして選びました。</p>
+            <p className="page-sub">あなたの希望（やりたいこと）と成績をもとに、研究内容を最優先に選定した候補です。</p>
           </div>
 
           {loading ? (
@@ -72,7 +72,7 @@ export function ShibouResultsScreen({ nav }: Props) {
           ) : error ? (
             <ErrorState onRetry={reload} />
           ) : results.length === 0 ? (
-            <EmptyState hint="まだおすすめはありません。ホームの「志望校調査を依頼」からお願いすると、先生がしらべてここに出します（少し時間がかかります）。" />
+            <EmptyState hint="まだおすすめはありません。ホームの「志望校調査を依頼」から送信すると、調査結果がここに表示されます（反映まで少し時間がかかります）。" />
           ) : (
             <div>
               {results.map((r, i) => {
@@ -97,20 +97,20 @@ export function ShibouResultsScreen({ nav }: Props) {
 
                     {r['研究適合'] && (
                       <div style={S.block}>
-                        <div style={S.blockHead}>できる研究</div>
+                        <div style={S.blockHead}>研究内容</div>
                         <div style={S.blockBody}>{r['研究適合']}</div>
                       </div>
                     )}
                     {r['注意'] && (
                       <div style={{ ...S.block, background: m.soft }}>
-                        <div style={{ ...S.blockHead, color: m.ink }}>ちゅうい</div>
+                        <div style={{ ...S.blockHead, color: m.ink }}>注意</div>
                         <div style={S.blockBody}>{r['注意']}</div>
                       </div>
                     )}
                   </div>
                 );
               })}
-              <p style={S.foot}>※研究の内容をいちばん大事にして選んでいます。点数のはんていは目安です。さいごは先生と相談しましょう。</p>
+              <p style={S.foot}>※研究内容を最優先に選定しています。判定（得点の目安）は参考値です。最終的な出願は先生と相談してください。</p>
             </div>
           )}
         </div>
