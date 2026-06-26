@@ -1,10 +1,14 @@
 /**
  * GV Compass と共通のタグ体系（志望校調査フォームの「タグから選ぶ」用）。
- *  出典: design_handoff_gv_compass/src/tags/taxonomy.ts（9系統×中分類 / 研究対象 / 入試条件）。
  *  - FIELD_SYSTEMS … 学問分野（9大系統 → 中分類）。「大学でやりたいこと」の興味タグ。
  *  - TARGET_GROUPS … 研究対象（生きもの・素材）。図鑑的な入口。同じく興味タグ。
  *  - EXAM_GROUPS   … 入試条件（区分・配点・科目・形式）。「補足・こだわり条件」の条件タグ。
  * 選んだタグは送信時に want / note へ追記し、エージェントの検索条件に使う。
+ *
+ * ★同期: 実体は GV Compass の taxonomy。フォーム起動時に loadTagSets() で
+ *   `<GV Compass>/data/taxonomy.json` を取得し、GV Compass のタグ更新を即反映する
+ *   （GV Compass を再デプロイすれば次回読み込みで反映＝再ビルド不要）。
+ *   取得に失敗したら下記の同梱定数にフォールバックする。
  */
 
 export interface TagGroup { name: string; tags: string[] }
@@ -39,3 +43,32 @@ export const EXAM_GROUPS: TagGroup[] = [
   { name: '試験の形式', tags: ['面接あり', '面接重視型', '小論文あり', '総合問題型', '二段階選抜あり', '書類選考'] },
   { name: 'その他', tags: ['情報あり', '選択科目あり', '共通テスト利用'] },
 ];
+
+export interface TagSets { fieldSystems: TagGroup[]; targetGroups: TagGroup[]; examGroups: TagGroup[] }
+
+/** 取得失敗時のフォールバック（上の同梱定数）。 */
+export const BUNDLED_TAGS: TagSets = { fieldSystems: FIELD_SYSTEMS, targetGroups: TARGET_GROUPS, examGroups: EXAM_GROUPS };
+
+const COMPASS_URL = (import.meta.env.VITE_GV_COMPASS_URL as string | undefined) || 'https://gv-compass.pages.dev';
+
+function isGroups(v: unknown): v is TagGroup[] {
+  return Array.isArray(v) && v.every((g) => g && typeof (g as TagGroup).name === 'string' && Array.isArray((g as TagGroup).tags));
+}
+
+/**
+ * GV Compass の taxonomy.json を取得し、最新のタグ体系を返す。
+ * 失敗（オフライン・CORS・不正形）時は同梱の BUNDLED_TAGS を返すので、フォームは必ず動く。
+ */
+export async function loadTagSets(): Promise<TagSets> {
+  try {
+    const res = await fetch(`${COMPASS_URL}/data/taxonomy.json`, { cache: 'no-cache' });
+    if (!res.ok) return BUNDLED_TAGS;
+    const j = await res.json();
+    if (isGroups(j?.fieldSystems) && isGroups(j?.targetGroups) && isGroups(j?.examGroups)) {
+      return { fieldSystems: j.fieldSystems, targetGroups: j.targetGroups, examGroups: j.examGroups };
+    }
+    return BUNDLED_TAGS;
+  } catch {
+    return BUNDLED_TAGS;
+  }
+}

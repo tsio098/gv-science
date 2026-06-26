@@ -5,11 +5,11 @@
  *  送信: callGas('requestShibou', {region, want, examType, note})
  *  ※ USERID は id_token から GAS 側で確定。氏名はクライアントに出さない・保存しない。
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { requestShibou } from '../lib/api';
 import type { NavFn } from '../lib/types';
 import { TopNav } from '../components/TopNav';
-import { FIELD_SYSTEMS, TARGET_GROUPS, EXAM_GROUPS, type TagGroup } from '../lib/tags';
+import { BUNDLED_TAGS, loadTagSets, type TagGroup, type TagSets } from '../lib/tags';
 
 interface Props {
   nav: NavFn;
@@ -101,6 +101,9 @@ export function ShibouRequestScreen({ nav }: Props) {
   const [examOpen, setExamOpen] = useState(false);
   const [fieldTagOpen, setFieldTagOpen] = useState(false);
   const [condTagOpen, setCondTagOpen] = useState(false);
+  // タグ体系は GV Compass の taxonomy.json を実行時取得（失敗時は同梱定数）。GV Compass更新に追従。
+  const [tagSets, setTagSets] = useState<TagSets>(BUNDLED_TAGS);
+  useEffect(() => { let alive = true; loadTagSets().then((t) => { if (alive) setTagSets(t); }); return () => { alive = false; }; }, []);
 
   const togglePref = (p: string) => {
     setNoPref(false);
@@ -201,9 +204,9 @@ export function ShibouRequestScreen({ nav }: Props) {
             {fieldTagOpen && (
               <div style={S.panel}>
                 <div style={S.subHead}>分野で選ぶ</div>
-                <TagGroups groups={FIELD_SYSTEMS} selected={fieldTags} onToggle={toggleFieldTag} />
+                <TagGroups groups={tagSets.fieldSystems} selected={fieldTags} onToggle={toggleFieldTag} />
                 <div style={{ ...S.subHead, marginTop: 12 }}>研究対象・生きもので選ぶ</div>
-                <TagGroups groups={TARGET_GROUPS} selected={fieldTags} onToggle={toggleFieldTag} />
+                <TagGroups groups={tagSets.targetGroups} selected={fieldTags} onToggle={toggleFieldTag} />
                 <button type="button" style={S.doneBtn} onClick={() => setFieldTagOpen(false)}>選択を終える</button>
               </div>
             )}
@@ -237,7 +240,7 @@ export function ShibouRequestScreen({ nav }: Props) {
             {condTagOpen && (
               <div style={S.panel}>
                 <div style={S.subHead}>入試の条件で選ぶ</div>
-                <TagGroups groups={EXAM_GROUPS} selected={condTags} onToggle={toggleCondTag} />
+                <TagGroups groups={tagSets.examGroups} selected={condTags} onToggle={toggleCondTag} />
                 <button type="button" style={S.doneBtn} onClick={() => setCondTagOpen(false)}>選択を終える</button>
               </div>
             )}
