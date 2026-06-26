@@ -1,7 +1,7 @@
 /**
  * おすすめ志望校 — 表示画面。
- *  GAS `recoResults`（id_token認証・USERIDで自分の結果を取得）の行を、GV Compass風カードで表示。
- *  ※Proxyの "shibou" 接頭辞振り分けを避けるため action 名は recoResults。
+ *  GAS `recoResults`（id_token認証・USERIDで自分の結果を取得）の行をカード表示。
+ *  判定は絵文字を使わず、カード左の色帯＋ラベルボックスで表現。得点は「あなた vs 合格ライン」のバー図。
  */
 import { fetchRecoResults } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
@@ -15,21 +15,44 @@ interface Props {
   nav: NavFn;
 }
 
-/** 判定文字列から色を決める（🟦安全/🟩適正/🟥挑戦/⬛再考/－成績未登録） */
-function bandStyle(band: string): React.CSSProperties {
-  const b = band || '';
-  let bg = 'var(--c-line, #d9d9d2)', fg = 'var(--c-text, #2c2c2c)';
-  if (b.includes('安全')) { bg = 'rgba(78,155,115,0.16)'; fg = '#2f7d52'; }
-  else if (b.includes('適正')) { bg = 'rgba(120,170,90,0.16)'; fg = '#5a7d2a'; }
-  else if (b.includes('挑戦')) { bg = 'rgba(220,120,60,0.16)'; fg = '#b5642a'; }
-  else if (b.includes('再考')) { bg = 'rgba(90,90,90,0.16)'; fg = '#555'; }
-  return { ...S.band, background: bg, color: fg };
+type BandMeta = { label: string; sub: string; accent: string; soft: string; ink: string };
+
+/** 判定文字列（🟦安全/🟩適正/🟥挑戦/⬛再考/－成績未登録）→ 色とやさしいラベル。絵文字は使わない。 */
+function bandMeta(raw: string): BandMeta {
+  const b = raw || '';
+  if (b.includes('安全')) return { label: '安全', sub: 'ねらいやすい', accent: '#4e9b73', soft: 'rgba(78,155,115,0.14)', ink: '#2f7d52' };
+  if (b.includes('適正')) return { label: '適正', sub: 'ちょうどよい', accent: '#7aa84a', soft: 'rgba(120,170,90,0.16)', ink: '#5a7d2a' };
+  if (b.includes('挑戦')) return { label: '挑戦', sub: 'がんばればとどく', accent: '#e0883c', soft: 'rgba(224,136,60,0.16)', ink: '#b5642a' };
+  if (b.includes('再考')) return { label: 'むずかしめ', sub: 'いまは遠い', accent: '#c95b5b', soft: 'rgba(201,91,91,0.14)', ink: '#a13b3b' };
+  return { label: '成績まち', sub: '模試の登録が必要', accent: '#a7a79c', soft: 'rgba(120,120,110,0.12)', ink: '#777' };
+}
+
+/** あなたの得点 vs 合格ライン のバー */
+function ScoreBar({ you, line, accent }: { you: number | null; line: number | null; accent: string }) {
+  if (you == null) return null;
+  const clamp = (n: number) => Math.max(0, Math.min(100, n));
+  return (
+    <div style={S.barWrap}>
+      <div style={S.barTrack}>
+        <div style={{ ...S.barFill, width: `${clamp(you)}%`, background: accent }} />
+        {line != null && <div style={{ ...S.barLine, left: `${clamp(line)}%` }} />}
+      </div>
+      <div style={S.barLabels}>
+        <span style={{ color: accent, fontWeight: 700 }}>あなた {you}%</span>
+        {line != null && <span style={S.barLineLabel}>合格ライン {line}%</span>}
+      </div>
+    </div>
+  );
+}
+
+function toNum(v: unknown): number | null {
+  if (v === '' || v == null) return null;
+  const n = Number(v);
+  return isNaN(n) ? null : n;
 }
 
 export function ShibouResultsScreen({ nav }: Props) {
-  const { data, loading, error, reload } = useAsync(fetchRecoResults, [], {
-    cacheKey: 'recoResults',
-  });
+  const { data, loading, error, reload } = useAsync(fetchRecoResults, [], { cacheKey: 'recoResults' });
   const results = data ?? [];
 
   return (
@@ -39,9 +62,9 @@ export function ShibouResultsScreen({ nav }: Props) {
       <div className="app-scroll">
         <div style={S.pad}>
           <div className="page-head" style={S.headFlush}>
-            <div className="page-eyebrow">RECOMMEND · おすすめ志望校</div>
+            <div className="page-eyebrow">RECOMMEND</div>
             <h1 className="page-title">おすすめ志望校</h1>
-            <p className="page-sub">あなたの依頼内容と成績から、研究内容を最優先に調べた候補です。</p>
+            <p className="page-sub">あなたのやりたいことと成績から、研究の内容をいちばん大事にして選びました。</p>
           </div>
 
           {loading ? (
@@ -49,45 +72,45 @@ export function ShibouResultsScreen({ nav }: Props) {
           ) : error ? (
             <ErrorState onRetry={reload} />
           ) : results.length === 0 ? (
-            <EmptyState hint="まだおすすめはありません。ホームの「志望校調査を依頼」から依頼すると、先生がAIと一緒に調べてここに表示します（少し時間がかかります）。" />
+            <EmptyState hint="まだおすすめはありません。ホームの「志望校調査を依頼」からお願いすると、先生がしらべてここに出します（少し時間がかかります）。" />
           ) : (
             <div>
               {results.map((r, i) => {
-                const rate = r['傾斜後得点率'];
-                const border = r['ボーダー'];
+                const m = bandMeta(String(r['判定'] || ''));
+                const you = toNum(r['傾斜後得点率']);
+                const line = toNum(r['ボーダー']);
                 return (
-                  <div key={i} style={S.card}>
+                  <div key={i} style={{ ...S.card, borderLeft: `5px solid ${m.accent}` }}>
                     <div style={S.cardTop}>
                       <div style={S.rank}>{r['順位'] ?? i + 1}</div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={S.school}>{r['大学']}</div>
                         <div style={S.dept}>{r['学部学科/日程']}</div>
                       </div>
-                      {r['判定'] && <span style={bandStyle(String(r['判定']))}>{r['判定']}</span>}
+                      <div style={{ ...S.bandBox, background: m.accent }}>
+                        <div style={S.bandLabel}>{m.label}</div>
+                        <div style={S.bandSub}>{m.sub}</div>
+                      </div>
                     </div>
 
-                    {(rate !== '' && rate != null) && (
-                      <div style={S.metaRow}>
-                        <span style={S.metaPill}>傾斜後 {rate}%</span>
-                        {(border !== '' && border != null) && (
-                          <span style={S.metaPillSub}>ボーダー {border}%</span>
-                        )}
-                      </div>
-                    )}
+                    <ScoreBar you={you} line={line} accent={m.accent} />
 
                     {r['研究適合'] && (
-                      <div style={S.why}>
-                        <span style={S.whyLabel}>研究適合</span>
-                        {r['研究適合']}
+                      <div style={S.block}>
+                        <div style={S.blockHead}>できる研究</div>
+                        <div style={S.blockBody}>{r['研究適合']}</div>
                       </div>
                     )}
-                    {r['注意'] && <div style={S.caution}>⚠️ {r['注意']}</div>}
+                    {r['注意'] && (
+                      <div style={{ ...S.block, background: m.soft }}>
+                        <div style={{ ...S.blockHead, color: m.ink }}>ちゅうい</div>
+                        <div style={S.blockBody}>{r['注意']}</div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
-              <p style={S.foot}>
-                ※研究内容を最優先に選んでいます。判定（傾斜後得点率）は目安です。最終的な出願は先生と相談してください。
-              </p>
+              <p style={S.foot}>※研究の内容をいちばん大事にして選んでいます。点数のはんていは目安です。さいごは先生と相談しましょう。</p>
             </div>
           )}
         </div>
@@ -105,23 +128,30 @@ const S: Record<string, React.CSSProperties> = {
     border: '1px solid var(--c-line, #e8e5de)',
     borderRadius: 16,
     padding: 14,
-    marginTop: 12,
-    boxShadow: '0 6px 18px -12px rgba(45,58,42,0.18)',
+    marginTop: 14,
+    boxShadow: '0 8px 22px -14px rgba(45,58,42,0.22)',
   },
   cardTop: { display: 'flex', alignItems: 'flex-start', gap: 10 },
   rank: {
     flex: 'none', width: 26, height: 26, lineHeight: '26px', textAlign: 'center',
-    borderRadius: 999, background: 'var(--c-primary, #4e9b73)', color: '#fff',
-    fontSize: 13, fontWeight: 700,
+    borderRadius: 8, background: 'var(--c-text, #2c2c2c)', color: '#fff', fontSize: 13, fontWeight: 700,
   },
   school: { fontSize: 16, fontWeight: 700, color: 'var(--c-text, #2c2c2c)', lineHeight: 1.3 },
   dept: { fontSize: 12.5, color: 'var(--c-text-mute, #8a8a82)', marginTop: 2 },
-  band: { flex: 'none', padding: '4px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' },
-  metaRow: { display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' },
-  metaPill: { padding: '3px 10px', borderRadius: 999, background: 'var(--c-bg-warm, #f4efe6)', color: 'var(--c-text, #2c2c2c)', fontSize: 12.5, fontWeight: 600 },
-  metaPillSub: { padding: '3px 10px', borderRadius: 999, background: 'rgba(45,58,42,0.05)', color: 'var(--c-text-mute, #8a8a82)', fontSize: 12.5 },
-  why: { marginTop: 10, fontSize: 13.5, lineHeight: 1.65, color: 'var(--c-text, #2c2c2c)' },
-  whyLabel: { display: 'inline-block', marginRight: 6, padding: '1px 7px', borderRadius: 6, background: 'rgba(78,155,115,0.14)', color: 'var(--c-primary-deep, #3a7d5c)', fontSize: 11, fontWeight: 700 },
-  caution: { marginTop: 8, fontSize: 12.5, lineHeight: 1.6, color: 'var(--c-text-sub, #6b7869)', background: 'rgba(45,58,42,0.04)', borderRadius: 10, padding: '8px 10px' },
-  foot: { fontSize: 11.5, color: 'var(--c-text-mute, #8a8a82)', lineHeight: 1.6, marginTop: 16 },
+  bandBox: {
+    flex: 'none', minWidth: 64, textAlign: 'center', color: '#fff',
+    borderRadius: 10, padding: '6px 10px',
+  },
+  bandLabel: { fontSize: 14, fontWeight: 800, lineHeight: 1.1 },
+  bandSub: { fontSize: 9.5, opacity: 0.92, marginTop: 2, lineHeight: 1.1 },
+  barWrap: { marginTop: 12 },
+  barTrack: { position: 'relative', height: 10, borderRadius: 999, background: 'rgba(45,58,42,0.08)' },
+  barFill: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 999 },
+  barLine: { position: 'absolute', top: -3, bottom: -3, width: 2, background: 'var(--c-text, #2c2c2c)', borderRadius: 2 },
+  barLabels: { display: 'flex', justifyContent: 'space-between', marginTop: 5, fontSize: 11.5 },
+  barLineLabel: { color: 'var(--c-text-sub, #6b7869)' },
+  block: { marginTop: 10, borderRadius: 10, padding: '9px 11px', background: 'rgba(45,58,42,0.04)' },
+  blockHead: { fontSize: 11, fontWeight: 700, color: 'var(--c-primary-deep, #3a7d5c)', marginBottom: 3 },
+  blockBody: { fontSize: 13.5, lineHeight: 1.65, color: 'var(--c-text, #2c2c2c)' },
+  foot: { fontSize: 11.5, color: 'var(--c-text-mute, #8a8a82)', lineHeight: 1.7, marginTop: 16 },
 };
