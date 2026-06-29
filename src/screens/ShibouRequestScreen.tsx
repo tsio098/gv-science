@@ -28,6 +28,20 @@ const REGION_GROUPS: { region: string; prefs: string[] }[] = [
 const EXAM_TYPES = ['総合型選抜', '学校推薦型選抜', '一般選抜（前期）', '一般選抜（後期）', '共通テスト利用', 'まだ決めていない'];
 const NO_PREF = '希望なし（どこでもよい）';
 
+// 送信値の正規化（定期エージェントの match_filter は大学データのトークン／pref と直接照合するため、
+// フォームの表示用ラベルを大学データの語彙へ合わせる。表示用サマリは短縮名のまま）。
+//  入試形式: 「一般選抜（前期）」→「前期」等。match_filter の入試区分トークンに一致させる。
+const EXAM_TYPE_TO_TOKEN: Record<string, string> = {
+  '総合型選抜': '総合型選抜', '学校推薦型選抜': '学校推薦型選抜',
+  '一般選抜（前期）': '前期', '一般選抜（後期）': '後期', '共通テスト利用': '共通テスト利用',
+  // 'まだ決めていない' は出力しない（入試形式で絞り込まない）
+};
+const normalizeExams = (exams: string[]) => exams.map((e) => EXAM_TYPE_TO_TOKEN[e]).filter(Boolean).join('、');
+//  都道府県: 短縮名→正式名。「京都」が「東京都」に部分一致する誤ヒットを防ぐ。
+const PREF_FULL: Record<string, string> = { '北海道': '北海道', '東京': '東京都', '大阪': '大阪府', '京都': '京都府' };
+const toFullPref = (p: string) => PREF_FULL[p] || `${p}県`;
+const normalizePrefs = (prefs: string[]) => prefs.map(toFullPref).join('、');
+
 type Phase = 'edit' | 'submitting' | 'done' | 'error';
 
 /** チェック行（タップで選択トグル・パネルは閉じない） */
@@ -114,9 +128,9 @@ export function ShibouRequestScreen({ nav }: Props) {
   const toggleFieldTag = (t: string) => setFieldTags((s) => (s.includes(t) ? s.filter((x) => x !== t) : [...s, t]));
   const toggleCondTag = (t: string) => setCondTags((s) => (s.includes(t) ? s.filter((x) => x !== t) : [...s, t]));
 
-  const regionStr = noPref ? '希望なし' : prefs.join('、');
-  const examStr = exams.join('、');
-  const regionSummary = noPref ? '希望なし' : prefs.length ? `${prefs.length}件：${prefs.join('・')}` : '';
+  const regionStr = noPref ? '希望なし' : normalizePrefs(prefs); // 送信＝正式名
+  const examStr = normalizeExams(exams); // 送信＝match_filter トークン
+  const regionSummary = noPref ? '希望なし' : prefs.length ? `${prefs.length}件：${prefs.join('・')}` : ''; // 表示は短縮名
   const examSummary = exams.length ? `${exams.length}件：${exams.join('・')}` : '';
   // 自由記述＋選択タグを合成して送信（タグはエージェントの検索条件に効く）
   const wantOut = [want.trim(), fieldTags.length ? `【興味タグ】${fieldTags.join('、')}` : ''].filter(Boolean).join('\n');
