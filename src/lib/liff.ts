@@ -22,8 +22,22 @@ export interface LiffStatus {
   error?: string;
 }
 
-const LIFF_ID_A = import.meta.env.VITE_LIFF_ID;
-const LIFF_ID_B = import.meta.env.VITE_LIFF_ID_B;
+/** LIFF ID の形式（`1234567890-abcd1234` = 数字列 + `-` + 英数字列）を満たすか。
+ *
+ *  ビルド変数の設定漏れやプレースホルダ文字列（例:
+ *  「（LINE Developers Console で確認した実際の LIFF ID）」）が
+ *  そのまま `liff.init()` に渡ると SDK が "Invalid LIFF ID" を投げて
+ *  アプリ全体が初期化エラーで停止する。ここで形式を検査し、無効値は
+ *  「未設定」と同じ扱い（undefined 化）にしてフォールバック分岐へ落とす。
+ */
+function normalizeLiffId(id: string | undefined): string | undefined {
+  if (typeof id !== 'string') return undefined;
+  const trimmed = id.trim();
+  return /^\d{6,}-[0-9A-Za-z]+$/.test(trimmed) ? trimmed : undefined;
+}
+
+const LIFF_ID_A = normalizeLiffId(import.meta.env.VITE_LIFF_ID);
+const LIFF_ID_B = normalizeLiffId(import.meta.env.VITE_LIFF_ID_B);
 
 /** パスから初期化に使うべき LIFF_ID を判定する。
  *

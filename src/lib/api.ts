@@ -217,6 +217,7 @@ export async function requestShibou(input: {
   want: string;
   examType: string;
   note: string;
+  grades?: string; // 共通テスト自己採点の生JSON(keisha raw形式) or ''（未入力）。GAS側で「自己採点」列へ保存。
 }): Promise<{ ok: boolean }> {
   // 本番(エンドポイント設定済み)では失敗時に例外を投げ、画面側でエラー表示。
   // 開発(未設定)では送信せず成功扱いにして UI を確認できるようにする。
@@ -226,6 +227,7 @@ export async function requestShibou(input: {
     want: input.want,
     examType: input.examType,
     note: input.note,
+    grades: input.grades || '',
   });
 }
 

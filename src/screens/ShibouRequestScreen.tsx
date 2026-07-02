@@ -42,6 +42,37 @@ const PREF_FULL: Record<string, string> = { '北海道': '北海道', '東京': 
 const toFullPref = (p: string) => PREF_FULL[p] || `${p}県`;
 const normalizePrefs = (prefs: string[]) => prefs.map(toFullPref).join('、');
 
+// ── 成績（共通テスト自己採点）: 任意入力。keisha_calc.py の生徒 raw JSON をそのまま組み立てる ──
+interface Grades {
+  kokugo: string; eigoR: string; eigoL: string; mathIA: string; mathIIB: string;
+  rika1: string; rika2: string; chiko: string; joho: string;
+}
+const EMPTY_GRADES: Grades = { kokugo: '', eigoR: '', eigoL: '', mathIA: '', mathIIB: '', rika1: '', rika2: '', chiko: '', joho: '' };
+const GRADE_FIELDS: { key: keyof Grades; label: string; max: number }[] = [
+  { key: 'kokugo', label: '国語', max: 200 },
+  { key: 'eigoR', label: '英語 R（リーディング）', max: 100 },
+  { key: 'eigoL', label: '英語 L（リスニング）', max: 100 },
+  { key: 'mathIA', label: '数学 I・A', max: 100 },
+  { key: 'mathIIB', label: '数学 II・B・C', max: 100 },
+  { key: 'rika1', label: '理科 ①', max: 100 },
+  { key: 'rika2', label: '理科 ②', max: 100 },
+  { key: 'chiko', label: '地歴・公民', max: 100 },
+  { key: 'joho', label: '情報 I', max: 100 },
+];
+/** 入力済みの自己採点を keisha の raw JSON へ。未入力は [0,0]（集計に効かせない）。 */
+function buildGradesRaw(g: Grades): string {
+  const n = (v: string) => { const x = Number(v); return v.trim() !== '' && !isNaN(x) ? x : null; };
+  const pair = (v: string, max: number): [number, number] => { const x = n(v); return x == null ? [0, 0] : [x, max]; };
+  const raw = {
+    kokugo: pair(g.kokugo, 200), eigoR: pair(g.eigoR, 100), eigoL: pair(g.eigoL, 100),
+    mathIA: pair(g.mathIA, 100), mathIIB: pair(g.mathIIB, 100),
+    rika: [pair(g.rika1, 100), pair(g.rika2, 100)],
+    chiko: pair(g.chiko, 100), joho: pair(g.joho, 100),
+  };
+  return JSON.stringify(raw);
+}
+const hasAnyGrade = (g: Grades) => Object.values(g).some((v) => v.trim() !== '');
+
 type Phase = 'edit' | 'submitting' | 'done' | 'error';
 
 /** チェック行（タップで選択トグル・パネルは閉じない） */
@@ -115,6 +146,8 @@ export function ShibouRequestScreen({ nav }: Props) {
   const [examOpen, setExamOpen] = useState(false);
   const [fieldTagOpen, setFieldTagOpen] = useState(false);
   const [condTagOpen, setCondTagOpen] = useState(false);
+  const [showGrades, setShowGrades] = useState(false);
+  const [grades, setGrades] = useState<Grades>(EMPTY_GRADES);
   // タグ体系は GV Compass の taxonomy.json を実行時取得（失敗時は同梱定数）。GV Compass更新に追従。
   const [tagSets, setTagSets] = useState<TagSets>(BUNDLED_TAGS);
   useEffect(() => { let alive = true; loadTagSets().then((t) => { if (alive) setTagSets(t); }); return () => { alive = false; }; }, []);
@@ -135,14 +168,15 @@ export function ShibouRequestScreen({ nav }: Props) {
   // 自由記述＋選択タグを合成して送信（タグはエージェントの検索条件に効く）
   const wantOut = [want.trim(), fieldTags.length ? `【興味タグ】${fieldTags.join('、')}` : ''].filter(Boolean).join('\n');
   const noteOut = [note.trim(), condTags.length ? `【条件タグ】${condTags.join('、')}` : ''].filter(Boolean).join('\n');
+  const gradesOut = showGrades && hasAnyGrade(grades) ? buildGradesRaw(grades) : '';
   const canSubmit = phase !== 'submitting' &&
-    (noPref || prefs.length > 0 || wantOut !== '' || exams.length > 0 || noteOut !== '');
+    (noPref || prefs.length > 0 || wantOut !== '' || exams.length > 0 || noteOut !== '' || gradesOut !== '');
 
   const submit = async () => {
     if (!canSubmit) return;
     setPhase('submitting'); setErrMsg('');
     try {
-      await requestShibou({ region: regionStr, want: wantOut, examType: examStr, note: noteOut });
+      await requestShibou({ region: regionStr, want: wantOut, examType: examStr, note: noteOut, grades: gradesOut });
       setPhase('done');
     } catch (e) {
       setErrMsg(e instanceof Error ? e.message : String(e));
@@ -260,6 +294,33 @@ export function ShibouRequestScreen({ nav }: Props) {
             )}
           </section>
 
+          {/* 成績（共通テスト自己採点）— 任意。入力すると合格可能性まで判定できる */}
+          <section style={S.section}>
+            <button type="button" style={S.gradeToggle} onClick={() => setShowGrades((v) => !v)} aria-pressed={showGrades}>
+              <span style={{ ...S.checkbox, ...(showGrades ? S.checkboxOn : null) }}>{showGrades ? '✓' : ''}</span>
+              <span style={S.gradeToggleLabel}>成績（共通テスト自己採点）を入力して、合格の可能性まで判定する</span>
+            </button>
+            <div style={S.hint}>※共通テストの自己採点をGV（マーク模試フォーム）に記入済みの方は入力不要です。未入力でも、研究内容・条件への適合で候補を出します。</div>
+            {showGrades && (
+              <div style={S.gradeCard}>
+                <div style={S.gradeCardHead}>共通テスト 自己採点</div>
+                <div style={S.gradeGrid}>
+                  {GRADE_FIELDS.map((f) => (
+                    <label key={f.key} style={S.gradeField}>
+                      <span style={S.gradeLabel}>{f.label}</span>
+                      <span style={S.gradeInputWrap}>
+                        <input type="number" inputMode="numeric" min={0} max={f.max} value={grades[f.key]} style={S.gradeInput}
+                          onChange={(e) => setGrades((g) => ({ ...g, [f.key]: e.target.value }))} placeholder="0" />
+                        <em style={S.gradeMax}>/ {f.max}</em>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                <div style={S.hint}>受験する科目だけ入力すれば大丈夫です。傾斜配点は大学ごとに自動で計算します。</div>
+              </div>
+            )}
+          </section>
+
           {phase === 'error' && (
             <div style={S.errBox}>送信に失敗しました。通信環境を確認してもう一度お試しください。<div style={S.errDetail}>{errMsg}</div></div>
           )}
@@ -329,6 +390,26 @@ const S: Record<string, React.CSSProperties> = {
     width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 12, border: '1px solid var(--c-line, #d9d9d2)',
     background: 'var(--c-surface, #fff)', color: 'var(--c-text, #2c2c2c)', fontSize: 14.5, lineHeight: 1.6, resize: 'vertical', fontFamily: 'inherit',
   },
+  gradeToggle: {
+    width: '100%', boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 8px',
+    borderRadius: 10, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left',
+  },
+  gradeToggleLabel: { fontSize: 14, fontWeight: 700, color: 'var(--c-text, #2c2c2c)', lineHeight: 1.5 },
+  hint: { fontSize: 12, lineHeight: 1.6, color: 'var(--c-text-mute, #8a8a82)', margin: '2px 4px 0' },
+  gradeCard: {
+    marginTop: 10, border: '1px solid var(--c-line, #d9d9d2)', borderRadius: 12, background: 'var(--c-surface, #fff)', padding: 12,
+  },
+  gradeCardHead: { fontSize: 13, fontWeight: 700, color: 'var(--c-primary-deep, #3a7d5c)', marginBottom: 10 },
+  gradeGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 },
+  gradeField: { display: 'flex', flexDirection: 'column', gap: 4 },
+  gradeLabel: { fontSize: 12, color: 'var(--c-text, #2c2c2c)' },
+  gradeInputWrap: { display: 'flex', alignItems: 'center', gap: 6 },
+  gradeInput: {
+    width: '100%', minWidth: 0, boxSizing: 'border-box', padding: '8px 10px', borderRadius: 10,
+    border: '1px solid var(--c-line, #d9d9d2)', background: 'var(--c-surface, #fff)', color: 'var(--c-text, #2c2c2c)',
+    fontSize: 15, fontFamily: 'inherit',
+  },
+  gradeMax: { flex: 'none', fontSize: 12, fontStyle: 'normal', color: 'var(--c-text-mute, #8a8a82)' },
   primaryBtn: { width: '100%', marginTop: 24, padding: '14px 16px', borderRadius: 14, border: 'none', background: 'var(--c-primary, #4e9b73)', color: '#fff', fontSize: 15.5, fontWeight: 700, cursor: 'pointer' },
   primaryBtnDisabled: { width: '100%', marginTop: 24, padding: '14px 16px', borderRadius: 14, border: 'none', background: 'var(--c-line, #d9d9d2)', color: 'var(--c-text-mute, #8a8a82)', fontSize: 15.5, fontWeight: 700, cursor: 'not-allowed' },
   errBox: { marginTop: 20, padding: '12px 14px', borderRadius: 12, background: 'rgba(200,60,60,0.08)', border: '1px solid rgba(200,60,60,0.3)', color: '#a13030', fontSize: 13.5 },
