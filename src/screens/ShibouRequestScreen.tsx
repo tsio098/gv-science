@@ -300,7 +300,7 @@ export function ShibouRequestScreen({ nav }: Props) {
               <span style={{ ...S.checkbox, ...(showGrades ? S.checkboxOn : null) }}>{showGrades ? '✓' : ''}</span>
               <span style={S.gradeToggleLabel}>成績（共通テスト自己採点）を入力して、合格の可能性まで判定する</span>
             </button>
-            <div style={S.hint}>※共通テストの自己採点をGV（マーク模試フォーム）に記入済みの方は入力不要です。未入力でも、研究内容・条件への適合で候補を出します。</div>
+            <div style={S.hint}><strong style={S.hintStrong}>自己採点をGV（自己採点記入フォーム）へ記入済みの方は入力不要</strong>です。未入力でも、研究内容・条件への適合で候補を出します。</div>
             {showGrades && (
               <div style={S.gradeCard}>
                 <div style={S.gradeCardHead}>共通テスト 自己採点</div>
@@ -396,6 +396,7 @@ const S: Record<string, React.CSSProperties> = {
   },
   gradeToggleLabel: { fontSize: 14, fontWeight: 700, color: 'var(--c-text, #2c2c2c)', lineHeight: 1.5 },
   hint: { fontSize: 12, lineHeight: 1.6, color: 'var(--c-text-mute, #8a8a82)', margin: '2px 4px 0' },
+  hintStrong: { fontWeight: 700, color: 'var(--c-primary-deep, #3a7d5c)' },
   gradeCard: {
     marginTop: 10, border: '1px solid var(--c-line, #d9d9d2)', borderRadius: 12, background: 'var(--c-surface, #fff)', padding: 12,
   },
