@@ -24,6 +24,7 @@ function bandMeta(raw: string): BandMeta {
   if (b.includes('適正')) return { label: '適正', sub: '実力相応', accent: '#7aa84a', soft: 'rgba(120,170,90,0.16)', ink: '#5a7d2a' };
   if (b.includes('挑戦')) return { label: '挑戦', sub: 'やや上', accent: '#e0883c', soft: 'rgba(224,136,60,0.16)', ink: '#b5642a' };
   if (b.includes('再考')) return { label: '要再考', sub: '現状は厳しい', accent: '#c95b5b', soft: 'rgba(201,91,91,0.14)', ink: '#a13b3b' };
+  if (b.includes('推薦')) return { label: '推薦', sub: '別ルート', accent: '#5b7fa1', soft: 'rgba(91,127,161,0.14)', ink: '#3f6088' };
   return { label: '判定保留', sub: '模試成績が未登録', accent: '#a7a79c', soft: 'rgba(120,120,110,0.12)', ink: '#777' };
 }
 
