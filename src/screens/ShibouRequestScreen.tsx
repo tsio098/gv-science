@@ -139,6 +139,7 @@ export function ShibouRequestScreen({ nav }: Props) {
   const [exams, setExams] = useState<string[]>([]);
   const [note, setNote] = useState('');
   const [fieldTags, setFieldTags] = useState<string[]>([]); // 興味タグ（分野・研究対象）→ want へ
+  const [detailTags, setDetailTags] = useState<string[]>([]); // 詳細タグ（選んだ中分類の下位生タグ）→ want へ
   const [condTags, setCondTags] = useState<string[]>([]);   // 条件タグ（入試条件）→ note へ
   const [phase, setPhase] = useState<Phase>('edit');
   const [errMsg, setErrMsg] = useState('');
@@ -152,6 +153,14 @@ export function ShibouRequestScreen({ nav }: Props) {
   const [tagSets, setTagSets] = useState<TagSets>(BUNDLED_TAGS);
   useEffect(() => { let alive = true; loadTagSets().then((t) => { if (alive) setTagSets(t); }); return () => { alive = false; }; }, []);
 
+  // 下位タグ（詳細）を持つ選択中の中分類。ここに出た中分類の生タグから詳細を選べる。
+  const selectedWithSubs = fieldTags.filter((t) => (tagSets.subTags[t]?.length ?? 0) > 0);
+  // 親の中分類の選択が外れた詳細タグは自動的に落とす（孤児化を防ぐ）。
+  useEffect(() => {
+    const allowed = new Set(fieldTags.flatMap((t) => tagSets.subTags[t] || []));
+    setDetailTags((s) => (s.every((t) => allowed.has(t)) ? s : s.filter((t) => allowed.has(t))));
+  }, [fieldTags, tagSets]);
+
   const togglePref = (p: string) => {
     setNoPref(false);
     setPrefs((s) => (s.includes(p) ? s.filter((x) => x !== p) : [...s, p]));
@@ -159,6 +168,7 @@ export function ShibouRequestScreen({ nav }: Props) {
   const toggleNoPref = () => { setNoPref((v) => !v); setPrefs([]); };
   const toggleExam = (v: string) => setExams((s) => (s.includes(v) ? s.filter((x) => x !== v) : [...s, v]));
   const toggleFieldTag = (t: string) => setFieldTags((s) => (s.includes(t) ? s.filter((x) => x !== t) : [...s, t]));
+  const toggleDetailTag = (t: string) => setDetailTags((s) => (s.includes(t) ? s.filter((x) => x !== t) : [...s, t]));
   const toggleCondTag = (t: string) => setCondTags((s) => (s.includes(t) ? s.filter((x) => x !== t) : [...s, t]));
 
   const regionStr = noPref ? '希望なし' : normalizePrefs(prefs); // 送信＝正式名
@@ -166,7 +176,11 @@ export function ShibouRequestScreen({ nav }: Props) {
   const regionSummary = noPref ? '希望なし' : prefs.length ? `${prefs.length}件：${prefs.join('・')}` : ''; // 表示は短縮名
   const examSummary = exams.length ? `${exams.length}件：${exams.join('・')}` : '';
   // 自由記述＋選択タグを合成して送信（タグはエージェントの検索条件に効く）
-  const wantOut = [want.trim(), fieldTags.length ? `【興味タグ】${fieldTags.join('、')}` : ''].filter(Boolean).join('\n');
+  const wantOut = [
+    want.trim(),
+    fieldTags.length ? `【興味タグ】${fieldTags.join('、')}` : '',
+    detailTags.length ? `【詳細分野】${detailTags.join('、')}` : '',
+  ].filter(Boolean).join('\n');
   const noteOut = [note.trim(), condTags.length ? `【条件タグ】${condTags.join('、')}` : ''].filter(Boolean).join('\n');
   const gradesOut = showGrades && hasAnyGrade(grades) ? buildGradesRaw(grades) : '';
   const canSubmit = phase !== 'submitting' &&
@@ -256,6 +270,27 @@ export function ShibouRequestScreen({ nav }: Props) {
                 <div style={{ ...S.subHead, marginTop: 12 }}>研究対象・生きもので選ぶ</div>
                 <TagGroups groups={tagSets.targetGroups} selected={fieldTags} onToggle={toggleFieldTag} />
                 <button type="button" style={S.doneBtn} onClick={() => setFieldTagOpen(false)}>選択を終える</button>
+              </div>
+            )}
+            {/* 詳細分野：中分類を選ぶと、その下位の生タグでさらに絞り込める（任意） */}
+            {selectedWithSubs.length > 0 && (
+              <div style={S.detailWrap}>
+                <div style={S.subHead}>さらに詳しく：選んだ分野の中で興味のあること<span style={S.opt}>（任意・複数可）</span></div>
+                {selectedWithSubs.map((sub) => (
+                  <div key={sub} style={S.detailGroup}>
+                    <div style={S.groupName}>{sub}</div>
+                    <div style={S.chips}>
+                      {tagSets.subTags[sub].map((t) => {
+                        const on = detailTags.includes(t);
+                        return (
+                          <button type="button" key={t} style={on ? S.chip : S.chipOutline} onClick={() => toggleDetailTag(t)}>
+                            {t}{on ? <span style={S.chipX}> ×</span> : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </section>
@@ -356,6 +391,16 @@ const S: Record<string, React.CSSProperties> = {
     fontSize: 12, fontWeight: 600, cursor: 'pointer',
   },
   chipX: { fontSize: 12, opacity: 0.85 },
+  chipOutline: {
+    display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 9px', borderRadius: 999,
+    border: '1px solid var(--c-line, #c8c8c0)', background: 'var(--c-surface, #fff)', color: 'var(--c-text, #2c2c2c)',
+    fontSize: 12, fontWeight: 600, cursor: 'pointer',
+  },
+  detailWrap: {
+    marginTop: 8, border: '1px dashed var(--c-line, #d9d9d2)', borderRadius: 12,
+    background: 'var(--c-surface-sub, #f7f7f3)', padding: 8, maxHeight: 300, overflowY: 'auto',
+  },
+  detailGroup: { marginBottom: 8 },
   field: {
     width: '100%', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     gap: 8, padding: '11px 12px', borderRadius: 12, border: '1px solid var(--c-line, #d9d9d2)',

@@ -44,10 +44,13 @@ export const EXAM_GROUPS: TagGroup[] = [
   { name: 'その他', tags: ['情報あり', '選択科目あり', '共通テスト利用'] },
 ];
 
-export interface TagSets { fieldSystems: TagGroup[]; targetGroups: TagGroup[]; examGroups: TagGroup[] }
+/** 中分類 → 下位の生タグ群（例: 化学 → [有機化学, 量子化学, …]）。中分類選択時の詳細指定に使う。 */
+export type SubTags = Record<string, string[]>;
 
-/** 取得失敗時のフォールバック（上の同梱定数）。 */
-export const BUNDLED_TAGS: TagSets = { fieldSystems: FIELD_SYSTEMS, targetGroups: TARGET_GROUPS, examGroups: EXAM_GROUPS };
+export interface TagSets { fieldSystems: TagGroup[]; targetGroups: TagGroup[]; examGroups: TagGroup[]; subTags: SubTags }
+
+/** 取得失敗時のフォールバック（上の同梱定数）。subTags はライブ taxonomy 取得時のみ提供（同梱は空）。 */
+export const BUNDLED_TAGS: TagSets = { fieldSystems: FIELD_SYSTEMS, targetGroups: TARGET_GROUPS, examGroups: EXAM_GROUPS, subTags: {} };
 
 const COMPASS_URL = (import.meta.env.VITE_GV_COMPASS_URL as string | undefined) || 'https://gv-compass.pages.dev';
 
@@ -65,7 +68,8 @@ export async function loadTagSets(): Promise<TagSets> {
     if (!res.ok) return BUNDLED_TAGS;
     const j = await res.json();
     if (isGroups(j?.fieldSystems) && isGroups(j?.targetGroups) && isGroups(j?.examGroups)) {
-      return { fieldSystems: j.fieldSystems, targetGroups: j.targetGroups, examGroups: j.examGroups };
+      const subTags: SubTags = (j?.subTags && typeof j.subTags === 'object' && !Array.isArray(j.subTags)) ? j.subTags : {};
+      return { fieldSystems: j.fieldSystems, targetGroups: j.targetGroups, examGroups: j.examGroups, subTags };
     }
     return BUNDLED_TAGS;
   } catch {
