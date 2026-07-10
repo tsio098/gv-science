@@ -43,35 +43,66 @@ const toFullPref = (p: string) => PREF_FULL[p] || `${p}県`;
 const normalizePrefs = (prefs: string[]) => prefs.map(toFullPref).join('、');
 
 // ── 成績（共通テスト自己採点）: 任意入力。keisha_calc.py の生徒 raw JSON をそのまま組み立てる ──
+interface SubjectScore { subject: string; score: string }
 interface Grades {
   kokugo: string; eigoR: string; eigoL: string; mathIA: string; mathIIB: string;
-  rika1: string; rika2: string; chiko: string; joho: string;
+  rika: SubjectScore[];  // 最大3科目（例：化学＋生物基礎＋地学基礎）
+  chiko: SubjectScore[]; // 最大2科目（文系は2科目）
+  joho: string;
 }
-const EMPTY_GRADES: Grades = { kokugo: '', eigoR: '', eigoL: '', mathIA: '', mathIIB: '', rika1: '', rika2: '', chiko: '', joho: '' };
-const GRADE_FIELDS: { key: keyof Grades; label: string; max: number }[] = [
+const EMPTY_GRADES: Grades = {
+  kokugo: '', eigoR: '', eigoL: '', mathIA: '', mathIIB: '',
+  rika: [{ subject: '', score: '' }, { subject: '', score: '' }, { subject: '', score: '' }],
+  chiko: [{ subject: '', score: '' }, { subject: '', score: '' }],
+  joho: '',
+};
+const GRADE_FIELDS: { key: 'kokugo' | 'eigoR' | 'eigoL' | 'mathIA' | 'mathIIB' | 'joho'; label: string; max: number }[] = [
   { key: 'kokugo', label: '国語', max: 200 },
   { key: 'eigoR', label: '英語 R（リーディング）', max: 100 },
   { key: 'eigoL', label: '英語 L（リスニング）', max: 100 },
   { key: 'mathIA', label: '数学 I・A', max: 100 },
   { key: 'mathIIB', label: '数学 II・B・C', max: 100 },
-  { key: 'rika1', label: '理科 ①', max: 100 },
-  { key: 'rika2', label: '理科 ②', max: 100 },
-  { key: 'chiko', label: '地歴・公民', max: 100 },
   { key: 'joho', label: '情報 I', max: 100 },
 ];
-/** 入力済みの自己採点を keisha の raw JSON へ。未入力は [0,0]（集計に効かせない）。 */
+// 共通テストの理科：基礎=50点満点／専門=100点満点。科目によって受験できる大学が変わるため科目名も送る。
+const RIKA_OPTIONS: { name: string; max: number }[] = [
+  { name: '物理基礎', max: 50 }, { name: '化学基礎', max: 50 }, { name: '生物基礎', max: 50 }, { name: '地学基礎', max: 50 },
+  { name: '物理', max: 100 }, { name: '化学', max: 100 }, { name: '生物', max: 100 }, { name: '地学', max: 100 },
+];
+// 地歴・公民：各100点満点。文系は2科目。
+const CHIKO_OPTIONS: { name: string; max: number }[] = [
+  { name: '地理総合、地理探究', max: 100 }, { name: '歴史総合、日本史探究', max: 100 }, { name: '歴史総合、世界史探究', max: 100 },
+  { name: '公共、倫理', max: 100 }, { name: '公共、政治・経済', max: 100 }, { name: '地理総合／歴史総合／公共', max: 100 },
+];
+const subMax = (opts: { name: string; max: number }[], name: string) => opts.find((o) => o.name === name)?.max ?? 100;
+
+/** 入力済みの自己採点を keisha の raw JSON へ。未入力は [0,0]（集計に効かせない）。
+ *  互換性：rika は従来どおり [点,満点] ペアの配列（keisha_calc/match_calc は全要素を合算するため科目数は可変でよい）、
+ *  chiko も従来どおり単一ペア（2科目は合算）。科目名・内訳は追加キーで同梱（既存計算は未知キーを無視）。 */
 function buildGradesRaw(g: Grades): string {
   const n = (v: string) => { const x = Number(v); return v.trim() !== '' && !isNaN(x) ? x : null; };
   const pair = (v: string, max: number): [number, number] => { const x = n(v); return x == null ? [0, 0] : [x, max]; };
+  const rika = g.rika.filter((s) => s.subject && n(s.score) != null);
+  const chiko = g.chiko.filter((s) => s.subject && n(s.score) != null);
+  const chikoSum = chiko.reduce((a, s) => a + (n(s.score) || 0), 0);
+  const chikoMax = chiko.reduce((a, s) => a + subMax(CHIKO_OPTIONS, s.subject), 0);
   const raw = {
     kokugo: pair(g.kokugo, 200), eigoR: pair(g.eigoR, 100), eigoL: pair(g.eigoL, 100),
     mathIA: pair(g.mathIA, 100), mathIIB: pair(g.mathIIB, 100),
-    rika: [pair(g.rika1, 100), pair(g.rika2, 100)],
-    chiko: pair(g.chiko, 100), joho: pair(g.joho, 100),
+    rika: rika.map((s) => pair(s.score, subMax(RIKA_OPTIONS, s.subject))),
+    chiko: chiko.length ? ([chikoSum, chikoMax] as [number, number]) : ([0, 0] as [number, number]),
+    joho: pair(g.joho, 100),
+    // 追加情報：科目により受験可否・傾斜が変わる大学の判定に使う（順序は rika / chikoBreakdown と対応）
+    rikaSubjects: rika.map((s) => s.subject),
+    chikoSubjects: chiko.map((s) => s.subject),
+    chikoBreakdown: chiko.map((s) => pair(s.score, subMax(CHIKO_OPTIONS, s.subject))),
   };
   return JSON.stringify(raw);
 }
-const hasAnyGrade = (g: Grades) => Object.values(g).some((v) => v.trim() !== '');
+const hasAnyGrade = (g: Grades) =>
+  [g.kokugo, g.eigoR, g.eigoL, g.mathIA, g.mathIIB, g.joho].some((v) => v.trim() !== '')
+  || g.rika.some((s) => s.score.trim() !== '' && s.subject !== '')
+  || g.chiko.some((s) => s.score.trim() !== '' && s.subject !== '');
 
 type Phase = 'edit' | 'submitting' | 'done' | 'error';
 
@@ -149,6 +180,10 @@ export function ShibouRequestScreen({ nav }: Props) {
   const [condTagOpen, setCondTagOpen] = useState(false);
   const [showGrades, setShowGrades] = useState(false);
   const [grades, setGrades] = useState<Grades>(EMPTY_GRADES);
+  const setRika = (i: number, patch: Partial<SubjectScore>) =>
+    setGrades((g) => ({ ...g, rika: g.rika.map((s, j) => (j === i ? { ...s, ...patch } : s)) }));
+  const setChiko = (i: number, patch: Partial<SubjectScore>) =>
+    setGrades((g) => ({ ...g, chiko: g.chiko.map((s, j) => (j === i ? { ...s, ...patch } : s)) }));
   // タグ体系は GV Compass の taxonomy.json を実行時取得（失敗時は同梱定数）。GV Compass更新に追従。
   const [tagSets, setTagSets] = useState<TagSets>(BUNDLED_TAGS);
   useEffect(() => { let alive = true; loadTagSets().then((t) => { if (alive) setTagSets(t); }); return () => { alive = false; }; }, []);
@@ -351,7 +386,55 @@ export function ShibouRequestScreen({ nav }: Props) {
                     </label>
                   ))}
                 </div>
-                <div style={S.hint}>受験する科目だけ入力すれば大丈夫です。傾斜配点は大学ごとに自動で計算します。</div>
+
+                <div style={S.gradeSub}>理科<span style={S.gradeSubNote}>基礎=50点満点／専門=100点満点。「専門1科目＋基礎2科目」なら3つとも入力してください。</span></div>
+                <div style={S.gradeGrid}>
+                  {grades.rika.map((s, i) => {
+                    const max = s.subject ? subMax(RIKA_OPTIONS, s.subject) : null;
+                    return (
+                      <div key={i} style={{ ...S.gradeField, gridColumn: '1 / -1' }}>
+                        <span style={S.gradeLabel}>理科 {i + 1}科目め{i === 2 ? '（専門＋基礎2科目のとき）' : i === 1 ? '（理系など2科目め）' : ''}</span>
+                        <span style={S.gradeInputWrap}>
+                          <select style={S.gradeSelect} value={s.subject}
+                            onChange={(e) => setRika(i, { subject: e.target.value, ...(e.target.value === '' ? { score: '' } : null) })}>
+                            <option value="">科目を選ぶ</option>
+                            <optgroup label="基礎科目（50点満点）">
+                              {RIKA_OPTIONS.filter((o) => o.max === 50).map((o) => <option key={o.name} value={o.name}>{o.name}</option>)}
+                            </optgroup>
+                            <optgroup label="専門科目（100点満点）">
+                              {RIKA_OPTIONS.filter((o) => o.max === 100).map((o) => <option key={o.name} value={o.name}>{o.name}</option>)}
+                            </optgroup>
+                          </select>
+                          <input type="number" inputMode="numeric" min={0} max={max ?? 100} value={s.score}
+                            style={{ ...S.gradeInput, ...S.gradeNum, ...(s.subject ? null : S.gradeInputOff) }}
+                            disabled={!s.subject} onChange={(e) => setRika(i, { score: e.target.value })} placeholder="0" />
+                          <em style={S.gradeMax}>/ {max ?? '—'}</em>
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div style={S.gradeSub}>地歴・公民<span style={S.gradeSubNote}>各100点満点。文系は2科目入力してください。</span></div>
+                <div style={S.gradeGrid}>
+                  {grades.chiko.map((s, i) => (
+                    <div key={i} style={{ ...S.gradeField, gridColumn: '1 / -1' }}>
+                      <span style={S.gradeLabel}>地歴・公民 {i + 1}科目め{i === 1 ? '（文系は必須）' : ''}</span>
+                      <span style={S.gradeInputWrap}>
+                        <select style={S.gradeSelect} value={s.subject}
+                          onChange={(e) => setChiko(i, { subject: e.target.value, ...(e.target.value === '' ? { score: '' } : null) })}>
+                          <option value="">科目を選ぶ</option>
+                          {CHIKO_OPTIONS.map((o) => <option key={o.name} value={o.name}>{o.name}</option>)}
+                        </select>
+                        <input type="number" inputMode="numeric" min={0} max={100} value={s.score}
+                          style={{ ...S.gradeInput, ...S.gradeNum, ...(s.subject ? null : S.gradeInputOff) }}
+                          disabled={!s.subject} onChange={(e) => setChiko(i, { score: e.target.value })} placeholder="0" />
+                        <em style={S.gradeMax}>/ {s.subject ? 100 : '—'}</em>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div style={S.hint}>受験する科目だけ入力すれば大丈夫です。傾斜配点は大学ごとに自動で計算します。理科・地歴公民は科目名も一緒に送られ、受験できる大学の判定に使われます。</div>
               </div>
             )}
           </section>
@@ -456,6 +539,15 @@ const S: Record<string, React.CSSProperties> = {
     fontSize: 15, fontFamily: 'inherit',
   },
   gradeMax: { flex: 'none', fontSize: 12, fontStyle: 'normal', color: 'var(--c-text-mute, #8a8a82)' },
+  gradeSub: { fontSize: 12.5, fontWeight: 700, color: 'var(--c-primary-deep, #3a7d5c)', margin: '14px 2px 6px' },
+  gradeSubNote: { fontSize: 11, fontWeight: 400, color: 'var(--c-text-mute, #8a8a82)', marginLeft: 8 },
+  gradeSelect: {
+    flex: '1 1 auto', minWidth: 0, boxSizing: 'border-box', padding: '8px 6px', borderRadius: 10,
+    border: '1px solid var(--c-line, #d9d9d2)', background: 'var(--c-surface, #fff)', color: 'var(--c-text, #2c2c2c)',
+    fontSize: 13.5, fontFamily: 'inherit',
+  },
+  gradeNum: { width: 84, flex: 'none' },
+  gradeInputOff: { background: 'rgba(120,120,110,0.07)', color: 'var(--c-text-mute, #8a8a82)' },
   primaryBtn: { width: '100%', marginTop: 24, padding: '14px 16px', borderRadius: 14, border: 'none', background: 'var(--c-primary, #4e9b73)', color: '#fff', fontSize: 15.5, fontWeight: 700, cursor: 'pointer' },
   primaryBtnDisabled: { width: '100%', marginTop: 24, padding: '14px 16px', borderRadius: 14, border: 'none', background: 'var(--c-line, #d9d9d2)', color: 'var(--c-text-mute, #8a8a82)', fontSize: 15.5, fontWeight: 700, cursor: 'not-allowed' },
   errBox: { marginTop: 20, padding: '12px 14px', borderRadius: 12, background: 'rgba(200,60,60,0.08)', border: '1px solid rgba(200,60,60,0.3)', color: '#a13030', fontSize: 13.5 },
