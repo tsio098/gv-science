@@ -18,13 +18,19 @@ interface Props {
 type BandMeta = { label: string; sub: string; accent: string; soft: string; ink: string };
 
 /** 判定文字列（🟦安全/🟩適正/🟥挑戦/⬛再考/－成績未登録）→ 色とラベル（絵文字は使わない・語彙は大人向け）。 */
+const BAND_DEFS: Array<{ key: string } & BandMeta> = [
+  { key: '安全', label: '安全', sub: '合格圏', accent: '#4e9b73', soft: 'rgba(78,155,115,0.14)', ink: '#2f7d52' },
+  { key: '適正', label: '適正', sub: '実力相応', accent: '#7aa84a', soft: 'rgba(120,170,90,0.16)', ink: '#5a7d2a' },
+  { key: '挑戦', label: '挑戦', sub: 'やや上', accent: '#e0883c', soft: 'rgba(224,136,60,0.16)', ink: '#b5642a' },
+  { key: '再考', label: '要再考', sub: '現状は厳しい', accent: '#c95b5b', soft: 'rgba(201,91,91,0.14)', ink: '#a13b3b' },
+  { key: '推薦', label: '推薦', sub: '別ルート', accent: '#5b7fa1', soft: 'rgba(91,127,161,0.14)', ink: '#3f6088' },
+];
 function bandMeta(raw: string): BandMeta {
   const b = raw || '';
-  if (b.includes('安全')) return { label: '安全', sub: '合格圏', accent: '#4e9b73', soft: 'rgba(78,155,115,0.14)', ink: '#2f7d52' };
-  if (b.includes('適正')) return { label: '適正', sub: '実力相応', accent: '#7aa84a', soft: 'rgba(120,170,90,0.16)', ink: '#5a7d2a' };
-  if (b.includes('挑戦')) return { label: '挑戦', sub: 'やや上', accent: '#e0883c', soft: 'rgba(224,136,60,0.16)', ink: '#b5642a' };
-  if (b.includes('再考')) return { label: '要再考', sub: '現状は厳しい', accent: '#c95b5b', soft: 'rgba(201,91,91,0.14)', ink: '#a13b3b' };
-  if (b.includes('推薦')) return { label: '推薦', sub: '別ルート', accent: '#5b7fa1', soft: 'rgba(91,127,161,0.14)', ink: '#3f6088' };
+  // 判定トークンは文字列先頭に来る（括弧内の注記に「挑戦」「安全ルート」等が混ざり得るため、最初に現れた語で判定する）
+  let hit: BandMeta | null = null; let pos = Infinity;
+  for (const def of BAND_DEFS) { const i = b.indexOf(def.key); if (i >= 0 && i < pos) { pos = i; hit = def; } }
+  if (hit) return hit;
   return { label: '判定保留', sub: '模試成績が未登録', accent: '#a7a79c', soft: 'rgba(120,120,110,0.12)', ink: '#777' };
 }
 
