@@ -79,6 +79,8 @@ export function isTransientError(err: unknown): boolean {
   if (/UNAUTHORIZED|NEEDS_PAIRING|UNKNOWN_ACTION|NO_DATA/i.test(msg)) return false;
   if (/HTTP\s+(429|5\d\d)/.test(msg)) return true;
   if (/INTERNAL_ERROR/i.test(msg)) return true;
+  // Proxy が返す一時障害（GAS 待ち行列の打ち切り・ゲート満杯）とフロント側タイムアウト
+  if (/UPSTREAM_(TIMEOUT|BUSY|ERROR)|^TIMEOUT$/.test(msg)) return true;
   if (/NO_ENDPOINT/.test(msg)) return false; // エンドポイント未設定はリトライ無意味
   // fetch のネットワーク例外（"Failed to fetch" 等）や不明なものは一時障害扱い。
   return true;

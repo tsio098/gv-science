@@ -46,6 +46,14 @@ const GAS = import.meta.env.VITE_GAS_ENDPOINT;
 /** エンドポイント未設定（ローカル開発）のときだけモックで継続する。*/
 const USE_MOCK_FALLBACK = !GAS;
 
+/**
+ * 1 リクエストの待ち時間上限（ms）。
+ * 2026-09-04 の障害では GAS 側の待ち行列で 1 本が最長 265 秒待たされ、その間
+ * スピナーが出続けた。Proxy 側も 25 秒で打ち切るので、フロントはそれより少し長い
+ * 30 秒で諦めて withRetry に任せる（タイムアウトは一時障害としてリトライ対象）。
+ */
+const FETCH_TIMEOUT_MS = 30_000;
+
 async function gasGet<T>(
   action: string,
   params: Record<string, string> = {}
@@ -57,10 +65,21 @@ async function gasGet<T>(
     ...(t ? { token: t } : {}),
     ...params,
   });
-  const res = await fetch(`${GAS}?${usp.toString()}`, {
-    method: 'GET',
-    credentials: 'omit',
-  });
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), FETCH_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(`${GAS}?${usp.toString()}`, {
+      method: 'GET',
+      credentials: 'omit',
+      signal: ac.signal,
+    });
+  } catch (e) {
+    if (ac.signal.aborted) throw new Error('TIMEOUT');
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = (await res.json()) as { error?: string } & T;
   // GAS 側はエラーも 200 で返す（HTTP code を変えにくい仕様）
