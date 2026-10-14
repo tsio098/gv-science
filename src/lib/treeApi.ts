@@ -54,7 +54,7 @@ export interface NodeStats {
   mastery: number;
   solved: number;
   dist: Dist;
-  /** 新着（追加から 14 日以内の試験）のうち未着手の数。Phase 3 の Proxy では無い */
+  /** 新着（追加から 14 日以内の試験）のうち未出題の数。Phase 3 の Proxy では無い */
   newCount?: number;
 }
 
@@ -67,14 +67,19 @@ export interface RankInfo {
 export interface FieldProgress extends NodeStats {
   pct: number;
   unlocked: boolean;
-  prereqs: { field: string; pct: number; done: boolean }[];
+  /** この分野の挑戦（提出）回数と、全解答の正答率（%）。解放条件に使う（2026-10-15〜）*/
+  play?: { count: number; rate: number };
+  prereqs: { field: string; pct: number; plays?: number; rate?: number; done: boolean }[];
   types: Record<QType, NodeStats>;
 }
 
 export interface TreeProgress {
   subject: string;
   version: number;
+  /** 解放に要る正答率（%）*/
   unlockPct: number;
+  /** 解放に要る挑戦回数（2026-10-15〜。古い Proxy では無い）*/
+  unlockPlays?: number;
   total: NodeStats & { pct: number };
   fields: Record<string, FieldProgress>;
   /** 科目・分野ごとの自分の順位（Phase 4）*/
@@ -126,7 +131,8 @@ export interface AnswerResult {
   set: string | null;
   correct: boolean;
   value: string[];
-  answer: string[];
+  /** 正解は返さない（2026-10-15〜）。古い Proxy の応答にだけある */
+  answer?: string[];
   timeMs: number;
   bonus: number;
   gain: number;
@@ -148,7 +154,10 @@ export interface SubmitResult {
     elapsedMs: number;
   };
   node: { field: string; qtype: QType; before: NodeStats | null; after: NodeStats | null };
-  fieldScore: { before: (NodeStats & { pct: number; unlocked: boolean }) | null; after: (NodeStats & { pct: number; unlocked: boolean }) | null };
+  fieldScore: {
+    before: (NodeStats & { pct: number; unlocked: boolean; play?: { count: number; rate: number } }) | null;
+    after: (NodeStats & { pct: number; unlocked: boolean; play?: { count: number; rate: number } }) | null;
+  };
   newlyUnlocked: string[];
   /** 分野の順位の前後（Phase 4）*/
   rank?: { before: RankInfo; after: RankInfo };

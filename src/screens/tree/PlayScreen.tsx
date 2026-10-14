@@ -5,7 +5,7 @@
  * - セット（同じリードの小問）: リードを上に常時表示し、小問を縦に並べて欄ごとに選ぶ
  * - 正解はサーバだけが持つので、ここでは正誤を出さずに次へ進み、最後にまとめて提出する
  * - 時間は単位（単問 / セット）ごとに、画像がそろってから「決定」までを測る。
- *   セットは小問に等分して送る（サーバはセット内の合計で時間ボーナスを出す）
+ *   セットは小問に等分して送る（サーバはセット内の合計でタイムボーナスを出す）
  * - 画像はその場でピンチ拡大、タップで全画面ビューア（§4.6）。全画面中もタイマーは止めない
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -243,7 +243,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
             <span> / {fmtTime(limitMs)}</span>
           </div>
           <small className="tr-num" style={{ color: bonus > 0 ? '#9CC297' : 'rgba(249,247,242,0.45)' }}>
-            ボーナス +{bonus}
+            タイムボーナス +{bonus}
           </small>
         </div>
       </div>

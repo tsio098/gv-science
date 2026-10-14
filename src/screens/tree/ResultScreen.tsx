@@ -1,6 +1,7 @@
 /**
  * ANCHOR TREE — 結果（設計書 §5.2 / モック Result.dc.html）。
- * 今回の加算（新規正解 +75・時間ボーナス更新の差分）・累積スコア・マスター度・出題状況の前後・間違えた問題。
+ * 今回の加算（新規正解 +75・タイムボーナス更新の差分）・累積スコア・マスター度・出題状況の前後・間違えた問題。
+ * 間違えた問題は問題（画像）と自分の答えだけを見せ、正解は表示しない（2026-10-15 先生決定）。
  * ニックネームはここで入力し、離れるときに保存する（/tree/profile。NG ワードなら離れずに知らせる）。
  * 分野の順位の前後（Phase 4）・間違えた問題の「解答がおかしい」報告（課題 #21）。
  */
@@ -52,13 +53,11 @@ const REPORT_LABEL: Record<ReportState, string> = {
 
 function WrongItem({
   label,
-  answer,
   mine,
   body,
   onReport,
 }: {
   label: string;
-  answer: string;
   mine: string;
   body: string | null;
   onReport: () => Promise<'sent' | 'already' | 'error'>;
@@ -85,8 +84,7 @@ function WrongItem({
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
           <div style={{ fontSize: 12, color: '#A9B5A5' }}>{label}</div>
           <div style={{ fontSize: 13 }}>
-            正解 <b className="tr-num" style={{ color: '#9CC297' }}>{answer}</b> <span style={{ color: '#A9B5A5' }}>·</span> あなた{' '}
-            <b className="tr-num" style={{ color: '#F7C59F' }}>{mine}</b>
+            あなたの答え <b className="tr-num" style={{ color: '#F7C59F' }}>{mine}</b>
           </div>
         </div>
         <span style={{ color: '#A9B5A5', transform: open ? 'rotate(90deg)' : undefined, display: 'flex' }}>
@@ -140,6 +138,8 @@ export function ResultScreen({ result, session, manifest, grade, nickname, onSav
     else go();
   };
   const rank = result.rank;
+  const play = result.fieldScore.after?.play;
+  const unlockPlays = (manifest as { unlockPlays?: number }).unlockPlays ?? 5;
   const { summary, node } = result;
   const before = node.before;
   const after = node.after;
@@ -211,7 +211,7 @@ export function ResultScreen({ result, session, manifest, grade, nickname, onSav
             )}
             {summary.bonusPoints > 0 && (
               <span className="tr-pill tr-num" style={{ background: 'rgba(156,194,151,0.18)', color: '#9CC297' }}>
-                時間ボーナス +{fmtScore(summary.bonusPoints)}
+                タイムボーナス +{fmtScore(summary.bonusPoints)}
               </span>
             )}
             {keep > 0 && (
@@ -246,17 +246,19 @@ export function ResultScreen({ result, session, manifest, grade, nickname, onSav
             </button>
           ) : (
             <div className="tr-stat">
-              <div>分野の達成度</div>
-              <div className="tr-num">{Math.round(fs.after?.pct ?? 0)}%</div>
+              <div>この分野の正答率</div>
+              <div className="tr-num">{play ? `${Math.round(play.rate)}%` : '—'}</div>
               <div className="tr-num" style={{ color: '#A9B5A5', fontWeight: 500 }}>
-                解放ライン {manifest.unlockPct}%
+                {play ? `挑戦 ${play.count} 回` : ''}
               </div>
             </div>
           )}
         </div>
-        {rank && (
+        {play && (
           <div className="tr-note" style={{ textAlign: 'right' }}>
-            分野の達成度 <b className="tr-num" style={{ color: '#F9F7F2' }}>{Math.round(fs.after?.pct ?? 0)}%</b> · 解放ライン {manifest.unlockPct}%
+            この分野 挑戦 <b className="tr-num" style={{ color: '#F9F7F2' }}>{play.count}</b> 回 · 正答率{' '}
+            <b className="tr-num" style={{ color: '#F9F7F2' }}>{Math.round(play.rate)}%</b>（次の分野の解放: {unlockPlays} 回以上・
+            {manifest.unlockPct}% 以上）
           </div>
         )}
 
@@ -265,7 +267,7 @@ export function ResultScreen({ result, session, manifest, grade, nickname, onSav
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#A9B5A5' }}>
               <span>出題状況（{after.total} 問）</span>
               <span>
-                未着手 {before?.dist.fresh ?? 0} → {after.dist.fresh}
+                未出題 {before?.dist.fresh ?? 0} → {after.dist.fresh}
               </span>
             </div>
             <Dist s={before} col={col} label="前" />
@@ -285,7 +287,7 @@ export function ResultScreen({ result, session, manifest, grade, nickname, onSav
               </span>
               <span>
                 <i style={{ background: 'rgba(249,247,242,0.2)' }} />
-                未着手
+                未出題
               </span>
             </div>
           </div>
@@ -306,7 +308,6 @@ export function ResultScreen({ result, session, manifest, grade, nickname, onSav
                 <WrongItem
                   key={r.qid}
                   label={label}
-                  answer={r.answer.map(circled).join('・')}
                   mine={r.value.length ? r.value.map(circled).join('・') : '未回答'}
                   body={q?.img.body ?? null}
                   onReport={() => onReport(r.qid)}

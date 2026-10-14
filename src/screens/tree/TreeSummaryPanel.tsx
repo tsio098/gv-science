@@ -38,7 +38,9 @@ export function TreeSummaryPanel({ manifest, progress, grade, nickname, onSelect
     .map((f) => {
       const unmet = (progress.fields[f.id]?.prereqs ?? []).filter((p) => !p.done);
       const reachable = unmet.every((p) => progress.fields[p.field]?.unlocked);
-      const gap = unmet.reduce((s, p) => s + Math.max(0, progress.unlockPct - p.pct), 0);
+      // 残り: 挑戦回数の不足（1 回 = 10 点扱い）+ 正答率の不足
+      const need = progress.unlockPlays ?? 5;
+      const gap = unmet.reduce((s, p) => s + Math.max(0, need - (p.plays ?? 0)) * 10 + Math.max(0, progress.unlockPct - (p.rate ?? 0)), 0);
       return { f, unmet, reachable, gap };
     })
     .filter((x) => x.reachable && x.unmet.length > 0)
@@ -107,7 +109,7 @@ export function TreeSummaryPanel({ manifest, progress, grade, nickname, onSelect
           <div className="tr-sumlist">
             {next.map(({ f, unmet }) => {
               const col = groupColor(f.group as FieldGroup);
-              const worst = [...unmet].sort((a, b) => a.pct - b.pct)[0]!;
+              const worst = [...unmet].sort((a, b) => (a.plays ?? 0) - (b.plays ?? 0) || (a.rate ?? 0) - (b.rate ?? 0))[0]!;
               return (
                 <button key={f.id} type="button" onClick={() => onSelect(f.id)}>
                   <i style={{ background: '#2A3628', border: `1.5px solid ${col}`, color: col }}>
@@ -115,7 +117,7 @@ export function TreeSummaryPanel({ manifest, progress, grade, nickname, onSelect
                   </i>
                   <span>{f.name}</span>
                   <em className="tr-num" style={{ color: '#F7C59F', fontStyle: 'normal', fontSize: 12, fontWeight: 700 }}>
-                    {byId.get(worst.field)?.name ?? worst.field} {Math.round(worst.pct)}% / {progress.unlockPct}%
+                    {byId.get(worst.field)?.name ?? worst.field} {worst.plays ?? 0}/{progress.unlockPlays ?? 5} 回 · {Math.round(worst.rate ?? 0)}%
                   </em>
                 </button>
               );

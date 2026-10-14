@@ -78,13 +78,13 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
               </span>
             </div>
             <div className="tr-pop-meta">
-              {field.total} 問 · 前提の分野でスコア {progress.unlockPct}% に達すると解放されます
+              {field.total} 問 · 前提の分野で挑戦 {progress.unlockPlays ?? 5} 回以上・正答率 {progress.unlockPct}% 以上で解放されます
             </div>
           </div>
           {close}
         </div>
         <div style={{ fontSize: 12, fontWeight: 700, color: '#A9B5A5' }}>
-          解放条件 · 前提分野のスコアが {progress.unlockPct}% 以上
+          解放条件 · 前提分野で挑戦 {progress.unlockPlays ?? 5} 回以上・正答率 {progress.unlockPct}% 以上
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {p?.prereqs.map((pr) => {
@@ -106,7 +106,9 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
                 </div>
                 <span style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{f?.name ?? pr.field}</span>
                 <span className="tr-num" style={{ fontSize: 12, fontWeight: 700, color: pr.done ? '#9CC297' : '#F7C59F' }}>
-                  {pr.done ? '達成' : `${Math.round(pr.pct)}% / ${progress.unlockPct}%`}
+                  {pr.done
+                    ? '達成'
+                    : `${pr.plays ?? 0}/${progress.unlockPlays ?? 5} 回 · ${Math.round(pr.rate ?? 0)}% / ${progress.unlockPct}%`}
                 </span>
               </div>
             );
@@ -177,7 +179,7 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
         })}
       </div>
       <div className="tr-pop-foot">
-        <div className="tr-note">次の出題は 出題回数の少ない問題から（未着手 → 要復習 → 正解済み）</div>
+        <div className="tr-note">次の出題は 出題回数の少ない問題から（未出題 → 要復習 → 正解済み）</div>
         {onRanking && (
           <button type="button" className="tr-link" onClick={onRanking}>
             <Ico id="i-trophy" size={13} />

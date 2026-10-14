@@ -70,7 +70,7 @@ export const IPAD_GEOM: TreeGeom = {
 /** iPad レイアウトに切り替える幅（設計書 §8 の min-width: 900px）*/
 export const IPAD_MIN_W = 900;
 
-/** 出題状況バーの幅（%）: 定着・正解済み・要復習（残りは未着手）*/
+/** 出題状況バーの幅（%）: 定着・正解済み・要復習（残りは未出題）*/
 export function distPct(d: Dist, total: number) {
   const t = total || 1;
   return {
