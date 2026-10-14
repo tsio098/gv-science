@@ -17,6 +17,7 @@ import {
 import { RankingScreen, type RankScope } from './RankingScreen';
 import { TreeShareModal } from './TreeShareModal';
 import { TreeSprite } from './TreeIcons';
+import { getLiffStatus } from '../../lib/liff';
 import { TreeScreen } from './TreeScreen';
 import { PlayScreen } from './PlayScreen';
 import { ResultScreen } from './ResultScreen';
@@ -24,6 +25,23 @@ import '../../styles/tree.css';
 
 /** Phase 3 は化学のみ（manifest があるのは化学だけ）*/
 const SUBJECT = 'chemistry';
+
+/**
+ * LINE 内で開いたときの自分の LINE の ID（userId）。「塾生専用です」画面に出し、
+ * 先生用アカウントの登録や問い合わせに使う（本人の ID なので見せてよい。2026-10-15）
+ */
+function ownLineId(): string | null {
+  const s = getLiffStatus();
+  if (s.profile?.userId) return s.profile.userId;
+  try {
+    const part = s.idToken?.split('.')[1];
+    if (!part) return null;
+    const json = JSON.parse(atob(part.replace(/-/g, '+').replace(/_/g, '/')));
+    return typeof json.sub === 'string' ? json.sub : null;
+  } catch {
+    return null;
+  }
+}
 
 type View =
   | { kind: 'tree' }
@@ -144,6 +162,14 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
             <>
               <div style={{ color: '#F9F7F2', fontWeight: 700, fontSize: 16 }}>このアプリは塾生専用です</div>
               <div>登録が反映されるまで最大 30 分かかります。しばらくしてから開きなおすか、先生に連絡してください。</div>
+              {mode === 'liff' && ownLineId() && (
+                <div style={{ fontSize: 11, color: 'rgba(249,247,242,0.55)', lineHeight: 1.7 }}>
+                  問い合わせ用 ID（先生に伝えるとき）
+                  <div className="tr-mono" style={{ fontSize: 12, color: '#F9F7F2', userSelect: 'all', WebkitUserSelect: 'all', wordBreak: 'break-all' }}>
+                    {ownLineId()}
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <>
