@@ -78,7 +78,7 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
               </span>
             </div>
             <div className="tr-pop-meta">
-              {field.total} 問 · 前提の分野で挑戦 {progress.unlockPlays ?? 5} 回以上・正答率 {progress.unlockPct}% 以上で解放されます
+              {field.total} 問
             </div>
           </div>
           {close}
@@ -106,9 +106,7 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
                 </div>
                 <span style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{f?.name ?? pr.field}</span>
                 <span className="tr-num" style={{ fontSize: 12, fontWeight: 700, color: pr.done ? '#9CC297' : '#F7C59F' }}>
-                  {pr.done
-                    ? '達成'
-                    : `${pr.plays ?? 0}/${progress.unlockPlays ?? 5} 回 · ${Math.round(pr.rate ?? 0)}% / ${progress.unlockPct}%`}
+                  {pr.done ? '達成' : '未達成'}
                 </span>
               </div>
             );

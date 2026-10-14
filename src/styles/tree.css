@@ -497,6 +497,11 @@
   display: flex;
   flex-direction: column;
 }
+/* モック v30: 出題画面は余白を詰めて問題画像を最大に（上バー -4px・左右 12px）*/
+.tr-play > .tr-bar {
+  padding: calc(var(--tr-top) - 4px) 12px 0;
+  gap: 10px;
+}
 .tr-bar {
   padding: var(--tr-top) 16px 0;
   display: flex;
@@ -572,36 +577,90 @@
   flex-direction: column;
   gap: 10px;
 }
-.tr-src {
-  font-size: 11px;
-  color: rgba(249, 247, 242, 0.5);
+.tr-play > .tr-qarea {
+  padding: 10px 12px;
+  gap: 8px;
 }
-.tr-leadbtn {
-  min-height: 40px;
-  padding: 0 14px;
-  border-radius: 14px;
-  border: 1.5px dashed rgba(249, 247, 242, 0.3);
-  background: transparent;
-  color: var(--tr-sub);
-  font-size: 13px;
-  font-weight: 500;
+/* 単問: 枠が残り高さいっぱい。画像は幅基準で、縦が足りなければ枠内で縦スクロール */
+.tr-qarea.is-fill {
+  overflow: hidden;
+}
+.tr-frame.is-fill {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+.tr-frame.is-fill > .tr-paper {
+  flex: 1;
+  min-height: 0;
+}
+.tr-imgscroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 8px;
+}
+.tr-qtext {
+  flex: none;
+  max-height: 30%;
+  overflow-y: auto;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #4a5a47;
+}
+.tr-leadpill {
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  z-index: 2;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(42, 54, 40, 0.25);
+  background: rgba(249, 247, 242, 0.92);
+  color: var(--tr-bg);
+  font-size: 11px;
+  font-weight: 700;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  flex: none;
+  gap: 4px;
+  box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.25);
+}
+.tr-leadpill[aria-pressed='true'] {
+  background: var(--tr-bg);
+  color: var(--tr-cream);
+  border-color: rgba(249, 247, 242, 0.5);
+}
+.tr-expand {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 0;
+  padding: 0;
+  background: rgba(42, 54, 40, 0.85);
+  color: var(--tr-cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .tr-frame {
   border-radius: 18px;
   background: var(--tr-card);
   border: 1.5px solid var(--tr-line);
-  padding: 10px;
+  padding: 6px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
   flex: none;
 }
 .tr-paper {
-  border-radius: 12px;
+  border-radius: 13px;
   background: var(--tr-cream);
   padding: 8px;
   color: #2d3a2a;
@@ -631,29 +690,35 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
-  padding: 0 2px;
+  flex: none;
+  overflow-x: auto;
+  white-space: nowrap;
+  padding: 0 4px 2px;
 }
 .tr-given > b {
   font-size: 10px;
   color: var(--tr-sub);
-  margin-right: 2px;
+  flex: none;
 }
 .tr-given > span {
+  flex: none;
   font-size: 11px;
-  padding: 3px 8px;
+  padding: 2px 8px;
   border-radius: 999px;
   border: 1px solid rgba(249, 247, 242, 0.3);
 }
 .tr-pad {
   flex: none;
-  padding: 14px 16px calc(var(--tr-bottom) + 20px);
+  padding: 10px 12px calc(var(--tr-bottom) + 16px);
   background: var(--tr-card);
   border-top: 1.5px solid var(--tr-line);
-  border-radius: 28px 28px 0 0;
+  border-radius: 24px 24px 0 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
+}
+.tr-pad > .tr-cta {
+  height: 50px;
 }
 .tr-pad-head {
   display: flex;
@@ -671,7 +736,7 @@
   gap: 8px;
 }
 .tr-ch {
-  height: 52px;
+  height: 48px;
   border-radius: 12px;
   border: 1.5px solid rgba(249, 247, 242, 0.2);
   background: var(--tr-bg);

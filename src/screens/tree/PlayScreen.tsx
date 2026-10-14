@@ -1,7 +1,8 @@
 /**
  * ANCHOR TREE — 出題（設計書 §5.1・§5.2 / モック Play.dc.html）。
  *
- * - 単問: リード（任意・折りたたみ）+ 本文画像 + 必要な値、下に ①〜⑩ のパッド
+ * - 単問: 本文画像を枠の残り高さいっぱいに（モック v30）。リードは枠左上のピル「リード文」で枠内を切り替え、右上に全画面ボタン。
+ *   出典は出さない（結果画面の間違えた問題一覧にだけ）。下に ①〜⑩ のパッド
  * - セット（同じリードの小問）: リードを上に常時表示し、小問を縦に並べて欄ごとに選ぶ
  * - 正解はサーバだけが持つので、ここでは正誤を出さずに次へ進み、最後にまとめて提出する
  * - 時間は単位（単問 / セット）ごとに、画像がそろってから「決定」までを測る。
@@ -10,7 +11,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FieldGroup, PlayQuestion, SubmitResult, TreeSession } from '../../lib/treeApi';
-import { QTYPE_LABEL, TreeApiError, circled, examLabel, submitTreeSession, treeImage } from '../../lib/treeApi';
+import { QTYPE_LABEL, TreeApiError, circled, submitTreeSession, treeImage } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
 import { ZoomImage } from './ZoomImage';
 import { PlayZoomScreen, type ZoomTab } from './PlayZoomScreen';
@@ -134,7 +135,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
 
   const crumb = useMemo(() => `${subjectName} › ${fieldName} › `, [subjectName, fieldName]);
 
-  const renderImg = (path: string | null, alt: string) => {
+  const renderImg = (path: string | null, alt: string, btn = true) => {
     if (!path) return null;
     const s = imgs[path];
     if (!s) return <div className="tr-imgph">読み込み中…</div>;
@@ -157,12 +158,13 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
         </button>
       );
     }
-    return <ZoomImage key={path} src={s} alt={alt} onOpen={() => setZoomPath(path)} />;
+    return <ZoomImage key={path} src={s} alt={alt} btn={btn} onOpen={() => setZoomPath(path)} />;
   };
 
   // 全画面ビューアの切替タブ: リード文 → 設問（セットは小問ごと）
   const zoomTabs: ZoomTab[] = [];
   const leadPath = isSet ? unit.lead : first?.img.lead ?? null;
+  const shownPath = leadOpen && leadPath ? leadPath : first?.img.body ?? null;
   if (leadPath) zoomTabs.push({ label: 'リード文', path: leadPath });
   qs.forEach((q, i) => {
     if (q.img.body) zoomTabs.push({ label: isSet ? `小問 ${i + 1}` : '設問', path: q.img.body });
@@ -248,14 +250,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
         </div>
       </div>
 
-      <div className="tr-qarea" ref={areaRef}>
-        {first && (
-          <div className="tr-src">
-            {examLabel(first.source.exam)}
-            {isSet ? ` · 解答番号 ${qs.map(boxLabel).join('・')}（${qs.length} 問セット）` : ` · 解答番号 ${boxLabel(first)}`}
-          </div>
-        )}
-
+      <div className={`tr-qarea${isSet ? '' : ' is-fill'}`} ref={areaRef}>
         {isSet ? (
           <>
             <div className="tr-frame">
@@ -279,29 +274,34 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
           </>
         ) : (
           first && (
-            <>
+            <div className="tr-frame is-fill">
+              <div className="tr-paper">
+                <div className="tr-imgscroll" key={shownPath ?? ''}>
+                  {renderImg(shownPath, leadOpen ? 'リード文' : `問題 解答番号 ${boxLabel(first)}`, false)}
+                </div>
+                {!leadOpen && first.text && <div className="tr-qtext">{first.text}</div>}
+              </div>
               {first.img.lead && (
-                <button type="button" className="tr-leadbtn" onClick={() => setLeadOpen((v) => !v)} aria-expanded={leadOpen}>
-                  <span>{leadOpen ? '大問のリード文を閉じる' : '大問のリード文を見る'}</span>
-                  <Ico id="i-chev-down" size={16} />
+                <button
+                  type="button"
+                  className="tr-leadpill"
+                  onClick={() => setLeadOpen((v) => !v)}
+                  aria-pressed={leadOpen}
+                  aria-label={leadOpen ? '設問にもどる' : '大問のリード文を見る'}
+                >
+                  <Ico id="i-lines" size={12} />
+                  {leadOpen ? '設問' : 'リード文'}
                 </button>
               )}
-              {first.img.lead && leadOpen && (
-                <div className="tr-frame">
-                  <div className="tr-paper">{renderImg(first.img.lead, 'リード文')}</div>
-                </div>
+              {shownPath && imgs[shownPath] && imgs[shownPath] !== 'error' && (
+                <button type="button" className="tr-expand" aria-label="全画面で見る" onClick={() => setZoomPath(shownPath)}>
+                  <Ico id="i-expand" size={14} />
+                </button>
               )}
-              <div className="tr-frame">
-                <div className="tr-paper">{renderImg(first.img.body, `問題 解答番号 ${boxLabel(first)}`)}</div>
-                {first.text && <div style={{ fontSize: 13, lineHeight: 1.75 }}>{first.text}</div>}
-                {given(first.given)}
-              </div>
-            </>
+              {given(first.given)}
+            </div>
           )
         )}
-        <div className="tr-note" style={{ textAlign: 'center' }}>
-          画像はピンチで拡大 · タップで全画面
-        </div>
       </div>
 
       <div className="tr-pad">
