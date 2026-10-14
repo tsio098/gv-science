@@ -30,6 +30,10 @@ import { importScoresScreen } from './lib/lazyImports';
 const ScoresScreen = lazy(() =>
   importScoresScreen().then((m) => ({ default: m.ScoresScreen }))
 );
+// ANCHOR TREE（理科進捗ツリー）も遅延ロード。ホームの導線は Phase 4
+const TreeRoot = lazy(() =>
+  import('./screens/tree/TreeRoot').then((m) => ({ default: m.TreeRoot }))
+);
 
 function renderRoute(route: Route, nav: ReturnType<typeof useNav>['nav']) {
   switch (route.name) {
@@ -67,6 +71,12 @@ function renderRoute(route: Route, nav: ReturnType<typeof useNav>['nav']) {
       return <ShibouRequestScreen nav={nav} />;
     case 'recoResults':
       return <ShibouResultsScreen nav={nav} />;
+    case 'tree':
+      return (
+        <Suspense fallback={<ScoresFallback />}>
+          <TreeRoot mode="liff" onClose={() => nav('back')} />
+        </Suspense>
+      );
     case 'scores':
       return (
         <Suspense fallback={<ScoresFallback />}>

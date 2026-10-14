@@ -10,7 +10,7 @@ import liff from '@line/liff';
 import { prefetch } from './swrCache';
 import { setPersistUser } from './persist';
 
-export type LiffMode = 'ready' | 'skipped' | 'error';
+export type LiffMode = 'ready' | 'skipped' | 'error' | 'external';
 
 export interface LiffStatus {
   mode: LiffMode;
@@ -65,6 +65,13 @@ function pickLiffId(): string | undefined {
   return LIFF_ID_A;
 }
 
+/** ANCHOR TREE の外部ブラウザ入口（/tree）。LIFF を初期化せず、ログインID で入る（設計書 §2）*/
+export function isTreePath(): boolean {
+  if (typeof window === 'undefined') return false;
+  const p = window.location.pathname;
+  return p === '/tree' || p.startsWith('/tree/');
+}
+
 let _status: LiffStatus = {
   mode: 'skipped',
   idToken: null,
@@ -72,6 +79,10 @@ let _status: LiffStatus = {
 };
 
 export async function initLiff(): Promise<LiffStatus> {
+  if (isTreePath()) {
+    _status = { mode: 'external', idToken: null, profile: null };
+    return _status;
+  }
   const LIFF_ID = pickLiffId();
   // LIFF_ID が未設定 → 開発ブラウザ用のフォールバック
   if (!LIFF_ID) {

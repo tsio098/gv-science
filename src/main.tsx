@@ -51,6 +51,13 @@ function BootError({ message }: { message: string }) {
 root.render(<Boot><BootSpinner label="準備中…" /></Boot>);
 
 initLiff().then((status) => {
+  // ANCHOR TREE の外部ブラウザ入口（/tree）。LIFF を使わず、ツリー部分だけ読み込む
+  if (status.mode === 'external') {
+    import('./screens/tree/TreeApp')
+      .then(({ TreeApp }) => root.render(<Boot><TreeApp /></Boot>))
+      .catch((e) => root.render(<Boot><BootError message={String(e)} /></Boot>));
+    return;
+  }
   if (status.mode === 'error') {
     root.render(
       <Boot>

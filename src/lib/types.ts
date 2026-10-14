@@ -192,7 +192,8 @@ export type Route =
   | { name: 'qr' }
   | { name: 'scores' }
   | { name: 'shibouRequest' }
-  | { name: 'recoResults' };
+  | { name: 'recoResults' }
+  | { name: 'tree' };
 
 export type RouteName = Route['name'];
 
@@ -228,6 +229,7 @@ export type NavFn = {
   (name: 'scores'): void;
   (name: 'shibouRequest'): void;
   (name: 'recoResults'): void;
+  (name: 'tree'): void;
 };
 
 /** おすすめ志望校（recoResults）の1行。GAS が日本語ヘッダー名で返す。 */
