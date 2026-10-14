@@ -178,7 +178,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
           </div>
         )}
         <div className="tr-choices">
-          {Array.from({ length: b.choices || 10 }, (_, i) => i + 1).map((n) => {
+          {Array.from({ length: b.choices || 10 }, (_, i) => i + (b.min ?? 1)).map((n) => {
             const on = picks[q.id]?.[k] === String(n);
             return (
               <button

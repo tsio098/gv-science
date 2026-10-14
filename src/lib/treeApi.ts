@@ -94,7 +94,8 @@ export interface PlayQuestion {
   id: string;
   type: QType;
   field: string;
-  answer: { kind: 'choice'; boxes: { n: number; choices: number }[]; group: 'unordered' | null };
+  /** min: 0 は ⓪〜⑨ の数字マーク（Phase 5 の Proxy から。無ければ 1）*/
+  answer: { kind: 'choice'; boxes: { n: number; choices: number; min?: number }[]; group: 'unordered' | null };
   img: { lead: string | null; body: string | null };
   given: string[];
   text: string | null;
@@ -256,7 +257,7 @@ export function treeImage(path: string): Promise<string> {
   return p;
 }
 
-export const CIRCLED = ['', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
+export const CIRCLED = ['⓪', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
 export const circled = (v: string | number) => CIRCLED[Number(v)] ?? String(v);
 
 /** 学年の表示（D1 は 'H3' '既卒' など）*/
