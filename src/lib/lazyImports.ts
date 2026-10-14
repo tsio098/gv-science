@@ -14,3 +14,11 @@ export const importScoresScreen = () => import('../screens/ScoresScreen');
 export function preloadScoresScreen(): void {
   void importScoresScreen();
 }
+
+/** ANCHOR TREE（ホームのカードから開く）*/
+export const importTreeRoot = () => import('../screens/tree/TreeRoot');
+export const importTreeShareModal = () => import('../screens/tree/TreeShareModal');
+
+export function preloadTreeRoot(): void {
+  void importTreeRoot().catch(() => {});
+}

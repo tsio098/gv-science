@@ -54,6 +54,14 @@ export interface NodeStats {
   mastery: number;
   solved: number;
   dist: Dist;
+  /** 新着（追加から 14 日以内の試験）のうち未着手の数。Phase 3 の Proxy では無い */
+  newCount?: number;
+}
+
+/** 順位。rank = null は 0 点（まだ載っていない）。of = 載っている人数 */
+export interface RankInfo {
+  rank: number | null;
+  of: number;
 }
 
 export interface FieldProgress extends NodeStats {
@@ -69,6 +77,9 @@ export interface TreeProgress {
   unlockPct: number;
   total: NodeStats & { pct: number };
   fields: Record<string, FieldProgress>;
+  /** 科目・分野ごとの自分の順位（Phase 4）*/
+  rank?: { total: RankInfo; fields: Record<string, RankInfo> };
+  newDays?: number;
 }
 
 export interface TreeMe {
@@ -138,6 +149,25 @@ export interface SubmitResult {
   node: { field: string; qtype: QType; before: NodeStats | null; after: NodeStats | null };
   fieldScore: { before: (NodeStats & { pct: number; unlocked: boolean }) | null; after: (NodeStats & { pct: number; unlocked: boolean }) | null };
   newlyUnlocked: string[];
+  /** 分野の順位の前後（Phase 4）*/
+  rank?: { before: RankInfo; after: RankInfo };
+}
+
+export interface RankRow {
+  rank: number;
+  grade: string;
+  nickname: string;
+  score: number;
+  me: boolean;
+}
+
+export interface TreeRanking {
+  subject: string;
+  field: string;
+  qtype: QType | '*';
+  count: number;
+  top: RankRow[];
+  me: { rank: number | null; score: number; grade: string; nickname: string };
 }
 
 /** API のエラー。code は Worker の error（NOT_REGISTERED / LOCKED / TOO_MANY …）か HTTP_xxx */
@@ -199,6 +229,15 @@ export const startTreeSession = (subject: string, field: string, qtype: QType) =
 export const submitTreeSession = (sessionId: string, answers: { qid: string; value: string[]; timeMs: number }[]) =>
   post<SubmitResult>('/tree/session/submit', { sessionId, answers });
 export const saveTreeNickname = (nickname: string) => post<{ nickname: string }>('/tree/profile', { nickname });
+export const fetchTreeRanking = (subject: string, field = '*', qtype: QType | '*' = '*') => {
+  const q = new URLSearchParams({ subject });
+  if (field !== '*') q.set('field', field);
+  if (qtype !== '*') q.set('qtype', qtype);
+  return get<TreeRanking>('/tree/ranking?' + q.toString());
+};
+/** 解答表の誤り報告（課題 #21）。1 人 1 問 1 回（2 回目は already: true）*/
+export const reportTreeQuestion = (sessionId: string, qid: string) =>
+  post<{ ok: boolean; already: boolean }>('/tree/report', { sessionId, qid });
 
 const imageCache = new Map<string, Promise<string>>();
 
@@ -219,6 +258,12 @@ export function treeImage(path: string): Promise<string> {
 
 export const CIRCLED = ['', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
 export const circled = (v: string | number) => CIRCLED[Number(v)] ?? String(v);
+
+/** 学年の表示（D1 は 'H3' '既卒' など）*/
+export const gradeLabel = (g: string) => {
+  const m = /^([HJ])([1-3])$/i.exec(g || '');
+  return m ? (m[1]!.toUpperCase() === 'H' ? '高' : '中') + m[2] : g || '';
+};
 
 /** '2025_河合_共通テストK-パック_化学' → '2025 河合 共通テストK-パック 化学' */
 export const examLabel = (exam: string) => exam.replace(/_/g, ' ');

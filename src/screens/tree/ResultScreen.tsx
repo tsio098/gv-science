@@ -1,11 +1,12 @@
 /**
  * ANCHOR TREE — 結果（設計書 §5.2 / モック Result.dc.html）。
  * 今回の加算（新規正解 +75・時間ボーナス更新の差分）・累積スコア・マスター度・出題状況の前後・間違えた問題。
- * ニックネームはここで入力し、離れるときに保存する（/tree/profile）。順位は Phase 4。
+ * ニックネームはここで入力し、離れるときに保存する（/tree/profile。NG ワードなら離れずに知らせる）。
+ * 分野の順位の前後（Phase 4）・間違えた問題の「解答がおかしい」報告（課題 #21）。
  */
 import { useState } from 'react';
 import type { FieldGroup, NodeStats, SubmitResult, TreeManifest, TreeSession } from '../../lib/treeApi';
-import { QTYPE_LABEL, circled, examLabel, treeImage } from '../../lib/treeApi';
+import { QTYPE_LABEL, circled, examLabel, gradeLabel, treeImage } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
 import { distPct, fmtScore, fmtTime, groupColor, groupSide } from './treeTheme';
 
@@ -15,10 +16,16 @@ interface Props {
   manifest: TreeManifest;
   grade: string;
   nickname: string;
-  onRetry: (nickname: string) => void;
-  onBack: (nickname: string) => void;
+  /** ニックネームを保存。だめならエラー文（NG ワード等）、良ければ null */
+  onSaveNick: (nickname: string) => Promise<string | null>;
+  onRetry: () => void;
+  onBack: () => void;
+  onRanking: () => void;
+  onReport: (qid: string) => Promise<'sent' | 'already' | 'error'>;
   busy: boolean;
 }
+
+type ReportState = 'idle' | 'sending' | 'sent' | 'already' | 'error';
 
 function Dist({ s, col, label }: { s: NodeStats | null; col: string; label: string }) {
   if (!s) return null;
@@ -35,10 +42,31 @@ function Dist({ s, col, label }: { s: NodeStats | null; col: string; label: stri
   );
 }
 
-function WrongItem({ label, answer, mine, body }: { label: string; answer: string; mine: string; body: string | null }) {
+const REPORT_LABEL: Record<ReportState, string> = {
+  idle: '解答がおかしい？ 先生に報告',
+  sending: '送信中…',
+  sent: '報告しました。先生が確認します',
+  already: 'この問題は報告済みです',
+  error: '送れませんでした（タップでもう一度）',
+};
+
+function WrongItem({
+  label,
+  answer,
+  mine,
+  body,
+  onReport,
+}: {
+  label: string;
+  answer: string;
+  mine: string;
+  body: string | null;
+  onReport: () => Promise<'sent' | 'already' | 'error'>;
+}) {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const [report, setReport] = useState<ReportState>('idle');
   const toggle = () => {
     setOpen((v) => !v);
     if (!url && body) {
@@ -46,9 +74,14 @@ function WrongItem({ label, answer, mine, body }: { label: string; answer: strin
       treeImage(body).then(setUrl).catch(() => setFailed(true));
     }
   };
+  const doReport = async () => {
+    if (report !== 'idle' && report !== 'error') return;
+    setReport('sending');
+    setReport(await onReport());
+  };
   return (
-    <button type="button" className="tr-wrong" onClick={toggle} aria-expanded={open}>
-      <div>
+    <div className="tr-wrong">
+      <button type="button" className="tr-wrong-head" onClick={toggle} aria-expanded={open}>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
           <div style={{ fontSize: 12, color: '#A9B5A5' }}>{label}</div>
           <div style={{ fontSize: 13 }}>
@@ -59,22 +92,54 @@ function WrongItem({ label, answer, mine, body }: { label: string; answer: strin
         <span style={{ color: '#A9B5A5', transform: open ? 'rotate(90deg)' : undefined, display: 'flex' }}>
           <Ico id="i-chev-right" size={16} />
         </span>
-      </div>
+      </button>
       {open && (
-        <div className="tr-paper">
-          {url ? <img src={url} alt={label} /> : <div className="tr-imgph">{failed ? '画像を読み込めませんでした' : '読み込み中…'}</div>}
-        </div>
+        <>
+          <div className="tr-paper">
+            {url ? <img src={url} alt={label} /> : <div className="tr-imgph">{failed ? '画像を読み込めませんでした' : '読み込み中…'}</div>}
+          </div>
+          <button
+            type="button"
+            className={`tr-report is-${report}`}
+            disabled={report === 'sending' || report === 'sent' || report === 'already'}
+            onClick={doReport}
+          >
+            <Ico id="i-flag" size={13} />
+            {REPORT_LABEL[report]}
+          </button>
+        </>
       )}
-    </button>
+    </div>
   );
 }
 
-export function ResultScreen({ result, session, manifest, grade, nickname, onRetry, onBack, busy }: Props) {
+const rankUp = (b: number | null, a: number | null) => a != null && (b == null || a < b);
+/** 「12位 → ▲3」「初ランクイン · 38 人中」「変わらず」*/
+function rankDelta(b: number | null, a: number | null, of: number) {
+  if (a == null) return '1 問正解で掲載';
+  if (b == null) return `初ランクイン · ${of} 人中`;
+  if (a < b) return `${b}位 → ▲${b - a}`;
+  if (a > b) return `${b}位 → ▼${a - b}`;
+  return `${of} 人中`;
+}
+
+export function ResultScreen({ result, session, manifest, grade, nickname, onSaveNick, onRetry, onBack, onRanking, onReport, busy }: Props) {
   const field = manifest.fields.find((f) => f.id === session.field);
   const group = (field?.group ?? 'theory') as FieldGroup;
   const col = groupColor(group);
   const side = groupSide(group);
   const [nick, setNick] = useState(nickname === 'プレイヤー' ? '' : nickname);
+  const [nickError, setNickError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  /** ニックネームを保存してから離れる（NG ならここに留まって知らせる）*/
+  const leave = async (go: () => void) => {
+    setSaving(true);
+    const err = await onSaveNick(nick);
+    setSaving(false);
+    if (err) setNickError(err);
+    else go();
+  };
+  const rank = result.rank;
   const { summary, node } = result;
   const before = node.before;
   const after = node.after;
@@ -106,9 +171,12 @@ export function ResultScreen({ result, session, manifest, grade, nickname, onRet
         >
           {field && <Ico id={field.icon} size={16} />}
         </div>
-        <span>
+        <span style={{ flex: 1 }}>
           {field?.name ?? session.field} › <b>{QTYPE_LABEL[session.qtype]}</b> · 結果
         </span>
+        <button type="button" className="tr-iconbtn" aria-label="ツリーへ戻る" disabled={saving} onClick={() => void leave(onBack)}>
+          <Ico id="i-close" size={16} />
+        </button>
       </div>
 
       <div className="tr-result-body">
@@ -168,14 +236,29 @@ export function ResultScreen({ result, session, manifest, grade, nickname, onRet
               {Math.abs(mAfter - mBefore)}
             </div>
           </div>
-          <div className="tr-stat">
-            <div>分野の達成度</div>
-            <div className="tr-num">{Math.round(fs.after?.pct ?? 0)}%</div>
-            <div className="tr-num" style={{ color: '#A9B5A5', fontWeight: 500 }}>
-              解放ライン {manifest.unlockPct}%
+          {rank ? (
+            <button type="button" className="tr-stat" onClick={() => void leave(onRanking)} aria-label="ランキングを見る">
+              <div>分野の順位</div>
+              <div className="tr-num">{rank.after.rank != null ? `${rank.after.rank}位` : '—'}</div>
+              <div className="tr-num" style={{ color: rankUp(rank.before.rank, rank.after.rank) ? '#9CC297' : '#A9B5A5', fontWeight: rankUp(rank.before.rank, rank.after.rank) ? 700 : 500 }}>
+                {rankDelta(rank.before.rank, rank.after.rank, rank.after.of)}
+              </div>
+            </button>
+          ) : (
+            <div className="tr-stat">
+              <div>分野の達成度</div>
+              <div className="tr-num">{Math.round(fs.after?.pct ?? 0)}%</div>
+              <div className="tr-num" style={{ color: '#A9B5A5', fontWeight: 500 }}>
+                解放ライン {manifest.unlockPct}%
+              </div>
             </div>
-          </div>
+          )}
         </div>
+        {rank && (
+          <div className="tr-note" style={{ textAlign: 'right' }}>
+            分野の達成度 <b className="tr-num" style={{ color: '#F9F7F2' }}>{Math.round(fs.after?.pct ?? 0)}%</b> · 解放ライン {manifest.unlockPct}%
+          </div>
+        )}
 
         {after && (
           <div className="tr-panel">
@@ -226,6 +309,7 @@ export function ResultScreen({ result, session, manifest, grade, nickname, onRet
                   answer={r.answer.map(circled).join('・')}
                   mine={r.value.length ? r.value.map(circled).join('・') : '未回答'}
                   body={q?.img.body ?? null}
+                  onReport={() => onReport(r.qid)}
                 />
               );
             })}
@@ -253,7 +337,7 @@ export function ResultScreen({ result, session, manifest, grade, nickname, onRet
                 flex: 'none',
               }}
             >
-              {grade}
+              {gradeLabel(grade)}
             </span>
           )}
           <input
@@ -263,15 +347,24 @@ export function ResultScreen({ result, session, manifest, grade, nickname, onRet
             placeholder="プレイヤー"
             maxLength={12}
             value={nick}
-            onChange={(e) => setNick(e.target.value)}
+            aria-invalid={!!nickError}
+            onChange={(e) => {
+              setNick(e.target.value);
+              setNickError(null);
+            }}
           />
         </div>
+        {nickError && (
+          <div role="alert" style={{ fontSize: 12, color: '#F7C59F' }}>
+            {nickError}
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 8 }}>
-          <button type="button" className="tr-ghost" style={{ flex: 1 }} disabled={busy} onClick={() => onRetry(nick)}>
+          <button type="button" className="tr-ghost" style={{ flex: 1 }} disabled={busy || saving} onClick={() => void leave(onRetry)}>
             {busy ? '準備中…' : 'もう一度'}
           </button>
-          <button type="button" className="tr-cta" style={{ flex: 1.4, height: 50, fontSize: 14 }} disabled={busy} onClick={() => onBack(nick)}>
-            ツリーへ
+          <button type="button" className="tr-cta" style={{ flex: 1.4, height: 50, fontSize: 14 }} disabled={busy || saving} onClick={() => void leave(onRanking)}>
+            ランキングを見る
           </button>
         </div>
       </div>

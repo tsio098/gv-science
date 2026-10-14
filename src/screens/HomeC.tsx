@@ -1,13 +1,14 @@
 /**
  * Home — C 案（README 採用方針）「今日中心」レイアウト。
  *   safe-top → ロゴ + HOME crumb → 挨拶 → Today カード →
- *   クイック 4 タイル → 記事フィード（横スクロール） → その他
+ *   クイック 4 タイル → 成績推移 → ANCHOR TREE → 記事フィード（横スクロール） → その他
  */
-import { useEffect } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { fetchArticles, fetchHome, fetchSchedules } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
 import { prefetch } from '../lib/swrCache';
-import { preloadScoresScreen } from '../lib/lazyImports';
+import { importTreeShareModal, preloadScoresScreen, preloadTreeRoot } from '../lib/lazyImports';
+import { fetchTreeProgress } from '../lib/treeApi';
 import { useScores } from '../lib/scoresStore';
 import type { NavFn, ScheduleSubject } from '../lib/types';
 import { SUBJECT_JA } from '../lib/types';
@@ -42,6 +43,85 @@ interface HomeCProps {
   nav: NavFn;
 }
 
+const TreeShareModal = lazy(() => importTreeShareModal().then((m) => ({ default: m.TreeShareModal })));
+
+const AnchorIcon = ({ size = 22 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="5" r="2" />
+    <path d="M12 7v14M8 10h8M4 14a8 8 0 0 0 16 0M4 14l2-2M20 14l-2-2" />
+  </svg>
+);
+
+/**
+ * ANCHOR TREE の入口（設計書 §3.5）。タップでツリー、長押しで「別のブラウザで使う」（ログインID / URL）。
+ * 下の行は化学のマスター度と新着数（/tree/progress。塾生登録の前などで取れなければ説明文）。
+ */
+function AnchorTreeCard({ onOpen }: { onOpen: () => void }) {
+  const prog = useAsync(() => fetchTreeProgress('chemistry'), [], { cacheKey: 'tree:progress:chemistry' });
+  const [share, setShare] = useState(false);
+  const timer = useRef<number | null>(null);
+  const start = useRef<{ x: number; y: number } | null>(null);
+  const longPressed = useRef(false);
+
+  const cancel = () => {
+    if (timer.current !== null) window.clearTimeout(timer.current);
+    timer.current = null;
+    start.current = null;
+  };
+  const p = prog.data;
+  const nw = p ? p.total.newCount ?? 0 : 0;
+  const sub = p
+    ? `化学 ${Math.round(p.total.mastery * 100)}%${nw > 0 ? ` · 新着 ${nw}` : ''}`
+    : '演習の問題をスキルツリーで解き直す';
+
+  return (
+    <>
+      <button
+        type="button"
+        className="at-home-cta"
+        onPointerDown={(e) => {
+          longPressed.current = false;
+          start.current = { x: e.clientX, y: e.clientY };
+          timer.current = window.setTimeout(() => {
+            longPressed.current = true;
+            timer.current = null;
+            setShare(true);
+          }, 550);
+        }}
+        onPointerMove={(e) => {
+          const s = start.current;
+          if (s && Math.hypot(e.clientX - s.x, e.clientY - s.y) > 10) cancel();
+        }}
+        onPointerUp={cancel}
+        onPointerLeave={cancel}
+        onPointerCancel={cancel}
+        onContextMenu={(e) => e.preventDefault()}
+        onClick={() => {
+          if (longPressed.current) {
+            longPressed.current = false;
+            return;
+          }
+          onOpen();
+        }}
+      >
+        <div className="at-home-ic">
+          <AnchorIcon />
+        </div>
+        <div className="at-home-tx">
+          <div className="t1">ANCHOR TREE</div>
+          <div className="t2">{sub}</div>
+        </div>
+        <ChevRightIcon size={14} />
+      </button>
+      {share && (
+        <Suspense fallback={null}>
+          <TreeShareModal onClose={() => setShare(false)} />
+        </Suspense>
+      )}
+    </>
+  );
+}
+
 export function HomeC({ nav }: HomeCProps) {
   const home = useAsync(fetchHome, [], { cacheKey: 'home' });
   const arts = useAsync(fetchArticles, [], { cacheKey: 'articles' });
@@ -52,6 +132,7 @@ export function HomeC({ nav }: HomeCProps) {
   // ScoresScreen のチャンクを先読みしておく（タップ時に Suspense fallback を出さない）
   useEffect(() => {
     preloadScoresScreen();
+    preloadTreeRoot();
   }, []);
 
   // 履修科目が分かったら、授業予定をバックグラウンドで先読みしてキャッシュに入れる。
@@ -243,6 +324,8 @@ export function HomeC({ nav }: HomeCProps) {
             })()}
           </div>
         </button>
+
+        <AnchorTreeCard onOpen={() => nav('tree')} />
 
         {/* 記事フィード（横スクロール） */}
         <div className="c-feed-head">

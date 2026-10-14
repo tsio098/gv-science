@@ -736,7 +736,7 @@
   line-height: 1.7;
 }
 
-/* 広い画面（iPad 縦・PC）は中央 720px に収める。iPad 横の 2 カラムは Phase 4 */
+/* 広い画面（iPad 縦・PC）は中央 720px に収める。幅 900px 以上の出題は 2 カラム（下の「iPad 横」）*/
 .tr-qarea > *,
 .tr-result-body > *,
 .tr-pad > *,
@@ -853,10 +853,38 @@
   text-align: left;
   width: 100%;
 }
-.tr-wrong > div:first-child {
+.tr-wrong-head {
   display: flex;
   align-items: center;
   gap: 12px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+.tr-report {
+  align-self: flex-start;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px dashed rgba(249, 247, 242, 0.3);
+  background: transparent;
+  color: var(--tr-sub);
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tr-report.is-sent,
+.tr-report.is-already {
+  border-style: solid;
+  border-color: rgba(156, 194, 151, 0.5);
+  color: var(--tr-ok);
+}
+.tr-report.is-error {
+  color: var(--tr-review);
 }
 .tr-foot {
   flex: none;
@@ -1055,4 +1083,553 @@
   color: var(--tr-bg);
   font-size: 14px;
   font-weight: 700;
+}
+
+/* ── Phase 4: 共通の小物 ──────────────────────────────── */
+
+.tr-chrome-r {
+  display: flex;
+  gap: 8px;
+}
+.tr-menu > button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tr-new {
+  font-size: 10px;
+  font-weight: 700;
+  font-style: normal;
+  line-height: 16px;
+  color: var(--tr-cream);
+  background: var(--tr-orange);
+  border-radius: 999px;
+  padding: 0 6px;
+  flex: none;
+}
+.tr-pop-foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+}
+.tr-link {
+  flex: none;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(249, 247, 242, 0.3);
+  background: transparent;
+  color: var(--tr-cream);
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.tr-link svg {
+  color: #e3b04b;
+}
+button.tr-stat {
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+}
+
+/* ── iPad 横（幅 900px 以上）: ツリー左 + 右 400px の常設パネル（設計書 §8 / モック TreeIPad）── */
+
+.tr-root.is-wide .tr-pan,
+.tr-root.is-wide .tr-fade-top,
+.tr-root.is-wide .tr-fade-bottom,
+.tr-root.is-wide .tr-chrome {
+  right: 400px;
+}
+.tr-root.is-wide .tr-chrome {
+  padding: 0 24px;
+}
+.tr-root.is-wide .tr-menu {
+  right: 424px;
+}
+.tr-root.is-wide .tr-toast {
+  right: 424px;
+}
+.tr-root.is-wide .tr-hint {
+  right: 400px;
+  left: 24px;
+  text-align: left;
+}
+.tr-dock {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  box-sizing: border-box;
+  padding: calc(var(--tr-top) + 12px) 24px calc(var(--tr-bottom) + 24px);
+  background: var(--tr-card);
+  border-left: 1.5px solid var(--tr-line);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  z-index: 32;
+}
+.tr-dock-sec {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.tr-sumstats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.tr-sumstats > * {
+  padding: 12px 10px;
+  border-radius: 14px;
+  border: 1px solid var(--tr-line-soft);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tr-sumstats span {
+  font-size: 11px;
+  color: var(--tr-sub);
+}
+.tr-sumstats b {
+  font-size: 18px;
+  font-weight: 700;
+}
+.tr-sumstats small {
+  font-size: 11px;
+  color: var(--tr-sub);
+  font-weight: 500;
+}
+.tr-sumhead {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--tr-sub);
+}
+.tr-sumlist {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tr-sumlist > button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 0;
+  background: rgba(249, 247, 242, 0.05);
+  color: var(--tr-cream);
+  text-align: left;
+}
+.tr-sumlist > button > i {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  color: var(--tr-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  box-sizing: border-box;
+}
+.tr-sumlist > button > span {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+}
+
+/* 出題（モック PlayIPad）: 上にバー、左に問題、右 400px に解答パッド */
+@media (min-width: 900px) {
+  .tr-play {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 400px;
+    grid-template-rows: auto minmax(0, 1fr);
+    column-gap: 24px;
+  }
+  .tr-play > .tr-bar {
+    grid-column: 1 / -1;
+    padding: var(--tr-top) 32px 0;
+  }
+  .tr-play > .tr-qarea {
+    grid-column: 1;
+    padding: 18px 0 28px 32px;
+  }
+  .tr-play > .tr-qarea > * {
+    max-width: none;
+  }
+  .tr-play > .tr-pad {
+    grid-column: 2;
+    margin: 18px 32px calc(var(--tr-bottom) + 28px) 0;
+    padding: 22px;
+    border-radius: 22px;
+    border: 1.5px solid var(--tr-line);
+    overflow-y: auto;
+    gap: 16px;
+  }
+  .tr-play > .tr-pad > .tr-cta {
+    margin-top: auto;
+    height: 58px;
+    font-size: 17px;
+  }
+  .tr-play > .tr-pad .tr-ch {
+    height: 64px;
+    font-size: 24px;
+    border-radius: 14px;
+  }
+  .tr-play > .tr-pad .tr-choices {
+    gap: 10px;
+  }
+}
+
+/* ── ランキング（モック Ranking.dc.html）──────────────── */
+
+.tr-rank {
+  display: flex;
+  flex-direction: column;
+}
+.tr-rank-head {
+  flex: none;
+  padding: var(--tr-top) 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.tr-rank-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 17px;
+  font-weight: 700;
+}
+.tr-rank-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 14px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tr-rank-body > *,
+.tr-rank-me > * {
+  width: 100%;
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+}
+.tr-seg {
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid var(--tr-line-soft);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px;
+  flex: none;
+}
+.tr-seg > button {
+  height: 36px;
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+  color: var(--tr-sub);
+  font-size: 13px;
+  font-weight: 700;
+}
+.tr-seg > button.is-on {
+  background: var(--tr-cream);
+  color: var(--tr-bg);
+}
+.tr-chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  flex: none;
+  padding-bottom: 2px;
+}
+.tr-chips::-webkit-scrollbar {
+  display: none;
+}
+.tr-chips > button {
+  flex: none;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--tr-line-soft);
+  background: transparent;
+  color: var(--tr-sub);
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.tr-chips > button.is-on {
+  border-color: var(--tr-cream);
+  color: var(--tr-cream);
+  background: rgba(249, 247, 242, 0.08);
+}
+.tr-chips > button:disabled {
+  opacity: 0.35;
+}
+.tr-rank-sub {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--tr-sub);
+  flex: none;
+}
+.tr-podium {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  align-items: end;
+  flex: none;
+}
+.tr-podium-card {
+  padding: 12px 8px 10px;
+  border-radius: 18px;
+  background: var(--tr-card);
+  border: 1.5px solid;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.tr-podium-card.is-me {
+  background: rgba(249, 247, 242, 0.12);
+}
+.tr-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  color: var(--tr-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+}
+.tr-podium-name {
+  font-size: 12px;
+  font-weight: 700;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tr-rank-list {
+  border-radius: 22px;
+  background: var(--tr-card);
+  border: 1.5px solid rgba(249, 247, 242, 0.5);
+  overflow: hidden;
+  flex: none;
+}
+.tr-rank-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 52px;
+  padding: 0 16px;
+  border-bottom: 1px solid rgba(249, 247, 242, 0.08);
+  font-size: 14px;
+}
+.tr-rank-row:last-child {
+  border-bottom: 0;
+}
+.tr-rank-row > .tr-num:last-child {
+  font-weight: 700;
+}
+.tr-rank-row.is-me {
+  background: rgba(249, 247, 242, 0.1);
+  font-weight: 700;
+}
+.tr-rank-n {
+  width: 28px;
+  flex: none;
+  font-weight: 700;
+  color: var(--tr-sub);
+}
+.tr-rank-row.is-me .tr-rank-n {
+  color: var(--tr-ok);
+}
+.tr-grade {
+  min-width: 34px;
+  flex: none;
+  box-sizing: border-box;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--tr-mint);
+  border: 1px solid var(--tr-line-soft);
+  border-radius: 999px;
+  padding: 2px 4px;
+  text-align: center;
+}
+.tr-rank-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+.tr-rank-me {
+  flex: none;
+  padding: 0 16px calc(var(--tr-bottom) + 14px);
+}
+.tr-rank-row.is-pinned {
+  height: 56px;
+  border-radius: 18px;
+  border: 0;
+  background: var(--tr-cream);
+  color: var(--tr-bg);
+}
+.tr-rank-row.is-pinned .tr-rank-n,
+.tr-rank-row.is-pinned small {
+  color: #5f8159;
+}
+.tr-rank-row.is-pinned .tr-grade {
+  color: #5f8159;
+  border-color: var(--tr-mint);
+}
+.tr-rank-row.is-pinned .tr-rank-name {
+  font-weight: 700;
+}
+.tr-rank-row.is-pinned small {
+  font-size: 11px;
+  font-weight: 500;
+}
+.tr-rank-foot {
+  padding-top: 8px;
+  font-size: 11px;
+  color: rgba(249, 247, 242, 0.4);
+  text-align: center;
+}
+
+/* ── 別のブラウザで使う（モック ShareModal）─────────────── */
+
+.tr-root.tr-share-back {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(42, 54, 40, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+.tr-share {
+  width: 100%;
+  max-width: 400px;
+  box-sizing: border-box;
+  padding: 22px 20px 20px;
+  border-radius: 26px;
+  background: var(--tr-bg);
+  border: 1.5px solid rgba(249, 247, 242, 0.8);
+  box-shadow: 0 24px 60px -16px rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: tr-rise 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.tr-share-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.tr-share-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+.tr-share-lead {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--tr-sub);
+  line-height: 1.6;
+}
+.tr-share-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tr-share-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--tr-sub);
+}
+.tr-share-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 8px 16px;
+  border-radius: 16px;
+  background: var(--tr-card);
+  border: 1px solid var(--tr-line-soft);
+}
+.tr-share-box > span {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  -webkit-user-select: all;
+  user-select: all;
+}
+.tr-share-box > span.is-big {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+}
+.tr-copy {
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 0;
+  background: var(--tr-cream);
+  color: var(--tr-bg);
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  transition: transform 0.16s ease;
+}
+.tr-copy:active:not(:disabled) {
+  transform: scale(0.95);
+}
+.tr-copy.is-done {
+  background: var(--tr-ok);
+  color: var(--tr-dark);
+}
+.tr-share-note {
+  font-size: 11px;
+  color: rgba(249, 247, 242, 0.5);
+}
+.tr-share-note.is-warn {
+  color: var(--tr-review);
+  font-size: 12px;
+}
+.tr-share-open {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
 }

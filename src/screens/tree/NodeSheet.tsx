@@ -3,9 +3,9 @@
  *   解放済み … 種別 3 行（問題数・マスター度・出題状況バー・挑戦）
  *   未解放   … 前提分野ごとの「52% / 70%」「達成」
  *   準備中   … 問題 0 問
- * 順位・新着バッジは Phase 4。
+ * 分野の順位・種別ごとの新着バッジ（Phase 4）。iPad 横（docked）は右の常設パネルに同じ中身を出す。
  */
-import type { QType, TreeField, TreeManifest, TreeProgress } from '../../lib/treeApi';
+import type { QType, RankInfo, TreeField, TreeManifest, TreeProgress } from '../../lib/treeApi';
 import { QTYPES, QTYPE_LABEL } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
 import { GROUP_NAME, QTYPE_ICON, distPct, fmtScore, groupColor, groupSide } from './treeTheme';
@@ -18,9 +18,14 @@ interface Props {
   starting: boolean;
   onClose: () => void;
   onStart: (qtype: QType) => void;
+  onRanking?: () => void;
+  /** iPad 横の右パネルに置く（ポップオーバーの枠・位置を使わない）*/
+  docked?: boolean;
 }
 
-export function NodeSheet({ field, manifest, progress, starting, onClose, onStart }: Props) {
+export function NodeSheet({ field, manifest, progress, starting, onClose, onStart, onRanking, docked }: Props) {
+  const box = docked ? 'tr-dock-sec' : 'tr-card tr-pop';
+  const rank: RankInfo | undefined = progress.rank?.fields[field.id];
   const p = progress.fields[field.id];
   const col = groupColor(field.group);
   const side = groupSide(field.group);
@@ -36,7 +41,7 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
 
   if (!ready) {
     return (
-      <div className="tr-card tr-pop" role="dialog" aria-label={field.name}>
+      <div className={box} role="dialog" aria-label={field.name}>
         <div className="tr-pop-head">
           <div className="tr-pop-tile" style={{ border: '1.5px solid rgba(249,247,242,0.22)', color: 'rgba(249,247,242,0.5)' }}>
             <Ico id={field.icon} size={22} />
@@ -56,7 +61,7 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
 
   if (!open) {
     return (
-      <div className="tr-card tr-pop" role="dialog" aria-label={field.name}>
+      <div className={box} role="dialog" aria-label={field.name}>
         <div className="tr-pop-head">
           <div
             className="tr-pop-tile"
@@ -112,7 +117,7 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
   }
 
   return (
-    <div className="tr-card tr-pop" role="dialog" aria-label={field.name}>
+    <div className={box} role="dialog" aria-label={field.name}>
       <div className="tr-pop-head">
         <div className="tr-pop-tile" style={{ background: col, color: '#1F2A1E', boxShadow: `4px 4px 0 0 ${side}` }}>
           <Ico id={field.icon} size={22} />
@@ -125,6 +130,12 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
           <div className="tr-pop-meta">
             マスター度 <b className="tr-num">{Math.round(p.mastery * 100)}%</b> · スコア{' '}
             <b className="tr-num">{fmtScore(p.score)}</b> / <span className="tr-num">{fmtScore(p.max)}</span>
+            {rank?.rank != null && (
+              <>
+                {' '}
+                · <b className="tr-num">{rank.rank}</b> 位 / <span className="tr-num">{rank.of}</span> 人
+              </>
+            )}
           </div>
         </div>
         {close}
@@ -135,6 +146,7 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
           const count = s?.total ?? 0;
           const m = s ? Math.round(s.mastery * 100) : 0;
           const w = s ? distPct(s.dist, count) : { mastered: 0, solved: 0, review: 0 };
+          const nw = s?.newCount ?? 0;
           return (
             <div key={t} className="tr-row">
               <div
@@ -149,6 +161,7 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
                   <span>
                     {count} 問 · <span className="tr-num">{m}%</span>
                   </span>
+                  {nw > 0 && <span className="tr-new">新着 {nw}</span>}
                 </div>
                 <div className="tr-distbar">
                   <i style={{ width: `${w.mastered}%`, background: col }} />
@@ -163,7 +176,15 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
           );
         })}
       </div>
-      <div className="tr-note">次の出題は 出題回数の少ない問題から（未着手 → 要復習 → 正解済み）</div>
+      <div className="tr-pop-foot">
+        <div className="tr-note">次の出題は 出題回数の少ない問題から（未着手 → 要復習 → 正解済み）</div>
+        {onRanking && (
+          <button type="button" className="tr-link" onClick={onRanking}>
+            <Ico id="i-trophy" size={13} />
+            ランキング
+          </button>
+        )}
+      </div>
     </div>
   );
 }

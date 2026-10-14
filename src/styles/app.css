@@ -1504,3 +1504,54 @@ body,
   max-width: 320px;
   line-height: 1.6;
 }
+
+/* ── ANCHOR TREE の入口（ホーム）。ツリーと同じ深いセージ + クリーム枠 ── */
+.at-home-cta {
+  margin: 2px var(--pad-x) 18px;
+  width: calc(100% - var(--pad-x) * 2);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1.5px solid rgba(249, 247, 242, 0.5);
+  border-radius: 18px;
+  background: #2a3628;
+  color: #f9f7f2;
+  box-shadow: var(--sh-card);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  transition: transform 0.12s;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.at-home-cta:active {
+  transform: scale(0.99);
+}
+.at-home-ic {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(249, 247, 242, 0.1);
+  color: #cfe1c9;
+}
+.at-home-tx {
+  flex: 1;
+  min-width: 0;
+}
+.at-home-tx .t1 {
+  font-family: var(--f-en);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.at-home-tx .t2 {
+  font-size: 12.5px;
+  color: #cfe1c9;
+  margin-top: 2px;
+}

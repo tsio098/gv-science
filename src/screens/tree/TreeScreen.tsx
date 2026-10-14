@@ -5,6 +5,8 @@
  * 初期位置は左右中央。座標は manifest の pos に treeTheme の倍率を掛けるだけで、毎回レイアウト計算はしない。
  * ノード = 立方体（面が下からマスター度ぶん系統色で満ちる）+ 種別の正方形 3 つ + 分野名ラベル。
  * ノードを選んだら、ポップオーバーに隠れない位置（画面上部 100〜480px）へ自動で動かす。
+ * 幅 900px 以上（iPad 横）は右 400px に常設の詳細パネル（未選択なら科目サマリー）。それ未満はポップオーバー。
+ * 幅 600〜900px（iPad 縦）はスマホのレイアウトを画面幅に合わせて拡大して始める（課題 #23）。
  */
 import { useEffect, useMemo, useState } from 'react';
 import { usePanZoom } from './usePanZoom';
@@ -12,6 +14,7 @@ import type { QType, TreeManifest, TreeProgress } from '../../lib/treeApi';
 import { QTYPES } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
 import { NodeSheet } from './NodeSheet';
+import { TreeSummaryPanel } from './TreeSummaryPanel';
 import {
   IPAD_GEOM,
   IPAD_MIN_W,
@@ -32,7 +35,13 @@ interface Props {
   /** LIFF 内ならホームへ戻るボタン、外部ブラウザならメニュー（ログアウト）*/
   onClose?: () => void;
   onLogout?: () => void;
+  /** LIFF 内: 「別のブラウザで使う」（ID / URL のモーダル）*/
+  onShare?: () => void;
+  /** ランキング（選んでいる分野があればその分野から）*/
+  onRanking: (field: string | null) => void;
   loginId?: string;
+  grade: string;
+  nickname: string;
   message?: string | null;
   onDismissMessage?: () => void;
 }
@@ -49,6 +58,7 @@ export function TreeScreen(props: Props) {
   }, []);
 
   const geom = wide ? IPAD_GEOM : PHONE_GEOM;
+  const DOCK_W = 400;
   const maxLayer = Math.max(0, ...manifest.fields.map((f) => f.pos.layer));
   const canvasW = geom.w;
   const canvasH = Math.max(geom.h, geom.y(maxLayer) + 170);
@@ -58,16 +68,17 @@ export function TreeScreen(props: Props) {
     contentH: canvasH,
     minZ: 0.6,
     maxZ: 2,
-    extraBottom: selected ? 360 : 0,
+    extraBottom: selected && !wide ? 360 : 0,
   });
 
-  // 初期位置: 左右中央・上端（スマホは左右 105px ずつ隠れる）
+  // 初期位置: 左右中央・上端（スマホは左右 105px ずつ隠れる）。iPad 縦は幅に合わせて拡大（最大 1.35 倍）
   useEffect(() => {
     const { w } = pz.size();
     if (!w) return;
-    pz.setView({ x: (w - canvasW) / 2, y: 0, z: 1 });
+    const z = !wide && w > canvasW ? Math.min(1.35, w / canvasW) : 1;
+    pz.setView({ x: (w - canvasW * z) / 2, y: 0, z });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canvasW]);
+  }, [canvasW, wide]);
 
   // 選んだノードを、ポップオーバーに隠れない位置へ
   useEffect(() => {
@@ -113,8 +124,9 @@ export function TreeScreen(props: Props) {
   const sel = selected ? manifest.fields.find((f) => f.id === selected) ?? null : null;
   const pct = Math.round(progress.total.mastery * 100);
 
+  const share = props.onShare;
   return (
-    <div className="tr-root">
+    <div className={`tr-root${wide ? ' is-wide' : ''}`}>
       <div className="tr-pan" ref={pz.viewRef} onClick={() => menu && setMenu(false)}>
         <div>
           <div className="tr-canvas" ref={pz.contentRef} style={{ width: canvasW, height: canvasH }}>
@@ -244,6 +256,15 @@ export function TreeScreen(props: Props) {
                       <Ico id="i-star" size={10} />
                     </span>
                   )}
+                  {ready && open && (p?.newCount ?? 0) > 0 && (
+                    <span
+                      className="tr-badge tr-num"
+                      style={{ left: x + 14, top: y - 31, background: '#F26B1D', color: '#F9F7F2' }}
+                      aria-label={`新着 ${p!.newCount} 問`}
+                    >
+                      +{p!.newCount}
+                    </span>
+                  )}
                   {!ready && (
                     <span
                       className="tr-badge"
@@ -266,27 +287,46 @@ export function TreeScreen(props: Props) {
         <button type="button" className="tr-subject" aria-label={`${manifest.name} マスター度 ${pct}%`}>
           {manifest.name} <span className="tr-num">{pct}%</span>
         </button>
-        {props.onClose ? (
-          <button type="button" className="tr-iconbtn" aria-label="ホームへ戻る" onClick={props.onClose}>
-            <Ico id="i-close" size={16} />
+        <div className="tr-chrome-r">
+          <button type="button" className="tr-iconbtn" aria-label="ランキング" onClick={() => props.onRanking(selected)}>
+            <Ico id="i-trophy" size={18} />
           </button>
-        ) : (
-          <button type="button" className="tr-iconbtn" aria-label="その他" onClick={() => setMenu((v) => !v)}>
+          <button type="button" className="tr-iconbtn" aria-label="その他" aria-expanded={menu} onClick={() => setMenu((v) => !v)}>
             <Ico id="i-more" size={18} />
           </button>
-        )}
+          {props.onClose && (
+            <button type="button" className="tr-iconbtn" aria-label="ホームへ戻る" onClick={props.onClose}>
+              <Ico id="i-close" size={16} />
+            </button>
+          )}
+        </div>
       </div>
 
       {menu && (
         <div className="tr-card tr-menu" role="menu">
-          {props.loginId && (
+          {props.loginId && !share && (
             <div>
               ログインID <span className="tr-mono" style={{ color: '#F9F7F2' }}>{props.loginId}</span>
             </div>
           )}
-          <button type="button" role="menuitem" onClick={props.onLogout}>
-            ログアウト
-          </button>
+          {share && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenu(false);
+                share();
+              }}
+            >
+              <Ico id="i-share" size={15} />
+              別のブラウザで使う
+            </button>
+          )}
+          {props.onLogout && (
+            <button type="button" role="menuitem" onClick={props.onLogout}>
+              ログアウト
+            </button>
+          )}
         </div>
       )}
 
@@ -297,9 +337,40 @@ export function TreeScreen(props: Props) {
         </div>
       )}
 
-      {!sel && <div className="tr-hint">ドラッグで移動 · ピンチで拡大 · ノードをタップで詳細</div>}
+      {(wide || !sel) && (
+        <div className="tr-hint">
+          {wide ? 'ノードをタップで右に詳細 · ドラッグで移動 · ピンチで拡大' : 'ドラッグで移動 · ピンチで拡大 · ノードをタップで詳細'}
+        </div>
+      )}
 
-      {sel && (
+      {wide && (
+        <aside className="tr-dock" style={{ width: DOCK_W }} aria-label="詳細">
+          {sel ? (
+            <NodeSheet
+              key={sel.id}
+              docked
+              field={sel}
+              manifest={manifest}
+              progress={progress}
+              starting={props.starting}
+              onClose={() => onSelect(null)}
+              onStart={(t) => props.onStart(sel.id, t)}
+              onRanking={() => props.onRanking(sel.id)}
+            />
+          ) : (
+            <TreeSummaryPanel
+              manifest={manifest}
+              progress={progress}
+              grade={props.grade}
+              nickname={props.nickname}
+              onSelect={(id) => onSelect(id)}
+              onRanking={() => props.onRanking(null)}
+            />
+          )}
+        </aside>
+      )}
+
+      {!wide && sel && (
         <NodeSheet
           key={sel.id}
           field={sel}
@@ -308,6 +379,7 @@ export function TreeScreen(props: Props) {
           starting={props.starting}
           onClose={() => onSelect(null)}
           onStart={(t) => props.onStart(sel.id, t)}
+          onRanking={() => props.onRanking(sel.id)}
         />
       )}
     </div>

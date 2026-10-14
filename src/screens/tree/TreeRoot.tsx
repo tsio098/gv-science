@@ -1,6 +1,7 @@
 /**
- * ANCHOR TREE のルート。me / manifest / progress を読み、ツリー → 出題 → 結果 を切り替える。
+ * ANCHOR TREE のルート。me / manifest / progress を読み、ツリー → 出題 → 結果 → ランキング を切り替える。
  * LIFF 内（ホームから開く）と外部ブラウザ（/tree）の両方でこれを使う。
+ * LIFF 内は「…」から ID / URL のモーダル（別のブラウザで使う）を開ける。
  */
 import { useCallback, useEffect, useState } from 'react';
 import type { QType, SubmitResult, TreeManifest, TreeMe, TreeProgress, TreeSession } from '../../lib/treeApi';
@@ -9,9 +10,12 @@ import {
   fetchTreeManifest,
   fetchTreeMe,
   fetchTreeProgress,
+  reportTreeQuestion,
   saveTreeNickname,
   startTreeSession,
 } from '../../lib/treeApi';
+import { RankingScreen, type RankScope } from './RankingScreen';
+import { TreeShareModal } from './TreeShareModal';
 import { TreeSprite } from './TreeIcons';
 import { TreeScreen } from './TreeScreen';
 import { PlayScreen } from './PlayScreen';
@@ -24,7 +28,8 @@ const SUBJECT = 'chemistry';
 type View =
   | { kind: 'tree' }
   | { kind: 'play'; session: TreeSession }
-  | { kind: 'result'; session: TreeSession; result: SubmitResult };
+  | { kind: 'result'; session: TreeSession; result: SubmitResult }
+  | { kind: 'ranking'; scope: RankScope; field: string | null; qtype: QType; back: View };
 
 interface Props {
   mode: 'liff' | 'external';
@@ -43,6 +48,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [sharing, setSharing] = useState(false);
 
   const fail = useCallback(
     (e: unknown) => {
@@ -102,14 +108,30 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
     }
   };
 
-  const saveNick = (nick: string) => {
-    if (!me) return;
+  /** ニックネームの保存。NG ワードだけは止めて知らせる（通信エラーは止めない。次の機会に保存し直せる）*/
+  const saveNick = async (nick: string): Promise<string | null> => {
+    if (!me) return null;
     const next = nick.trim() || 'プレイヤー';
-    if (next === me.nickname) return;
-    setMe({ ...me, nickname: next });
-    saveTreeNickname(next)
-      .then((r) => setMe((m) => (m ? { ...m, nickname: r.nickname } : m)))
-      .catch(() => {});
+    if (next === me.nickname) return null;
+    try {
+      const r = await saveTreeNickname(next);
+      setMe((m) => (m ? { ...m, nickname: r.nickname } : m));
+      return null;
+    } catch (e) {
+      if (e instanceof TreeApiError && e.code === 'NG_NICKNAME') {
+        return 'このニックネームは使えません。別の名前にしてください。';
+      }
+      return null;
+    }
+  };
+
+  const report = async (sessionId: string, qid: string): Promise<'sent' | 'already' | 'error'> => {
+    try {
+      const r = await reportTreeQuestion(sessionId, qid);
+      return r.already ? 'already' : 'sent';
+    } catch {
+      return 'error';
+    }
   };
 
   if (error) {
@@ -173,7 +195,13 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           starting={starting}
           onClose={mode === 'liff' ? onClose : undefined}
           onLogout={mode === 'external' ? onLogout : undefined}
+          onShare={mode === 'liff' ? () => setSharing(true) : undefined}
+          onRanking={(field) =>
+            setView({ kind: 'ranking', scope: field ? 'field' : 'subject', field, qtype: 'tf', back: { kind: 'tree' } })
+          }
           loginId={me.loginId}
+          grade={me.grade}
+          nickname={me.nickname}
           message={message}
           onDismissMessage={() => setMessage(null)}
         />
@@ -199,18 +227,30 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           grade={me.grade}
           nickname={me.nickname}
           busy={starting}
-          onRetry={(nick) => {
-            saveNick(nick);
+          onSaveNick={saveNick}
+          onReport={(qid) => report(view.session.sessionId, qid)}
+          onRetry={() => {
             refreshProgress();
             void start(view.session.field, view.session.qtype);
           }}
-          onBack={(nick) => {
-            saveNick(nick);
+          onBack={() => {
             refreshProgress();
             setView({ kind: 'tree' });
           }}
+          onRanking={() => {
+            refreshProgress();
+            setView({ kind: 'ranking', scope: 'field', field: view.session.field, qtype: view.session.qtype, back: view });
+          }}
         />
       )}
+      {view.kind === 'ranking' && (
+        <RankingScreen
+          manifest={manifest}
+          initial={{ scope: view.scope, field: view.field, qtype: view.qtype }}
+          onBack={() => setView(view.back)}
+        />
+      )}
+      {sharing && <TreeShareModal loginId={me.loginId} onClose={() => setSharing(false)} />}
     </>
   );
 }

@@ -26,14 +26,12 @@ import { ExternalLinkModal } from './components/ExternalLinkModal';
 
 // ── 成績推移は遅延ロード（初期バンドル軽量化） ──
 // preloadScoresScreen() は lib/lazyImports.ts に切り出している（循環参照回避）。
-import { importScoresScreen } from './lib/lazyImports';
+import { importScoresScreen, importTreeRoot } from './lib/lazyImports';
 const ScoresScreen = lazy(() =>
   importScoresScreen().then((m) => ({ default: m.ScoresScreen }))
 );
-// ANCHOR TREE（理科進捗ツリー）も遅延ロード。ホームの導線は Phase 4
-const TreeRoot = lazy(() =>
-  import('./screens/tree/TreeRoot').then((m) => ({ default: m.TreeRoot }))
-);
+// ANCHOR TREE（理科進捗ツリー）も遅延ロード。ホームの ANCHOR TREE カードが先読みする
+const TreeRoot = lazy(() => importTreeRoot().then((m) => ({ default: m.TreeRoot })));
 
 function renderRoute(route: Route, nav: ReturnType<typeof useNav>['nav']) {
   switch (route.name) {
