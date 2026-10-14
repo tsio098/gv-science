@@ -18,6 +18,8 @@
   --tr-review: #f7c59f;
   --tr-orange: #f26b1d;
   --tr-ok: #9cc297;
+  /* フェードの行き先（ABYSS は #1a231a）*/
+  --tr-fade: #2a3628;
   --tr-top: calc(env(safe-area-inset-top, 0px) + 12px);
   --tr-bottom: env(safe-area-inset-bottom, 0px);
 
@@ -192,23 +194,51 @@
   font-weight: 600;
   color: var(--tr-mint);
 }
-.tr-scroll {
+.tr-pan {
   position: absolute;
   inset: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
 }
-.tr-sizer {
-  position: relative;
-  margin: 0 auto;
+.tr-pan:active {
+  cursor: grabbing;
 }
 .tr-canvas {
   position: absolute;
   left: 0;
   top: 0;
   transform-origin: 0 0;
+  will-change: transform;
+}
+/* 上フェード（科目チップの背面）と下フェード（下に続くことを示す）*/
+.tr-fade-top,
+.tr-fade-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+}
+.tr-fade-top {
+  top: 0;
+  height: calc(env(safe-area-inset-top, 0px) + 120px);
+  background: linear-gradient(to bottom, var(--tr-fade) 45%, rgba(42, 54, 40, 0));
+  z-index: 26;
+}
+.tr-fade-bottom {
+  bottom: 0;
+  height: 140px;
+  background: linear-gradient(to bottom, rgba(42, 54, 40, 0), var(--tr-fade));
+  z-index: 24;
+}
+.tr-label {
+  position: absolute;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  pointer-events: none;
 }
 .tr-cube,
 .tr-sq,
@@ -885,4 +915,144 @@
 .tr-login-id::placeholder {
   color: rgba(249, 247, 242, 0.35);
   letter-spacing: 0.06em;
+}
+
+/* ── 問題画像の拡大（設計書 §4.6）─────────────────────── */
+
+.tr-zimg {
+  position: relative;
+  overflow: hidden;
+  border-radius: 4px;
+  touch-action: pan-y;
+}
+.tr-zimg-content {
+  transform-origin: 0 0;
+}
+.tr-zimg-content img {
+  display: block;
+  width: 100%;
+  height: auto;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.tr-zimg-btn {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 0;
+  padding: 0;
+  background: rgba(42, 54, 40, 0.85);
+  color: var(--tr-cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tr-zoom {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  background: #1a231a;
+  display: flex;
+  flex-direction: column;
+}
+.tr-zoom-bar {
+  padding: var(--tr-top) 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+  z-index: 5;
+}
+.tr-zoom-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  border: 1px solid var(--tr-line-soft);
+  overflow-x: auto;
+  max-width: calc(100% - 60px);
+}
+.tr-zoom-tabs button {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+  color: var(--tr-sub);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex: none;
+}
+.tr-zoom-tabs button.is-on {
+  background: var(--tr-cream);
+  color: var(--tr-dark);
+}
+.tr-zoom-stage {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  touch-action: none;
+}
+.tr-zoom-img {
+  display: block;
+  border-radius: 10px;
+  background: var(--tr-cream);
+  box-shadow: 0 24px 60px -16px rgba(0, 0, 0, 0.6);
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.tr-zoom-hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 14px;
+  text-align: center;
+  font-size: 11px;
+  color: rgba(249, 247, 242, 0.5);
+  pointer-events: none;
+}
+.tr-zoom-ctrl {
+  flex: none;
+  padding: 10px 16px calc(var(--tr-bottom) + 24px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tr-zoom-ctrl > button:not(.tr-zoom-back) {
+  width: 48px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--tr-line-soft);
+  background: var(--tr-bg);
+  color: var(--tr-cream);
+  font-size: 20px;
+  font-weight: 700;
+  padding: 0;
+}
+.tr-zoom-ctrl > button.is-reset {
+  width: auto;
+  padding: 0 16px;
+  color: var(--tr-mint);
+  font-size: 13px;
+}
+.tr-zoom-pct {
+  font-size: 12px;
+  color: var(--tr-sub);
+}
+.tr-zoom-back {
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 0;
+  background: var(--tr-cream);
+  color: var(--tr-bg);
+  font-size: 14px;
+  font-weight: 700;
 }

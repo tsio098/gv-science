@@ -1,22 +1,25 @@
 /**
- * ANCHOR TREE — スキルツリー本体（設計書 §8・モック Main.dc.html）。
+ * ANCHOR TREE — スキルツリー本体（設計書 §8・モック v26 Main.dc.html / TreeIPad.dc.html）。
  *
- * 座標はモックと同じ 390px 幅の系（manifest の fields[].pos）。画面幅に合わせて
- * キャンバス全体を transform: scale で拡縮し、縦はスクロール。毎回レイアウト計算はしない。
- * ノード = 立方体（面が下からマスター度ぶん系統色で満ちる）+ 種別の正方形 3 つ。
+ * キャンバスは画面より大きい（スマホ 600×1,300px / iPad 680×1,200px）。縦横ドラッグで移動・ピンチで拡大し、
+ * 初期位置は左右中央。座標は manifest の pos に treeTheme の倍率を掛けるだけで、毎回レイアウト計算はしない。
+ * ノード = 立方体（面が下からマスター度ぶん系統色で満ちる）+ 種別の正方形 3 つ + 分野名ラベル。
+ * ノードを選んだら、ポップオーバーに隠れない位置（画面上部 100〜480px）へ自動で動かす。
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { usePanZoom } from './usePanZoom';
 import type { QType, TreeManifest, TreeProgress } from '../../lib/treeApi';
 import { QTYPES } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
 import { NodeSheet } from './NodeSheet';
 import {
-  CANVAS_W,
+  IPAD_GEOM,
+  IPAD_MIN_W,
   MASTER_AT,
+  PHONE_GEOM,
   QTYPE_ICON,
   groupColor,
   groupSide,
-  layerY,
 } from './treeTheme';
 
 interface Props {
@@ -36,27 +39,52 @@ interface Props {
 
 export function TreeScreen(props: Props) {
   const { manifest, progress, selected, onSelect } = props;
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(CANVAS_W);
+  const [wide, setWide] = useState(() => typeof window !== 'undefined' && window.innerWidth >= IPAD_MIN_W);
   const [menu, setMenu] = useState(false);
 
   useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const update = () => setWidth(el.clientWidth || CANVAS_W);
-    update();
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(update) : null;
-    ro?.observe(el);
+    const update = () => setWide(window.innerWidth >= IPAD_MIN_W);
     window.addEventListener('resize', update);
-    return () => {
-      ro?.disconnect();
-      window.removeEventListener('resize', update);
-    };
+    return () => window.removeEventListener('resize', update);
   }, []);
 
+  const geom = wide ? IPAD_GEOM : PHONE_GEOM;
   const maxLayer = Math.max(0, ...manifest.fields.map((f) => f.pos.layer));
-  const canvasH = layerY(maxLayer) + 23 + 29 + 15 + 70;
-  const scale = Math.min(Math.max(width / CANVAS_W, 0.8), 1.5);
+  const canvasW = geom.w;
+  const canvasH = Math.max(geom.h, geom.y(maxLayer) + 170);
+
+  const pz = usePanZoom({
+    contentW: canvasW,
+    contentH: canvasH,
+    minZ: 0.6,
+    maxZ: 2,
+    extraBottom: selected ? 360 : 0,
+  });
+
+  // 初期位置: 左右中央・上端（スマホは左右 105px ずつ隠れる）
+  useEffect(() => {
+    const { w } = pz.size();
+    if (!w) return;
+    pz.setView({ x: (w - canvasW) / 2, y: 0, z: 1 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canvasW]);
+
+  // 選んだノードを、ポップオーバーに隠れない位置へ
+  useEffect(() => {
+    if (!selected) return;
+    const f = manifest.fields.find((x) => x.id === selected);
+    if (!f) return;
+    const { x, y, z } = pz.get();
+    const { w: vw, h: vh } = pz.size();
+    const sx = geom.x(f.pos.x) * z + x;
+    const sy = geom.y(f.pos.layer) * z + y;
+    const top = 100;
+    const bottom = wide ? vh - 120 : Math.min(480, vh - 120);
+    const nx = sx < 40 || sx > vw - 40 ? x + (vw / 2 - sx) : x;
+    const ny = sy < top || sy > bottom ? y + ((top + bottom) / 2 - sy) : y;
+    if (nx !== x || ny !== y) pz.setView({ x: nx, y: ny }, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, wide]);
 
   const layout = useMemo(() => {
     const byId = new Map(manifest.fields.map((f) => [f.id, f]));
@@ -65,36 +93,35 @@ export function TreeScreen(props: Props) {
       const p = progress.fields[f.id];
       const open = !!p?.unlocked && f.total > 0;
       const col = groupColor(f.group);
-      const y = layerY(f.pos.layer);
+      const fx = geom.x(f.pos.x);
+      const y = geom.y(f.pos.layer);
       for (const pre of f.prereqs) {
         const a = byId.get(pre);
         if (!a) continue;
-        const ay = layerY(a.pos.layer);
+        const ax = geom.x(a.pos.x);
+        const ay = geom.y(a.pos.layer);
         edges.push({
-          d: `M ${a.pos.x} ${ay + 24} C ${a.pos.x} ${ay + 64}, ${f.pos.x} ${y - 64}, ${f.pos.x} ${y - 24}`,
+          d: `M ${ax} ${ay + 24} C ${ax} ${ay + 64}, ${fx} ${y - 64}, ${fx} ${y - 24}`,
           color: open ? col + '8C' : 'rgba(249,247,242,0.16)',
           dash: open ? '0' : '3 5',
         });
       }
     }
     return { edges };
-  }, [manifest, progress]);
+  }, [manifest, progress, geom]);
 
   const sel = selected ? manifest.fields.find((f) => f.id === selected) ?? null : null;
   const pct = Math.round(progress.total.mastery * 100);
 
   return (
     <div className="tr-root">
-      <div className="tr-scroll" ref={scrollRef} onClick={() => menu && setMenu(false)}>
-        <div
-          className="tr-sizer"
-          style={{ width: CANVAS_W * scale, height: canvasH * scale + (sel ? 320 : 0) }}
-        >
-          <div className="tr-canvas" style={{ width: CANVAS_W, height: canvasH, transform: `scale(${scale})` }}>
+      <div className="tr-pan" ref={pz.viewRef} onClick={() => menu && setMenu(false)}>
+        <div>
+          <div className="tr-canvas" ref={pz.contentRef} style={{ width: canvasW, height: canvasH }}>
             <svg
-              width={CANVAS_W}
+              width={canvasW}
               height={canvasH}
-              viewBox={`0 0 ${CANVAS_W} ${canvasH}`}
+              viewBox={`0 0 ${canvasW} ${canvasH}`}
               aria-hidden="true"
               style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }}
             >
@@ -103,7 +130,7 @@ export function TreeScreen(props: Props) {
                   key={i}
                   d={e.d}
                   stroke={e.color}
-                  strokeWidth={2}
+                  strokeWidth={1.5}
                   strokeDasharray={e.dash}
                   fill="none"
                   strokeLinecap="round"
@@ -112,8 +139,8 @@ export function TreeScreen(props: Props) {
             </svg>
             {manifest.fields.map((f) => {
               const p = progress.fields[f.id];
-              const x = f.pos.x;
-              const y = layerY(f.pos.layer);
+              const x = geom.x(f.pos.x);
+              const y = geom.y(f.pos.layer);
               const col = groupColor(f.group);
               const side = groupSide(f.group);
               const ready = f.total > 0;
@@ -201,6 +228,17 @@ export function TreeScreen(props: Props) {
                         </div>
                       );
                     })}
+                  <span
+                    className="tr-label"
+                    style={{
+                      left: x - geom.labelW / 2,
+                      top: y + geom.labelDy,
+                      width: geom.labelW,
+                      color: !ready ? geom.labelColor.empty : open ? geom.labelColor.open : geom.labelColor.locked,
+                    }}
+                  >
+                    {f.name}
+                  </span>
                   {master && (
                     <span className="tr-badge" style={{ left: x - 31, top: y - 31, background: '#F9F7F2', color: side }}>
                       <Ico id="i-star" size={10} />
@@ -220,6 +258,9 @@ export function TreeScreen(props: Props) {
           </div>
         </div>
       </div>
+
+      <div className="tr-fade-top" />
+      <div className="tr-fade-bottom" />
 
       <div className="tr-chrome">
         <button type="button" className="tr-subject" aria-label={`${manifest.name} マスター度 ${pct}%`}>
@@ -256,7 +297,7 @@ export function TreeScreen(props: Props) {
         </div>
       )}
 
-      {!sel && <div className="tr-hint">ノードをタップで詳細</div>}
+      {!sel && <div className="tr-hint">ドラッグで移動 · ピンチで拡大 · ノードをタップで詳細</div>}
 
       {sel && (
         <NodeSheet

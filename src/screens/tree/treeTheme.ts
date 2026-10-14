@@ -31,11 +31,44 @@ export const groupSide = (g: string) => GROUP_SIDE[g as FieldGroup] ?? GROUP_SID
 /** マスター度がこれ以上でマスター表示（★・クリーム枠・発光）*/
 export const MASTER_AT = 0.8;
 
-/** キャンバス（モックの 390px 幅の座標系）*/
-export const CANVAS_W = 390;
-export const LAYER_TOP = 104;
-export const LAYER_GAP = 86;
-export const layerY = (layer: number) => LAYER_TOP + LAYER_GAP * layer;
+/**
+ * キャンバスの寸法（モック v26・2026-10-14 変更）。manifest の pos.x（55〜335）・layer は変えず、ここで倍率を掛ける。
+ *   スマホ: 層間 140px・列 300 + (x − 195) × 1.6・600 × 1,300px（画面より縦横に大きい。ドラッグで移動）
+ *   iPad 横（幅 900px 以上）: 層間 130px・列 x × 1.7・680 × 1,200px
+ */
+export interface TreeGeom {
+  w: number;
+  h: number;
+  x: (posX: number) => number;
+  y: (layer: number) => number;
+  labelW: number;
+  labelDy: number;
+  /** 分野名ラベルの色（解放済み / 未解放 / 準備中）*/
+  labelColor: { open: string; locked: string; empty: string };
+}
+
+export const PHONE_GEOM: TreeGeom = {
+  w: 600,
+  h: 1300,
+  x: (p) => Math.round(300 + (p - 195) * 1.6),
+  y: (l) => 150 + 140 * l,
+  labelW: 84,
+  labelDy: 50,
+  labelColor: { open: 'rgba(249,247,242,0.62)', locked: 'rgba(249,247,242,0.38)', empty: 'rgba(249,247,242,0.28)' },
+};
+
+export const IPAD_GEOM: TreeGeom = {
+  w: 680,
+  h: 1200,
+  x: (p) => Math.round(p * 1.7),
+  y: (l) => 150 + 130 * l,
+  labelW: 96,
+  labelDy: 48,
+  labelColor: { open: 'rgba(249,247,242,0.72)', locked: 'rgba(249,247,242,0.35)', empty: 'rgba(249,247,242,0.28)' },
+};
+
+/** iPad レイアウトに切り替える幅（設計書 §8 の min-width: 900px）*/
+export const IPAD_MIN_W = 900;
 
 /** 出題状況バーの幅（%）: 定着・正解済み・要復習（残りは未着手）*/
 export function distPct(d: Dist, total: number) {

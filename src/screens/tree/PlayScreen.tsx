@@ -6,11 +6,14 @@
  * - 正解はサーバだけが持つので、ここでは正誤を出さずに次へ進み、最後にまとめて提出する
  * - 時間は単位（単問 / セット）ごとに、画像がそろってから「決定」までを測る。
  *   セットは小問に等分して送る（サーバはセット内の合計で時間ボーナスを出す）
+ * - 画像はその場でピンチ拡大、タップで全画面ビューア（§4.6）。全画面中もタイマーは止めない
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FieldGroup, PlayQuestion, SubmitResult, TreeSession } from '../../lib/treeApi';
 import { QTYPE_LABEL, TreeApiError, circled, examLabel, submitTreeSession, treeImage } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
+import { ZoomImage } from './ZoomImage';
+import { PlayZoomScreen, type ZoomTab } from './PlayZoomScreen';
 import { fmtTime, groupColor } from './treeTheme';
 
 interface Props {
@@ -35,6 +38,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
   const [imgs, setImgs] = useState<ImgState>({});
   const [leadOpen, setLeadOpen] = useState(false);
   const [confirmExit, setConfirmExit] = useState(false);
+  const [zoomPath, setZoomPath] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [now, setNow] = useState(() => performance.now());
@@ -123,6 +127,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
     }
     unitStart.current = null;
     setLeadOpen(false);
+    setZoomPath(null);
     setIdx(idx + 1);
     areaRef.current?.scrollTo({ top: 0 });
   };
@@ -152,8 +157,16 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
         </button>
       );
     }
-    return <img src={s} alt={alt} />;
+    return <ZoomImage key={path} src={s} alt={alt} onOpen={() => setZoomPath(path)} />;
   };
+
+  // 全画面ビューアの切替タブ: リード文 → 設問（セットは小問ごと）
+  const zoomTabs: ZoomTab[] = [];
+  const leadPath = isSet ? unit.lead : first?.img.lead ?? null;
+  if (leadPath) zoomTabs.push({ label: 'リード文', path: leadPath });
+  qs.forEach((q, i) => {
+    if (q.img.body) zoomTabs.push({ label: isSet ? `小問 ${i + 1}` : '設問', path: q.img.body });
+  });
 
   const renderChoices = (q: PlayQuestion, small: boolean) =>
     q.answer.boxes.map((b, k) => (
@@ -286,6 +299,9 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
             </>
           )
         )}
+        <div className="tr-note" style={{ textAlign: 'center' }}>
+          画像はピンチで拡大 · タップで全画面
+        </div>
       </div>
 
       <div className="tr-pad">
@@ -313,6 +329,15 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
           {submitting ? '採点中…' : isLast ? '決定して採点へ' : '決定'}
         </button>
       </div>
+
+      {zoomPath && (
+        <PlayZoomScreen
+          tabs={zoomTabs}
+          initial={Math.max(0, zoomTabs.findIndex((t) => t.path === zoomPath))}
+          imgs={imgs}
+          onClose={() => setZoomPath(null)}
+        />
+      )}
 
       {confirmExit && (
         <div className="tr-overlay" role="dialog" aria-label="中断の確認">
