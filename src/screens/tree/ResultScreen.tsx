@@ -302,7 +302,7 @@ export function ResultScreen({ result, session, manifest, grade, nickname, onSav
             {wrong.map((r) => {
               const q = session.questions[r.qid];
               const label = q
-                ? `${examLabel(q.source.exam)} · 解答番号 ${q.answer.boxes.map((b) => b.n).join('・')}`
+                ? `${q.source.kind === 'basic' ? '基本 · ' : ''}${examLabel(q.source.exam)} · 解答番号 ${q.answer.boxes.map((b) => b.n).join('・')}`
                 : r.qid;
               return (
                 <WrongItem
