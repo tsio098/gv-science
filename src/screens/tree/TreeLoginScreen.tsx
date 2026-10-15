@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { TreeApiError, treeLogin } from '../../lib/treeApi';
 import { saveTreeSession } from '../../lib/treeAuth';
 import { Ico, TreeSprite } from './TreeIcons';
-import { T, alpha, groupSide } from './treeTheme';
+import { GROUP_COLOR, GROUP_SIDE, T, alpha } from './treeTheme';
 
 export function TreeLoginScreen({ onLoggedIn }: { onLoggedIn: () => void }) {
   const [id, setId] = useState('');
@@ -38,31 +38,20 @@ export function TreeLoginScreen({ onLoggedIn }: { onLoggedIn: () => void }) {
     <div className="tr-root tr-login">
       <TreeSprite />
       <div className="tr-login-inner">
+        {/* 立方体のモチーフ（モック Login.dc.html の背景 SVG・390×300。中央の錨がアプリロゴ）*/}
+        <div style={{ margin: '0 -24px', paddingTop: 'env(safe-area-inset-top, 0px)', display: 'flex', justifyContent: 'center', overflow: 'hidden' }}>
+          <LoginMotif />
+        </div>
         <div
           style={{
-            marginTop: 'calc(env(safe-area-inset-top, 0px) + 96px)',
+            marginTop: -38,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             gap: 6,
+            position: 'relative',
           }}
         >
-          <div
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 13,
-              background: T.accent,
-              color: T.onColor,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: `7px 7px 0 0 ${groupSide('basic')}, 0 0 18px ${alpha(T.accent, 0.5)}`,
-              marginBottom: 18,
-            }}
-          >
-            <Ico id="i-anchor" size={28} />
-          </div>
           <div className="tr-num" style={{ fontWeight: 700, fontSize: 20, color: T.accent }}>
             GV Science
           </div>
@@ -127,5 +116,42 @@ export function TreeLoginScreen({ onLoggedIn }: { onLoggedIn: () => void }) {
         </div>
       </div>
     </div>
+  );
+}
+
+/** ログイン画面上部の飾り: 枝線と、点灯・未解放の立方体（静的・アニメなし）*/
+function LoginMotif() {
+  const line = alpha(T.text, 0.16);
+  const lit = GROUP_COLOR.inorganic;
+  const locked: [number, number, string][] = [
+    [92, 202, GROUP_COLOR.organic],
+    [262, 202, GROUP_COLOR.polymer],
+    [52, 2, GROUP_COLOR.basic],
+    [302, 2, GROUP_COLOR.inorganic],
+  ];
+  return (
+    <svg width="390" height="300" viewBox="0 0 390 300" aria-hidden="true" style={{ flex: 'none', display: 'block' }}>
+      <g stroke={line} strokeWidth="1.5" fill="none">
+        <path d="M195 140 C195 110, 125 100, 125 70" />
+        <path d="M195 140 C195 110, 265 100, 265 70" />
+        <path d="M125 70 C125 50, 70 40, 70 20" />
+        <path d="M265 70 C265 50, 320 40, 320 20" />
+        <path d="M195 140 C195 180, 110 180, 110 220" />
+        <path d="M195 140 C195 180, 280 180, 280 220" />
+      </g>
+      <rect x="113" y="58" width="36" height="36" rx="9" fill={T.sideDark} opacity="0.6" />
+      <rect x="107" y="52" width="36" height="36" rx="9" fill={T.face} stroke={alpha(T.text, 0.18)} />
+      <rect x="253" y="58" width="36" height="36" rx="9" fill={GROUP_SIDE.inorganic} opacity="0.6" />
+      <rect x="247" y="52" width="36" height="36" rx="9" fill={lit} />
+      {locked.map(([x, y, c]) => (
+        <rect key={`${x}-${y}`} x={x} y={y} width="36" height="36" rx="9" fill={T.faceLocked} stroke={c} strokeOpacity="0.7" strokeWidth="1.5" />
+      ))}
+      <rect x="178" y="123" width="48" height="48" rx="11" fill={GROUP_SIDE.basic} opacity="0.6" />
+      <rect x="171" y="116" width="48" height="48" rx="11" fill={T.accent} />
+      <g transform="translate(183 128)" fill="none" stroke={T.onColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="5" r="2" />
+        <path d="M12 7v14M8 10h8M4 14a8 8 0 0 0 16 0M4 14l2-2M20 14l-2-2" />
+      </g>
+    </svg>
   );
 }
