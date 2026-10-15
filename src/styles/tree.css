@@ -359,17 +359,6 @@
 .tr-hit:active ~ .tr-cube {
   transform: scale(0.92);
 }
-.tr-hint {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: calc(var(--tr-bottom) + 24px);
-  text-align: center;
-  font-size: 11px;
-  color: rgba(var(--tr-text-rgb), 0.45);
-  pointer-events: none;
-  z-index: 25;
-}
 .tr-toast {
   position: absolute;
   left: 16px;
@@ -670,29 +659,6 @@
   line-height: 1.6;
   color: #4a5a47;
 }
-.tr-leadpill {
-  position: absolute;
-  left: 14px;
-  top: 14px;
-  z-index: 2;
-  height: 28px;
-  padding: 0 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(var(--tr-ground-rgb), 0.25);
-  background: rgba(var(--tr-text-rgb), 0.92);
-  color: var(--tr-well);
-  font-size: 11px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.25);
-}
-.tr-leadpill[aria-pressed='true'] {
-  background: var(--tr-accent);
-  color: var(--tr-on);
-  border-color: var(--tr-accent);
-}
 .tr-expand {
   position: absolute;
   right: 14px;
@@ -835,6 +801,7 @@
   gap: 10px;
 }
 .tr-member-head {
+  padding: 4px 8px 0;
   font-size: 12px;
   font-weight: 700;
   color: var(--tr-accent);
@@ -1240,7 +1207,7 @@
 .tr-pop-foot {
   display: flex;
   align-items: flex-end;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 10px;
 }
 .tr-link {
@@ -1286,11 +1253,6 @@ button.tr-stat {
 }
 .tr-root.is-wide .tr-stagemark {
   left: 24px;
-}
-.tr-root.is-wide .tr-hint {
-  right: 400px;
-  left: 24px;
-  text-align: left;
 }
 .tr-dock {
   position: absolute;

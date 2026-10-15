@@ -1,9 +1,10 @@
 /**
  * ANCHOR TREE — 出題（設計書 §5.1・§5.2 / モック Play.dc.html）。
  *
- * - 単問: 本文画像を枠の残り高さいっぱいに（モック v30）。リードは枠左上のピル「リード文」で枠内を切り替え、右上に全画面ボタン。
- *   出典は出さない（結果画面の間違えた問題一覧にだけ）。下に ①〜⑩ のパッド
+ * - 単問: 本文画像を枠の残り高さいっぱいに（モック v30）。右上に全画面ボタン。出典は出さない（結果画面の間違えた問題一覧にだけ）。下に ①〜⑩ のパッド
+ * - リードがある単問: リード文と設問を別の枠に分けて縦に並べ、スクロールで両方を見られるようにする（2026-10-15 先生の指示。切替ピルは廃止）
  * - セット（同じリードの小問）: リードを上に常時表示し、小問を縦に並べて欄ごとに選ぶ
+ * - 原子量・定数など（given）は画像の上に、見出しなしのチップで出す（2026-10-15 先生の指示）
  * - 正解はサーバだけが持つので、ここでは正誤を出さずに次へ進み、最後にまとめて提出する
  * - 時間は単位（単問 / セット）ごとに、画像がそろってから「決定」までを測る。
  *   セットは小問に等分して送る（サーバはセット内の合計でタイムボーナスを出す）
@@ -37,7 +38,6 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
   const [idx, setIdx] = useState(0);
   const [picks, setPicks] = useState<Record<string, string[]>>({});
   const [imgs, setImgs] = useState<ImgState>({});
-  const [leadOpen, setLeadOpen] = useState(false);
   const [confirmExit, setConfirmExit] = useState(false);
   const [zoomPath, setZoomPath] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -127,7 +127,6 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
       return;
     }
     unitStart.current = null;
-    setLeadOpen(false);
     setZoomPath(null);
     setIdx(idx + 1);
     areaRef.current?.scrollTo({ top: 0 });
@@ -164,7 +163,6 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
   // 全画面ビューアの切替タブ: リード文 → 設問（セットは小問ごと）
   const zoomTabs: ZoomTab[] = [];
   const leadPath = isSet ? unit.lead : first?.img.lead ?? null;
-  const shownPath = leadOpen && leadPath ? leadPath : first?.img.body ?? null;
   if (leadPath) zoomTabs.push({ label: 'リード文', path: leadPath });
   qs.forEach((q, i) => {
     if (q.img.body) zoomTabs.push({ label: isSet ? `小問 ${i + 1}` : '設問', path: q.img.body });
@@ -201,8 +199,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
 
   const given = (list: string[]) =>
     list.length > 0 && (
-      <div className="tr-given">
-        <b>必要な値</b>
+      <div className="tr-given" aria-label="問題で使う値">
         {list.map((g) => (
           <span key={g} className="tr-num">
             {g}
@@ -250,12 +247,15 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
         </div>
       </div>
 
-      <div className={`tr-qarea${isSet ? '' : ' is-fill'}`} ref={areaRef}>
+      <div className={`tr-qarea${isSet || leadPath ? '' : ' is-fill'}`} ref={areaRef}>
+        {given(isSet ? [...new Set(qs.flatMap((q) => q.given))] : first?.given ?? [])}
         {isSet ? (
           <>
             <div className="tr-frame">
+              <div className="tr-member-head">
+                <span>リード文</span>
+              </div>
               <div className="tr-paper">{renderImg(unit.lead, 'リード文')}</div>
-              {given([...new Set(qs.flatMap((q) => q.given))])}
             </div>
             {qs.map((q, i) => (
               <div key={q.id} className="tr-frame tr-member">
@@ -272,33 +272,41 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
               </div>
             ))}
           </>
+        ) : first && leadPath ? (
+          <>
+            <div className="tr-frame">
+              <div className="tr-member-head">
+                <span>リード文</span>
+              </div>
+              <div className="tr-paper">{renderImg(leadPath, 'リード文')}</div>
+            </div>
+            <div className="tr-frame">
+              <div className="tr-member-head">
+                <span>設問</span>
+                <span className="tr-num" style={{ color: T.sub, fontWeight: 500 }}>
+                  解答番号 {boxLabel(first)}
+                </span>
+              </div>
+              <div className="tr-paper">
+                {renderImg(first.img.body, `問題 解答番号 ${boxLabel(first)}`)}
+                {first.text && <div className="tr-qtext">{first.text}</div>}
+              </div>
+            </div>
+          </>
         ) : (
           first && (
             <div className="tr-frame is-fill">
               <div className="tr-paper">
-                <div className="tr-imgscroll" key={shownPath ?? ''}>
-                  {renderImg(shownPath, leadOpen ? 'リード文' : `問題 解答番号 ${boxLabel(first)}`, false)}
+                <div className="tr-imgscroll" key={first.img.body ?? ''}>
+                  {renderImg(first.img.body, `問題 解答番号 ${boxLabel(first)}`, false)}
                 </div>
-                {!leadOpen && first.text && <div className="tr-qtext">{first.text}</div>}
+                {first.text && <div className="tr-qtext">{first.text}</div>}
               </div>
-              {first.img.lead && (
-                <button
-                  type="button"
-                  className="tr-leadpill"
-                  onClick={() => setLeadOpen((v) => !v)}
-                  aria-pressed={leadOpen}
-                  aria-label={leadOpen ? '設問にもどる' : '大問のリード文を見る'}
-                >
-                  <Ico id="i-lines" size={12} />
-                  {leadOpen ? '設問' : 'リード文'}
-                </button>
-              )}
-              {shownPath && imgs[shownPath] && imgs[shownPath] !== 'error' && (
-                <button type="button" className="tr-expand" aria-label="全画面で見る" onClick={() => setZoomPath(shownPath)}>
+              {first.img.body && imgs[first.img.body] && imgs[first.img.body] !== 'error' && (
+                <button type="button" className="tr-expand" aria-label="全画面で見る" onClick={() => setZoomPath(first.img.body)}>
                   <Ico id="i-expand" size={14} />
                 </button>
               )}
-              {given(first.given)}
             </div>
           )
         )}

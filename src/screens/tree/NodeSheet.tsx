@@ -198,15 +198,14 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
           );
         })}
       </div>
-      <div className="tr-pop-foot">
-        <div className="tr-note">次の出題は 出題回数の少ない問題から（未出題 → 要復習 → 正解済み）</div>
-        {onRanking && (
+      {onRanking && (
+        <div className="tr-pop-foot">
           <button type="button" className="tr-link" onClick={onRanking}>
             <Ico id="i-trophy" size={13} />
             ランキング
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

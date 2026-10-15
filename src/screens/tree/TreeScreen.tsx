@@ -352,12 +352,6 @@ export function TreeScreen(props: Props) {
         </div>
       )}
 
-      {(wide || !sel) && (
-        <div className="tr-hint">
-          {wide ? 'ノードをタップで右に詳細 · ドラッグで移動 · ピンチで拡大' : 'ドラッグで移動 · ピンチで拡大 · ノードをタップで詳細'}
-        </div>
-      )}
-
       {wide && (
         <aside
           className="tr-dock"

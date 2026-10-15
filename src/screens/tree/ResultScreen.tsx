@@ -1,15 +1,15 @@
 /**
  * ANCHOR TREE — 結果（設計書 §5.2 / モック Result.dc.html）。
- * 今回の加算（新規正解 +75・タイムボーナス更新の差分）・累積スコア・マスター度・出題状況の前後・間違えた問題。
+ * 今回の加算（新規正解 +75・タイムボーナス更新の差分）・累積スコア・マスター度・間違えた問題（出題状況の前後は 2026-10-15 先生の指示で出さない）。
  * 間違えた問題は問題（画像）と自分の答えだけを見せ、正解は表示しない（2026-10-15 先生決定）。
  * ニックネームはここで入力し、離れるときに保存する（/tree/profile。NG ワードなら離れずに知らせる）。
  * 分野の順位の前後（Phase 4）・間違えた問題の「解答がおかしい」報告（課題 #21）。
  */
 import { useState } from 'react';
-import type { FieldGroup, NodeStats, SubmitResult, TreeManifest, TreeSession } from '../../lib/treeApi';
+import type { FieldGroup, SubmitResult, TreeManifest, TreeSession } from '../../lib/treeApi';
 import { QTYPE_LABEL, circled, examLabel, gradeLabel, treeImage } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
-import { REVIEW_COLOR, T, alpha, distPct, fmtScore, fmtTime, groupColor, groupSide } from './treeTheme';
+import { REVIEW_COLOR, T, alpha, fmtScore, fmtTime, groupColor, groupSide } from './treeTheme';
 
 interface Props {
   result: SubmitResult;
@@ -27,21 +27,6 @@ interface Props {
 }
 
 type ReportState = 'idle' | 'sending' | 'sent' | 'already' | 'error';
-
-function Dist({ s, col, label }: { s: NodeStats | null; col: string; label: string }) {
-  if (!s) return null;
-  const w = distPct(s.dist, s.total);
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ fontSize: 10, color: alpha(T.text, 0.5), width: 20 }}>{label}</span>
-      <div className="tr-distbar" style={{ flex: 1, height: 8 }}>
-        <i style={{ width: `${w.mastered}%`, background: col }} />
-        <i style={{ width: `${w.solved}%`, background: col, opacity: 0.45 }} />
-        <i style={{ width: `${w.review}%`, background: REVIEW_COLOR }} />
-      </div>
-    </div>
-  );
-}
 
 const REPORT_LABEL: Record<ReportState, string> = {
   idle: '解答がおかしい？ 先生に報告',
@@ -259,37 +244,6 @@ export function ResultScreen({ result, session, manifest, grade, nickname, onSav
             この分野 挑戦 <b className="tr-num" style={{ color: T.text }}>{play.count}</b> 回 · 正答率{' '}
             <b className="tr-num" style={{ color: T.text }}>{Math.round(play.rate)}%</b>（次の分野の解放: {unlockPlays} 回以上・
             {manifest.unlockPct}% 以上）
-          </div>
-        )}
-
-        {after && (
-          <div className="tr-panel">
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: T.sub }}>
-              <span>出題状況（{after.total} 問）</span>
-              <span>
-                未出題 {before?.dist.fresh ?? 0} → {after.dist.fresh}
-              </span>
-            </div>
-            <Dist s={before} col={col} label="前" />
-            <Dist s={after} col={col} label="後" />
-            <div className="tr-legend">
-              <span>
-                <i style={{ background: col }} />
-                定着
-              </span>
-              <span>
-                <i style={{ background: col, opacity: 0.5 }} />
-                正解済み
-              </span>
-              <span>
-                <i style={{ background: REVIEW_COLOR }} />
-                要復習
-              </span>
-              <span>
-                <i style={{ background: alpha(T.text, 0.2) }} />
-                未出題
-              </span>
-            </div>
           </div>
         )}
 
