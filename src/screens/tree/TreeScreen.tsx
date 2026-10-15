@@ -11,6 +11,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePanZoom } from './usePanZoom';
 import type { QType, TreeManifest, TreeProgress } from '../../lib/treeApi';
+import { TREE_SUBJECT_NAME, type TreeSubject } from '../../lib/treeSubject';
 import { QTYPES } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
 import { NodeSheet } from './NodeSheet';
@@ -32,6 +33,9 @@ import {
 interface Props {
   manifest: TreeManifest;
   progress: TreeProgress;
+  /** 開ける科目（2 つ以上なら科目チップで切り替え。Phase 6）*/
+  subjects: TreeSubject[];
+  onSubject: (s: TreeSubject) => void;
   selected: string | null;
   onSelect: (field: string | null) => void;
   onStart: (field: string, qtype: QType) => void;
@@ -54,6 +58,8 @@ export function TreeScreen(props: Props) {
   const { manifest, progress, selected, onSelect } = props;
   const [wide, setWide] = useState(() => typeof window !== 'undefined' && window.innerWidth >= IPAD_MIN_W);
   const [menu, setMenu] = useState(false);
+  const [subjMenu, setSubjMenu] = useState(false);
+  const canSwitch = props.subjects.length > 1;
 
   useEffect(() => {
     const update = () => setWide(window.innerWidth >= IPAD_MIN_W);
@@ -134,7 +140,10 @@ export function TreeScreen(props: Props) {
   return (
     <div className={`tr-root${wide ? ' is-wide' : ''}`}>
       <div className="tr-caustic" />
-      <div className="tr-pan" ref={pz.viewRef} onClick={() => menu && setMenu(false)}>
+      <div className="tr-pan" ref={pz.viewRef} onClick={() => {
+          if (menu) setMenu(false);
+          if (subjMenu) setSubjMenu(false);
+        }}>
         <div>
           <div className="tr-canvas" ref={pz.contentRef} style={{ width: canvasW, height: canvasH }}>
             <svg
@@ -299,14 +308,28 @@ export function TreeScreen(props: Props) {
       <div className="tr-stagemark">{T.name}</div>
 
       <div className="tr-chrome">
-        <button type="button" className="tr-subject" aria-label={`${manifest.name} マスター度 ${pct}%`}>
+        <button
+          type="button"
+          className="tr-subject"
+          aria-label={`${manifest.name} マスター度 ${pct}%${canSwitch ? '・科目を切り替える' : ''}`}
+          aria-expanded={canSwitch ? subjMenu : undefined}
+          onClick={() => {
+            if (!canSwitch) return;
+            setMenu(false);
+            setSubjMenu((v) => !v);
+          }}
+        >
           {manifest.name} <span className="tr-num">{pct}%</span>
+          {canSwitch && <Ico id="i-chev-down" size={14} />}
         </button>
         <div className="tr-chrome-r">
           <button type="button" className="tr-iconbtn" aria-label="ランキング" onClick={() => props.onRanking(selected)}>
             <Ico id="i-trophy" size={18} />
           </button>
-          <button type="button" className="tr-iconbtn" aria-label="その他" aria-expanded={menu} onClick={() => setMenu((v) => !v)}>
+          <button type="button" className="tr-iconbtn" aria-label="その他" aria-expanded={menu} onClick={() => {
+            setSubjMenu(false);
+            setMenu((v) => !v);
+          }}>
             <Ico id="i-more" size={18} />
           </button>
           {props.onClose && (
@@ -316,6 +339,26 @@ export function TreeScreen(props: Props) {
           )}
         </div>
       </div>
+
+      {subjMenu && (
+        <div className="tr-card tr-menu tr-subjmenu" role="menu">
+          {props.subjects.map((s) => (
+            <button
+              key={s}
+              type="button"
+              role="menuitemradio"
+              aria-checked={s === manifest.subject}
+              className={s === manifest.subject ? 'is-on' : undefined}
+              onClick={() => {
+                setSubjMenu(false);
+                props.onSubject(s);
+              }}
+            >
+              {TREE_SUBJECT_NAME[s]}
+            </button>
+          ))}
+        </div>
+      )}
 
       {menu && (
         <div className="tr-card tr-menu" role="menu">

@@ -9,6 +9,7 @@ import { useAsync } from '../lib/useAsync';
 import { prefetch } from '../lib/swrCache';
 import { importTreeShareModal, preloadScoresScreen, preloadTreeRoot } from '../lib/lazyImports';
 import { fetchTreeProgress } from '../lib/treeApi';
+import { TREE_SUBJECT_NAME, pickTreeSubject, treeSubjectsFor } from '../lib/treeSubject';
 import { useScores } from '../lib/scoresStore';
 import type { NavFn, ScheduleSubject } from '../lib/types';
 import { SUBJECT_JA } from '../lib/types';
@@ -54,10 +55,12 @@ const AnchorIcon = ({ size = 22 }: { size?: number }) => (
 
 /**
  * ANCHOR TREE の入口（設計書 §3.5）。タップでツリー、長押しで「別のブラウザで使う」（ログインID / URL）。
- * 下の行は化学のマスター度と新着数（/tree/progress。塾生登録の前などで取れなければ説明文）。
+ * 下の行は科目（履修科目のうちツリーがあるもの・最後に開いた科目。Phase 6）のマスター度と新着数
+ * （/tree/progress。塾生登録の前・その科目の問題がまだ無いときなどで取れなければ説明文）。
  */
-function AnchorTreeCard({ onOpen }: { onOpen: () => void }) {
-  const prog = useAsync(() => fetchTreeProgress('chemistry'), [], { cacheKey: 'tree:progress:chemistry' });
+function AnchorTreeCard({ onOpen, subjects }: { onOpen: () => void; subjects: readonly string[] }) {
+  const subject = pickTreeSubject(treeSubjectsFor(subjects));
+  const prog = useAsync(() => fetchTreeProgress(subject), [subject], { cacheKey: 'tree:progress:' + subject });
   const [share, setShare] = useState(false);
   const timer = useRef<number | null>(null);
   const start = useRef<{ x: number; y: number } | null>(null);
@@ -71,7 +74,7 @@ function AnchorTreeCard({ onOpen }: { onOpen: () => void }) {
   const p = prog.data;
   const nw = p ? p.total.newCount ?? 0 : 0;
   const sub = p
-    ? `化学 ${Math.round(p.total.mastery * 100)}%${nw > 0 ? ` · 新着 ${nw}` : ''}`
+    ? `${TREE_SUBJECT_NAME[subject]} ${Math.round(p.total.mastery * 100)}%${nw > 0 ? ` · 新着 ${nw}` : ''}`
     : '演習の問題をスキルツリーで解き直す';
 
   return (
@@ -325,7 +328,7 @@ export function HomeC({ nav }: HomeCProps) {
           </div>
         </button>
 
-        <AnchorTreeCard onOpen={() => nav('tree')} />
+        <AnchorTreeCard onOpen={() => nav('tree')} subjects={user.subjects ?? []} />
 
         {/* 記事フィード（横スクロール） */}
         <div className="c-feed-head">

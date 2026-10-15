@@ -11,6 +11,12 @@ export const GROUP_COLOR: Record<FieldGroup, string> = {
   inorganic: '#FF7AB8',
   organic: '#FFD84A',
   polymer: '#D08BFF',
+  // 生物は化学の 5 色を使い回す（2026-10-15 先生決定）
+  matter: '#2DF4C6',
+  gene: '#4FC3FF',
+  response: '#FF7AB8',
+  ecology: '#FFD84A',
+  evolution: '#D08BFF',
 };
 /** 系統色（立方体の側面 5px）*/
 export const GROUP_SIDE: Record<FieldGroup, string> = {
@@ -19,6 +25,11 @@ export const GROUP_SIDE: Record<FieldGroup, string> = {
   inorganic: '#A8336E',
   organic: '#A88A14',
   polymer: '#7A47B0',
+  matter: '#0F8F77',
+  gene: '#1C6FA3',
+  response: '#A8336E',
+  ecology: '#A88A14',
+  evolution: '#7A47B0',
 };
 export const GROUP_NAME: Record<FieldGroup, string> = {
   basic: '理論 · 化学基礎範囲',
@@ -26,6 +37,11 @@ export const GROUP_NAME: Record<FieldGroup, string> = {
   inorganic: '無機化学',
   organic: '有機化学',
   polymer: '高分子化合物',
+  matter: '生命現象と物質',
+  gene: '遺伝情報と発生',
+  response: '環境応答',
+  ecology: '生態',
+  evolution: '進化と系統',
 };
 export const QTYPE_ICON: Record<QType, string> = { tf: 'i-tf', calc: 'i-calc', reason: 'i-reason' };
 

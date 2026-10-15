@@ -19,13 +19,11 @@ import { TreeShareModal } from './TreeShareModal';
 import { TreeSprite } from './TreeIcons';
 import { T, alpha } from './treeTheme';
 import { getLiffStatus } from '../../lib/liff';
+import { type TreeSubject, pickTreeSubject, rememberTreeSubject, treeSubjectsFor } from '../../lib/treeSubject';
 import { TreeScreen } from './TreeScreen';
 import { PlayScreen } from './PlayScreen';
 import { ResultScreen } from './ResultScreen';
 import '../../styles/tree.css';
-
-/** Phase 3 は化学のみ（manifest があるのは化学だけ）*/
-const SUBJECT = 'chemistry';
 
 /**
  * LINE 内で開いたときの自分の LINE の ID（userId）。「塾生専用です」画面に出し、
@@ -60,6 +58,9 @@ interface Props {
 
 export function TreeRoot({ mode, onClose, onLogout }: Props) {
   const [me, setMe] = useState<TreeMe | null>(null);
+  /** 開ける科目（履修科目のうちツリーがあるもの。先生は全部）と、いま開いている科目（Phase 6）*/
+  const [subjects, setSubjects] = useState<TreeSubject[]>([]);
+  const [subject, setSubject] = useState<TreeSubject | null>(null);
   const [manifest, setManifest] = useState<TreeManifest | null>(null);
   const [progress, setProgress] = useState<TreeProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -81,34 +82,77 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
     [mode, onLogout]
   );
 
+  /**
+   * 科目の manifest と進捗を読む。まだ問題が無い科目（NO_CONTENT）は一覧から外して次の科目へ。
+   * 全部無ければ読み込みエラー。
+   */
+  const openSubject = useCallback(
+    async (list: TreeSubject[], want: TreeSubject) => {
+      const order = [want, ...list.filter((s) => s !== want)];
+      const empty = new Set<TreeSubject>();
+      for (const s of order) {
+        try {
+          const [mf, pg] = await Promise.all([fetchTreeManifest(s), fetchTreeProgress(s)]);
+          setSubjects(list.filter((x) => !empty.has(x)));
+          setSubject(s);
+          setManifest(mf);
+          setProgress(pg);
+          return;
+        } catch (e) {
+          if (!(e instanceof TreeApiError && e.code === 'NO_CONTENT')) throw e;
+          empty.add(s);
+        }
+      }
+      throw new TreeApiError('NO_CONTENT', 404);
+    },
+    []
+  );
+
   const load = useCallback(() => {
     setError(null);
-    Promise.all([fetchTreeMe(), fetchTreeManifest(SUBJECT), fetchTreeProgress(SUBJECT)])
-      .then(([m, mf, pg]) => {
+    fetchTreeMe()
+      .then(async (m) => {
         setMe(m);
-        setManifest(mf);
-        setProgress(pg);
+        const list = treeSubjectsFor(m.subjects, m.grade === '先生');
+        await openSubject(list, pickTreeSubject(list));
       })
       .catch(fail);
-  }, [fail]);
+  }, [fail, openSubject]);
+
+  /** 科目チップから科目を切り替える（ツリーに戻し、選択を外す）*/
+  const switchSubject = useCallback(
+    (s: TreeSubject) => {
+      if (s === subject) return;
+      rememberTreeSubject(s);
+      setManifest(null);
+      setProgress(null);
+      setSelected(null);
+      setMessage(null);
+      setView({ kind: 'tree' });
+      openSubject(subjects, s).catch(fail);
+    },
+    [subject, subjects, openSubject, fail]
+  );
 
   useEffect(load, [load]);
 
   const refreshProgress = useCallback(() => {
     // manifest が差し替わっていたら一緒に取り直す（版がずれると問題 ID が合わない）
-    fetchTreeProgress(SUBJECT)
+    if (!subject) return;
+    fetchTreeProgress(subject)
       .then((pg) => {
         setProgress(pg);
-        if (manifest && pg.version !== manifest.version) fetchTreeManifest(SUBJECT).then(setManifest).catch(() => {});
+        if (manifest && pg.version !== manifest.version) fetchTreeManifest(subject).then(setManifest).catch(() => {});
       })
       .catch(() => {});
-  }, [manifest]);
+  }, [manifest, subject]);
 
   const start = async (field: string, qtype: QType) => {
     setStarting(true);
     setMessage(null);
     try {
-      const s = await startTreeSession(SUBJECT, field, qtype);
+      if (!subject) return;
+      const s = await startTreeSession(subject, field, qtype);
       setView({ kind: 'play', session: s });
     } catch (e) {
       const code = e instanceof TreeApiError ? e.code : '';
@@ -196,7 +240,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
     );
   }
 
-  if (!me || !manifest || !progress) {
+  if (!me || !manifest || !progress || !subject) {
     return (
       <div className="tr-root">
         <div className="tr-center">
@@ -216,6 +260,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
         <TreeScreen
           manifest={manifest}
           progress={progress}
+          subjects={subjects}
+          onSubject={switchSubject}
           selected={selected}
           onSelect={setSelected}
           onStart={start}

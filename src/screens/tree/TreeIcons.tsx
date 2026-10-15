@@ -26,6 +26,29 @@ export function TreeSprite() {
         <symbol id="i-hoko" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><circle cx="12" cy="12" r="4"/></g></symbol>
         <symbol id="i-tennen" viewBox="0 0 24 24"><path d="M4 20C4 10 10 4 20 4c0 10-6 16-16 16zM4 20L14 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></symbol>
         <symbol id="i-gosei" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="2.5" y="9" width="8" height="6" rx="3"/><rect x="13.5" y="9" width="8" height="6" rx="3"/><path d="M9 12h6"/></g></symbol>
+        {/* 生物（Phase 6・2026-10-15。モックに無いので化学と同じ線画の流儀で作った）*/}
+        {/* 細胞と分子 = 細胞（膜・核・小器官） */}
+        <symbol id="i-saibo" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.8"><ellipse cx="12" cy="12" rx="9" ry="7.5"/><circle cx="13.5" cy="11" r="3"/><circle cx="7.5" cy="14" r="1" fill="currentColor"/></g></symbol>
+        {/* 代謝 = 回る矢印（エネルギーの流れ） */}
+        <symbol id="i-taisha" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M19.5 9.5A8 8 0 0 0 5 8M4.5 14.5A8 8 0 0 0 19 16"/><path d="M5 4v4h4M19 20v-4h-4"/></g></symbol>
+        {/* 遺伝情報の発現 = 二重らせん */}
+        <symbol id="i-hatsugen" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"><path d="M7 3c0 5 10 5 10 9s-10 4-10 9M17 3c0 5-10 5-10 9s10 4 10 9"/><path d="M9 6.5h6M9 17.5h6"/></g></symbol>
+        {/* 動物の環境応答 = ニューロン（細胞体・樹状突起・軸索） */}
+        <symbol id="i-dobutsu" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="3"/><path d="M5.5 6.3L3 4.5M8 5V2.5M5.2 9.5L3 11M10.2 10.2L19 19M16 19h3v-3"/></g></symbol>
+        {/* 遺伝 = 交配表（2×2） */}
+        <symbol id="i-iden" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="4" y="4" width="16" height="16" rx="2.5"/><path d="M12 4v16M4 12h16"/></g></symbol>
+        {/* 遺伝子技術 = プラスミドに断片を組み込む */}
+        <symbol id="i-gijutsu" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M15.5 5.2A7.5 7.5 0 1 1 8.5 5.2"/><path d="M10 3.5h4" strokeWidth="3"/></g></symbol>
+        {/* 植物の環境応答 = 芽生え */}
+        <symbol id="i-shokubutsu" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21v-9"/><path d="M12 14c-4.5 0-7-2.5-7-6.5 4.5 0 7 2.5 7 6.5zM12 12c0-4.5 2.5-7 7-7 0 4.5-2.5 7-7 7z"/></g></symbol>
+        {/* 生物の進化 = 枝分かれ */}
+        <symbol id="i-shinka" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21v-7M12 14L6 8M12 14l6-6M6 8V4M6 8L3 6M18 8V4M18 8l3-2"/></g></symbol>
+        {/* 生態系 = 生態ピラミッド */}
+        <symbol id="i-seitai" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"><path d="M12 3.5L21 20H3z"/><path d="M8.2 10.5h7.6M5.6 15.2h12.8"/></g></symbol>
+        {/* 発生 = 卵割（4 細胞期） */}
+        <symbol id="i-hassei" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.7"><circle cx="12" cy="12" r="9"/><circle cx="9.2" cy="9.2" r="2.6"/><circle cx="14.8" cy="9.2" r="2.6"/><circle cx="9.2" cy="14.8" r="2.6"/><circle cx="14.8" cy="14.8" r="2.6"/></g></symbol>
+        {/* 系統と分類 = 系統樹（直角の分岐） */}
+        <symbol id="i-keito" viewBox="0 0 24 24"><path d="M3 12h4M7 6v12M7 6h6M7 18h13M13 6V3.5M13 6v3M13 3.5h7M13 9h7" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></symbol>
         <symbol id="i-tf" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><circle cx="8" cy="12" r="4.5"/><path d="M15 8.5l6 7M21 8.5l-6 7"/></g></symbol>
         <symbol id="i-calc" viewBox="0 0 24 24"><path d="M6 5h12L11.5 12 18 19H6" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/></symbol>
         <symbol id="i-reason" viewBox="0 0 24 24"><path d="M9.5 18h5M10.5 21h3M12 3a6 6 0 0 0-4 10.5c.7.6 1 1.5 1 2.5h6c0-1 .3-1.9 1-2.5A6 6 0 0 0 12 3z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></symbol>

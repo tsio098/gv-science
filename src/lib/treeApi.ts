@@ -20,7 +20,10 @@ export const QTYPE_LABEL: Record<QType, string> = { tf: '正誤問題', calc: '�
  * 系統（分野色）。モック v31 で理論化学を 化学基礎範囲（basic）/ 化学応用範囲（applied）に分けた。
  * 旧 manifest の 'theory' は読み込み時に分野 ID で振り分ける（normalizeGroups）。
  */
-export type FieldGroup = 'basic' | 'applied' | 'inorganic' | 'organic' | 'polymer';
+export type FieldGroup =
+  | 'basic' | 'applied' | 'inorganic' | 'organic' | 'polymer'
+  // 生物（2026-10-15 Phase 6・教科書の編）: 生命現象と物質 / 遺伝情報と発生 / 環境応答 / 生態 / 進化と系統
+  | 'matter' | 'gene' | 'response' | 'ecology' | 'evolution';
 type RawFieldGroup = FieldGroup | 'theory';
 
 /** 理論化学のうち化学基礎範囲の分野（ブリーフ §2.1）。残りの理論は化学応用範囲 */
