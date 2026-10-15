@@ -9,7 +9,7 @@ import { useState } from 'react';
 import type { FieldGroup, NodeStats, SubmitResult, TreeManifest, TreeSession } from '../../lib/treeApi';
 import { QTYPE_LABEL, circled, examLabel, gradeLabel, treeImage } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
-import { distPct, fmtScore, fmtTime, groupColor, groupSide } from './treeTheme';
+import { REVIEW_COLOR, T, alpha, distPct, fmtScore, fmtTime, groupColor, groupSide } from './treeTheme';
 
 interface Props {
   result: SubmitResult;
@@ -33,11 +33,11 @@ function Dist({ s, col, label }: { s: NodeStats | null; col: string; label: stri
   const w = distPct(s.dist, s.total);
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ fontSize: 10, color: 'rgba(249,247,242,0.5)', width: 20 }}>{label}</span>
+      <span style={{ fontSize: 10, color: alpha(T.text, 0.5), width: 20 }}>{label}</span>
       <div className="tr-distbar" style={{ flex: 1, height: 8 }}>
         <i style={{ width: `${w.mastered}%`, background: col }} />
-        <i style={{ width: `${w.solved}%`, background: col, opacity: 0.5 }} />
-        <i style={{ width: `${w.review}%`, background: '#F7C59F' }} />
+        <i style={{ width: `${w.solved}%`, background: col, opacity: 0.45 }} />
+        <i style={{ width: `${w.review}%`, background: REVIEW_COLOR }} />
       </div>
     </div>
   );
@@ -82,12 +82,12 @@ function WrongItem({
     <div className="tr-wrong">
       <button type="button" className="tr-wrong-head" onClick={toggle} aria-expanded={open}>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <div style={{ fontSize: 12, color: '#A9B5A5' }}>{label}</div>
+          <div style={{ fontSize: 12, color: T.sub }}>{label}</div>
           <div style={{ fontSize: 13 }}>
-            あなたの答え <b className="tr-num" style={{ color: '#F7C59F' }}>{mine}</b>
+            あなたの答え <b className="tr-num" style={{ color: REVIEW_COLOR }}>{mine}</b>
           </div>
         </div>
-        <span style={{ color: '#A9B5A5', transform: open ? 'rotate(90deg)' : undefined, display: 'flex' }}>
+        <span style={{ color: T.sub, transform: open ? 'rotate(90deg)' : undefined, display: 'flex' }}>
           <Ico id="i-chev-right" size={16} />
         </span>
       </button>
@@ -123,7 +123,7 @@ function rankDelta(b: number | null, a: number | null, of: number) {
 
 export function ResultScreen({ result, session, manifest, grade, nickname, onSaveNick, onRetry, onBack, onRanking, onReport, busy }: Props) {
   const field = manifest.fields.find((f) => f.id === session.field);
-  const group = (field?.group ?? 'theory') as FieldGroup;
+  const group = (field?.group ?? 'basic') as FieldGroup;
   const col = groupColor(group);
   const side = groupSide(group);
   const [nick, setNick] = useState(nickname === 'プレイヤー' ? '' : nickname);
@@ -162,7 +162,7 @@ export function ResultScreen({ result, session, manifest, grade, nickname, onSav
             height: 30,
             borderRadius: 8,
             background: col,
-            color: '#1F2A1E',
+            color: T.onColor,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -181,7 +181,7 @@ export function ResultScreen({ result, session, manifest, grade, nickname, onSav
 
       <div className="tr-result-body">
         {unlockedNames.length > 0 && (
-          <div className="tr-alert" style={{ borderColor: 'rgba(156,194,151,0.6)', color: '#9CC297' }}>
+          <div className="tr-alert" style={{ borderColor: alpha(T.accent, 0.6), color: T.accent }}>
             <Ico id="i-lock" size={18} />
             <span>
               <b>{unlockedNames.join('・')}</b> が解放されました
@@ -189,33 +189,33 @@ export function ResultScreen({ result, session, manifest, grade, nickname, onSav
           </div>
         )}
 
-        <div className="tr-card tr-hero" style={{ boxShadow: `6px 6px 0 0 ${col}` }}>
-          <div style={{ fontSize: 12, color: '#A9B5A5' }}>今回の加算</div>
+        <div className="tr-card tr-hero" style={{ boxShadow: `6px 6px 0 0 ${col}, 0 0 20px ${alpha(T.accent, 0.14)}` }}>
+          <div style={{ fontSize: 12, color: T.sub }}>今回の加算</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
             <span className="tr-num tr-hero-num">+{fmtScore(summary.gain)}</span>
-            <span style={{ fontSize: 13, color: '#A9B5A5' }}>/ {summary.total * 100}</span>
+            <span style={{ fontSize: 13, color: T.sub }}>/ {summary.total * 100}</span>
           </div>
-          <div style={{ display: 'flex', gap: 16, fontSize: 13, color: '#A9B5A5', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 16, fontSize: 13, color: T.sub, flexWrap: 'wrap' }}>
             <span>
-              正答 <b className="tr-num" style={{ fontSize: 16, color: '#F9F7F2' }}>{summary.correct}</b> / {summary.total}
+              正答 <b className="tr-num" style={{ fontSize: 16, color: T.text }}>{summary.correct}</b> / {summary.total}
             </span>
             <span>
-              時間 <b className="tr-num" style={{ fontSize: 16, color: '#F9F7F2' }}>{fmtTime(summary.elapsedMs)}</b>
+              時間 <b className="tr-num" style={{ fontSize: 16, color: T.text }}>{fmtTime(summary.elapsedMs)}</b>
             </span>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
             {summary.newCorrect > 0 && (
-              <span className="tr-pill tr-num" style={{ background: 'rgba(156,194,151,0.18)', color: '#9CC297' }}>
+              <span className="tr-pill tr-num" style={{ background: alpha(T.accent, 0.18), color: T.accent }}>
                 新規正解 {summary.newCorrect} 問 +{fmtScore(summary.newCorrectPoints)}
               </span>
             )}
             {summary.bonusPoints > 0 && (
-              <span className="tr-pill tr-num" style={{ background: 'rgba(156,194,151,0.18)', color: '#9CC297' }}>
+              <span className="tr-pill tr-num" style={{ background: alpha(T.accent, 0.18), color: T.accent }}>
                 タイムボーナス +{fmtScore(summary.bonusPoints)}
               </span>
             )}
             {keep > 0 && (
-              <span className="tr-pill tr-num" style={{ border: '1px solid rgba(249,247,242,0.25)', color: '#A9B5A5', fontWeight: 500 }}>
+              <span className="tr-pill tr-num" style={{ border: `1px solid ${alpha(T.text, 0.25)}`, color: T.sub, fontWeight: 500 }}>
                 正解済み {keep} 問 ±0
               </span>
             )}
@@ -231,7 +231,7 @@ export function ResultScreen({ result, session, manifest, grade, nickname, onSav
           <div className="tr-stat">
             <div>マスター度</div>
             <div className="tr-num">{mAfter}%</div>
-            <div className="tr-num" style={{ color: mAfter >= mBefore ? '#9CC297' : '#F7C59F' }}>
+            <div className="tr-num" style={{ color: mAfter >= mBefore ? T.accent : REVIEW_COLOR }}>
               {mBefore}% → {mAfter >= mBefore ? '▲' : '▼'}
               {Math.abs(mAfter - mBefore)}
             </div>
@@ -240,7 +240,7 @@ export function ResultScreen({ result, session, manifest, grade, nickname, onSav
             <button type="button" className="tr-stat" onClick={() => void leave(onRanking)} aria-label="ランキングを見る">
               <div>分野の順位</div>
               <div className="tr-num">{rank.after.rank != null ? `${rank.after.rank}位` : '—'}</div>
-              <div className="tr-num" style={{ color: rankUp(rank.before.rank, rank.after.rank) ? '#9CC297' : '#A9B5A5', fontWeight: rankUp(rank.before.rank, rank.after.rank) ? 700 : 500 }}>
+              <div className="tr-num" style={{ color: rankUp(rank.before.rank, rank.after.rank) ? T.accent : T.sub, fontWeight: rankUp(rank.before.rank, rank.after.rank) ? 700 : 500 }}>
                 {rankDelta(rank.before.rank, rank.after.rank, rank.after.of)}
               </div>
             </button>
@@ -248,7 +248,7 @@ export function ResultScreen({ result, session, manifest, grade, nickname, onSav
             <div className="tr-stat">
               <div>この分野の正答率</div>
               <div className="tr-num">{play ? `${Math.round(play.rate)}%` : '—'}</div>
-              <div className="tr-num" style={{ color: '#A9B5A5', fontWeight: 500 }}>
+              <div className="tr-num" style={{ color: T.sub, fontWeight: 500 }}>
                 {play ? `挑戦 ${play.count} 回` : ''}
               </div>
             </div>
@@ -256,15 +256,15 @@ export function ResultScreen({ result, session, manifest, grade, nickname, onSav
         </div>
         {play && (
           <div className="tr-note" style={{ textAlign: 'right' }}>
-            この分野 挑戦 <b className="tr-num" style={{ color: '#F9F7F2' }}>{play.count}</b> 回 · 正答率{' '}
-            <b className="tr-num" style={{ color: '#F9F7F2' }}>{Math.round(play.rate)}%</b>（次の分野の解放: {unlockPlays} 回以上・
+            この分野 挑戦 <b className="tr-num" style={{ color: T.text }}>{play.count}</b> 回 · 正答率{' '}
+            <b className="tr-num" style={{ color: T.text }}>{Math.round(play.rate)}%</b>（次の分野の解放: {unlockPlays} 回以上・
             {manifest.unlockPct}% 以上）
           </div>
         )}
 
         {after && (
           <div className="tr-panel">
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#A9B5A5' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: T.sub }}>
               <span>出題状況（{after.total} 問）</span>
               <span>
                 未出題 {before?.dist.fresh ?? 0} → {after.dist.fresh}
@@ -282,11 +282,11 @@ export function ResultScreen({ result, session, manifest, grade, nickname, onSav
                 正解済み
               </span>
               <span>
-                <i style={{ background: '#F7C59F' }} />
+                <i style={{ background: REVIEW_COLOR }} />
                 要復習
               </span>
               <span>
-                <i style={{ background: 'rgba(249,247,242,0.2)' }} />
+                <i style={{ background: alpha(T.text, 0.2) }} />
                 未出題
               </span>
             </div>
@@ -296,7 +296,7 @@ export function ResultScreen({ result, session, manifest, grade, nickname, onSav
         {wrong.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={{ fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <i style={{ width: 8, height: 8, borderRadius: 2, background: '#F7C59F', display: 'block' }} />
+              <i style={{ width: 8, height: 8, borderRadius: 2, background: REVIEW_COLOR, display: 'block' }} />
               間違えた問題 {wrong.length} 問
             </div>
             {wrong.map((r) => {
@@ -319,7 +319,7 @@ export function ResultScreen({ result, session, manifest, grade, nickname, onSav
       </div>
 
       <div className="tr-foot">
-        <label htmlFor="tr-nick" style={{ fontSize: 12, color: '#A9B5A5' }}>
+        <label htmlFor="tr-nick" style={{ fontSize: 12, color: T.sub }}>
           ランキングに表示するニックネーム（空欄なら「プレイヤー」）
         </label>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -329,8 +329,8 @@ export function ResultScreen({ result, session, manifest, grade, nickname, onSav
                 height: 48,
                 padding: '0 12px',
                 borderRadius: 14,
-                border: '1px solid rgba(249,247,242,0.25)',
-                color: '#CFE1C9',
+                border: `1px solid ${alpha(T.text, 0.25)}`,
+                color: T.accent,
                 fontSize: 13,
                 fontWeight: 700,
                 display: 'flex',
@@ -356,7 +356,7 @@ export function ResultScreen({ result, session, manifest, grade, nickname, onSav
           />
         </div>
         {nickError && (
-          <div role="alert" style={{ fontSize: 12, color: '#F7C59F' }}>
+          <div role="alert" style={{ fontSize: 12, color: REVIEW_COLOR }}>
             {nickError}
           </div>
         )}

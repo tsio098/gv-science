@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { QType, TreeManifest, TreeRanking } from '../../lib/treeApi';
 import { QTYPES, QTYPE_LABEL, fetchTreeRanking, gradeLabel } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
-import { fmtScore, groupColor } from './treeTheme';
+import { T, alpha, fmtScore, groupColor } from './treeTheme';
 
 export type RankScope = 'subject' | 'field' | 'type';
 
@@ -23,9 +23,9 @@ const SCOPES: { key: RankScope; label: string }[] = [
   { key: 'type', label: '種別' },
 ];
 const PODIUM = [
-  { top: '#E3B04B', side: '#8C6A26', avatar: '#9CC297' },
-  { top: '#C9D3CC', side: '#6B7869', avatar: '#6FB2C0' },
-  { top: '#D9A47A', side: '#8A5A3C', avatar: '#B08BC9' },
+  { top: '#FFD84A', side: '#A88A14', avatar: '#2DF4C6' },
+  { top: '#C9D3CC', side: '#6B7869', avatar: '#FF7AB8' },
+  { top: '#D9A47A', side: '#8A5A3C', avatar: '#D08BFF' },
 ];
 const QTYPE_SHORT: Record<QType, string> = { tf: '正誤', calc: '計算', reason: '考察' };
 
@@ -79,7 +79,7 @@ export function RankingScreen({ manifest, initial, onBack }: Props) {
           <Ico id="i-back" size={20} />
         </button>
         <div className="tr-rank-title">
-          <span style={{ color: '#E3B04B', display: 'flex' }}>
+          <span style={{ color: '#FFD84A', display: 'flex' }}>
             <Ico id="i-trophy" size={20} />
           </span>
           <span>ランキング</span>
@@ -111,7 +111,15 @@ export function RankingScreen({ manifest, initial, onBack }: Props) {
                 role="option"
                 aria-selected={x.id === field}
                 className={x.id === field ? 'is-on' : ''}
-                style={x.id === field ? { borderColor: groupColor(x.group), color: groupColor(x.group) } : undefined}
+                style={
+                  x.id === field
+                    ? {
+                        borderColor: groupColor(x.group),
+                        color: groupColor(x.group),
+                        boxShadow: `0 0 10px ${alpha(groupColor(x.group), 0.4)}`,
+                      }
+                    : undefined
+                }
                 onClick={() => setField(x.id)}
               >
                 {x.name}
@@ -155,7 +163,7 @@ export function RankingScreen({ manifest, initial, onBack }: Props) {
             <div className="tr-spinner" />
           </div>
         ) : data.count === 0 ? (
-          <div className="tr-panel" style={{ textAlign: 'center', color: '#A9B5A5', fontSize: 13, padding: '28px 16px' }}>
+          <div className="tr-panel" style={{ textAlign: 'center', color: T.sub, fontSize: 13, padding: '28px 16px' }}>
             まだ誰も載っていません。1 問正解するとランキングに載ります。
           </div>
         ) : (
@@ -176,7 +184,7 @@ export function RankingScreen({ manifest, initial, onBack }: Props) {
                       {[...p.nickname][0]}
                     </div>
                     <div className="tr-podium-name">{p.nickname}</div>
-                    <div style={{ fontSize: 10, color: '#A9B5A5' }}>{gradeLabel(p.grade)}</div>
+                    <div style={{ fontSize: 10, color: T.sub }}>{gradeLabel(p.grade)}</div>
                     <div className="tr-num" style={{ fontSize: 13, fontWeight: 700 }}>
                       {fmtScore(p.score)}
                     </div>

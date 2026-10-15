@@ -1,34 +1,93 @@
 /**
- * ANCHOR TREE の色・寸法（デザインブリーフ v2 / モック Main.dc.html）。
+ * ANCHOR TREE の色・寸法（ブリーフ §2.1 v31 ネオン / モック NeonPalette.dc.html・Main.dc.html）。
+ * 色は「消灯 → 点灯 → 全面発光」のネオン管。発光は box-shadow だけ（アニメーションは足さない）。
  */
 import type { Dist, FieldGroup, QType } from '../../lib/treeApi';
 
-/** 系統色（面）*/
+/** 系統色（面・枠・枝線）。ROUTE / ABYSS で共通 */
 export const GROUP_COLOR: Record<FieldGroup, string> = {
-  theory: '#9CC297',
-  inorganic: '#6FB2C0',
-  organic: '#E3B04B',
-  polymer: '#B08BC9',
+  basic: '#2DF4C6',
+  applied: '#4FC3FF',
+  inorganic: '#FF7AB8',
+  organic: '#FFD84A',
+  polymer: '#D08BFF',
 };
-/** 系統色（立方体の側面）*/
+/** 系統色（立方体の側面 5px）*/
 export const GROUP_SIDE: Record<FieldGroup, string> = {
-  theory: '#5E7F5A',
-  inorganic: '#3F6E79',
-  organic: '#8C6A26',
-  polymer: '#6B507C',
+  basic: '#0F8F77',
+  applied: '#1C6FA3',
+  inorganic: '#A8336E',
+  organic: '#A88A14',
+  polymer: '#7A47B0',
 };
 export const GROUP_NAME: Record<FieldGroup, string> = {
-  theory: '理論化学',
+  basic: '理論 · 化学基礎範囲',
+  applied: '理論 · 化学応用範囲',
   inorganic: '無機化学',
   organic: '有機化学',
-  polymer: '高分子',
+  polymer: '高分子化合物',
 };
 export const QTYPE_ICON: Record<QType, string> = { tf: 'i-tf', calc: 'i-calc', reason: 'i-reason' };
 
-export const groupColor = (g: string) => GROUP_COLOR[g as FieldGroup] ?? GROUP_COLOR.theory;
-export const groupSide = (g: string) => GROUP_SIDE[g as FieldGroup] ?? GROUP_SIDE.theory;
+export const groupColor = (g: string) => GROUP_COLOR[g as FieldGroup] ?? GROUP_COLOR.basic;
+export const groupSide = (g: string) => GROUP_SIDE[g as FieldGroup] ?? GROUP_SIDE.basic;
 
-/** マスター度がこれ以上でマスター表示（★・クリーム枠・発光）*/
+/** 8 桁 hex の透明度（0〜1）を付ける: alpha('#2DF4C6', 0.4) → '#2DF4C666' */
+export const alpha = (hex: string, a: number) =>
+  hex + Math.round(Math.max(0, Math.min(1, a)) * 255).toString(16).padStart(2, '0').toUpperCase();
+
+/**
+ * ステージの色（ROUTE = 浅い海 / ABYSS = 深海）。CSS 側は tree.css の .tr-root / .tr-root.is-abyss と同じ値。
+ * インラインの style で使う分だけここに置く（hex なので alpha() を掛けられる）。
+ */
+export interface StageTheme {
+  name: 'ROUTE' | 'ABYSS';
+  /** 文字（白に近い）*/
+  text: string;
+  sub: string;
+  /** ステージ色（主 CTA・選択中・正解・▲）*/
+  accent: string;
+  /** ステージ色・系統色の塗りの上の濃い文字 */
+  onColor: string;
+  card: string;
+  face: string;
+  faceLocked: string;
+  /** 未解放・未着手の側面 */
+  sideDark: string;
+}
+export const STAGE: Record<'front' | 'back', StageTheme> = {
+  front: {
+    name: 'ROUTE',
+    text: '#EAFBFF',
+    sub: '#8ED4E0',
+    accent: '#2DF4C6',
+    onColor: '#04302B',
+    card: '#073E4B',
+    face: '#0B4B59',
+    faceLocked: '#053640',
+    sideDark: '#031E24',
+  },
+  back: {
+    name: 'ABYSS',
+    text: '#E8EEFF',
+    sub: '#8A9AC8',
+    accent: '#00E5FF',
+    onColor: '#031B24',
+    card: '#0A1328',
+    face: '#111E3E',
+    faceLocked: '#070E22',
+    sideDark: '#01030A',
+  },
+};
+/** いま描くステージ（ABYSS は Phase 6。そのときは TreeRoot から渡す）*/
+export const T = STAGE.front;
+
+/** 役割色（ROUTE / ABYSS 共通）*/
+export const NEW_COLOR = '#FF7A45';
+export const NEW_FG = '#140A05';
+export const REVIEW_COLOR = '#FFB38A';
+
+/** マスター度がこれ以上でマスター表示（★・文字色の枠・強い発光）*/
 export const MASTER_AT = 0.8;
 
 /**
@@ -54,7 +113,7 @@ export const PHONE_GEOM: TreeGeom = {
   y: (l) => 150 + 140 * l,
   labelW: 84,
   labelDy: 50,
-  labelColor: { open: 'rgba(249,247,242,0.62)', locked: 'rgba(249,247,242,0.38)', empty: 'rgba(249,247,242,0.28)' },
+  labelColor: { open: alpha(T.text, 0.7), locked: alpha(T.text, 0.4), empty: alpha(T.text, 0.28) },
 };
 
 export const IPAD_GEOM: TreeGeom = {
@@ -64,7 +123,7 @@ export const IPAD_GEOM: TreeGeom = {
   y: (l) => 150 + 130 * l,
   labelW: 96,
   labelDy: 48,
-  labelColor: { open: 'rgba(249,247,242,0.72)', locked: 'rgba(249,247,242,0.35)', empty: 'rgba(249,247,242,0.28)' },
+  labelColor: { open: alpha(T.text, 0.72), locked: alpha(T.text, 0.4), empty: alpha(T.text, 0.28) },
 };
 
 /** iPad レイアウトに切り替える幅（設計書 §8 の min-width: 900px）*/

@@ -14,11 +14,11 @@ export function TreeApp() {
   useEffect(() => {
     // 周囲（オーバースクロール・ノッチ）もツリーの色に
     const prev = document.documentElement.style.background;
-    document.documentElement.style.background = '#2A3628';
-    document.body.style.background = '#2A3628';
+    document.documentElement.style.background = '#043039';
+    document.body.style.background = '#043039';
     const meta = document.querySelector('meta[name="theme-color"]');
     const prevTheme = meta?.getAttribute('content');
-    meta?.setAttribute('content', '#2A3628');
+    meta?.setAttribute('content', '#0E6474');
     document.title = 'ANCHOR TREE';
     return () => {
       document.documentElement.style.background = prev;

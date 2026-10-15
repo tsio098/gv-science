@@ -16,7 +16,22 @@ export type QType = 'tf' | 'calc' | 'reason';
 export const QTYPES: QType[] = ['tf', 'calc', 'reason'];
 export const QTYPE_LABEL: Record<QType, string> = { tf: '正誤問題', calc: '計算問題', reason: '考察問題' };
 
-export type FieldGroup = 'theory' | 'inorganic' | 'organic' | 'polymer';
+/**
+ * 系統（分野色）。モック v31 で理論化学を 化学基礎範囲（basic）/ 化学応用範囲（applied）に分けた。
+ * 旧 manifest の 'theory' は読み込み時に分野 ID で振り分ける（normalizeGroups）。
+ */
+export type FieldGroup = 'basic' | 'applied' | 'inorganic' | 'organic' | 'polymer';
+type RawFieldGroup = FieldGroup | 'theory';
+
+/** 理論化学のうち化学基礎範囲の分野（ブリーフ §2.1）。残りの理論は化学応用範囲 */
+const THEORY_BASIC = new Set(['busshitsu', 'genshi', 'ketsugo', 'ryo', 'san', 'sanka']);
+
+function normalizeGroups(m: TreeManifest): TreeManifest {
+  const fields = m.fields.map((f) =>
+    (f.group as RawFieldGroup) === 'theory' ? { ...f, group: (THEORY_BASIC.has(f.id) ? 'basic' : 'applied') as FieldGroup } : f,
+  );
+  return { ...m, fields };
+}
 
 export interface TreeField {
   id: string;
@@ -232,7 +247,8 @@ const post = <T>(path: string, body: unknown, auth = true) =>
 
 export const treeLogin = (loginId: string) => post<{ token: string; exp: number }>('/tree/login', { loginId }, false);
 export const fetchTreeMe = () => get<TreeMe>('/tree/me');
-export const fetchTreeManifest = (subject: string) => get<TreeManifest>(`/tree/manifest?subject=${encodeURIComponent(subject)}`);
+export const fetchTreeManifest = (subject: string) =>
+  get<TreeManifest>(`/tree/manifest?subject=${encodeURIComponent(subject)}`).then(normalizeGroups);
 export const fetchTreeProgress = (subject: string) => get<TreeProgress>(`/tree/progress?subject=${encodeURIComponent(subject)}`);
 export const startTreeSession = (subject: string, field: string, qtype: QType) =>
   post<TreeSession>('/tree/session/start', { subject, field, qtype });

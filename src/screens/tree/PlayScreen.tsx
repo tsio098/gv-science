@@ -15,7 +15,7 @@ import { QTYPE_LABEL, TreeApiError, circled, submitTreeSession, treeImage } from
 import { Ico } from './TreeIcons';
 import { ZoomImage } from './ZoomImage';
 import { PlayZoomScreen, type ZoomTab } from './PlayZoomScreen';
-import { fmtTime, groupColor } from './treeTheme';
+import { T, alpha, fmtTime, groupColor } from './treeTheme';
 
 interface Props {
   session: TreeSession;
@@ -234,7 +234,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
             <span className="tr-num" style={{ fontSize: 13, fontWeight: 700 }}>
               {Math.min(doneQ + 1, totalQ)}
               {qs.length > 1 ? `–${doneQ + qs.length}` : ''}
-              <span style={{ color: '#A9B5A5', fontWeight: 500 }}> / {totalQ}</span>
+              <span style={{ color: T.sub, fontWeight: 500 }}> / {totalQ}</span>
             </span>
           </div>
         </div>
@@ -244,7 +244,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
             {fmtTime(elapsed)}
             <span> / {fmtTime(limitMs)}</span>
           </div>
-          <small className="tr-num" style={{ color: bonus > 0 ? '#9CC297' : 'rgba(249,247,242,0.45)' }}>
+          <small className="tr-num" style={{ color: bonus > 0 ? T.accent : alpha(T.text, 0.45) }}>
             タイムボーナス +{bonus}
           </small>
         </div>
@@ -263,7 +263,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
                   <span>
                     小問 {i + 1} / {qs.length}
                   </span>
-                  <span className="tr-num" style={{ color: '#A9B5A5', fontWeight: 500 }}>
+                  <span className="tr-num" style={{ color: T.sub, fontWeight: 500 }}>
                     解答番号 {boxLabel(q)}
                   </span>
                 </div>
@@ -343,7 +343,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
         <div className="tr-overlay" role="dialog" aria-label="中断の確認">
           <div className="tr-card">
             <div style={{ fontWeight: 700, fontSize: 16 }}>中断しますか？</div>
-            <div style={{ color: '#A9B5A5' }}>この挑戦の解答は記録されません。</div>
+            <div style={{ color: T.sub }}>この挑戦の解答は記録されません。</div>
             <button type="button" className="tr-cta" onClick={() => setConfirmExit(false)}>
               続ける
             </button>

@@ -17,6 +17,7 @@ import {
 import { RankingScreen, type RankScope } from './RankingScreen';
 import { TreeShareModal } from './TreeShareModal';
 import { TreeSprite } from './TreeIcons';
+import { T, alpha } from './treeTheme';
 import { getLiffStatus } from '../../lib/liff';
 import { TreeScreen } from './TreeScreen';
 import { PlayScreen } from './PlayScreen';
@@ -160,12 +161,12 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
         <div className="tr-center">
           {notRegistered ? (
             <>
-              <div style={{ color: '#F9F7F2', fontWeight: 700, fontSize: 16 }}>このアプリは塾生専用です</div>
+              <div style={{ color: T.text, fontWeight: 700, fontSize: 16 }}>このアプリは塾生専用です</div>
               <div>登録が反映されるまで最大 30 分かかります。しばらくしてから開きなおすか、先生に連絡してください。</div>
               {mode === 'liff' && ownLineId() && (
-                <div style={{ fontSize: 11, color: 'rgba(249,247,242,0.55)', lineHeight: 1.7 }}>
+                <div style={{ fontSize: 11, color: alpha(T.text, 0.55), lineHeight: 1.7 }}>
                   問い合わせ用 ID（先生に伝えるとき）
-                  <div className="tr-mono" style={{ fontSize: 12, color: '#F9F7F2', userSelect: 'all', WebkitUserSelect: 'all', wordBreak: 'break-all' }}>
+                  <div className="tr-mono" style={{ fontSize: 12, color: T.text, userSelect: 'all', WebkitUserSelect: 'all', wordBreak: 'break-all' }}>
                     {ownLineId()}
                   </div>
                 </div>
@@ -173,7 +174,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
             </>
           ) : (
             <>
-              <div style={{ color: '#F9F7F2', fontWeight: 700, fontSize: 16 }}>読み込めませんでした</div>
+              <div style={{ color: T.text, fontWeight: 700, fontSize: 16 }}>読み込めませんでした</div>
               <div>通信状況を確かめて、もう一度お試しください。</div>
               <button type="button" className="tr-cta" style={{ maxWidth: 240 }} onClick={load}>
                 再読み込み
@@ -237,7 +238,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           session={view.session}
           subjectName={manifest.name}
           fieldName={fieldOf(view.session.field)?.name ?? view.session.field}
-          group={fieldOf(view.session.field)?.group ?? 'theory'}
+          group={fieldOf(view.session.field)?.group ?? 'basic'}
           onExit={() => {
             refreshProgress();
             setView({ kind: 'tree' });

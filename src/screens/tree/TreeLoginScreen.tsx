@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { TreeApiError, treeLogin } from '../../lib/treeApi';
 import { saveTreeSession } from '../../lib/treeAuth';
 import { Ico, TreeSprite } from './TreeIcons';
+import { T, alpha, groupSide } from './treeTheme';
 
 export function TreeLoginScreen({ onLoggedIn }: { onLoggedIn: () => void }) {
   const [id, setId] = useState('');
@@ -51,24 +52,24 @@ export function TreeLoginScreen({ onLoggedIn }: { onLoggedIn: () => void }) {
               width: 56,
               height: 56,
               borderRadius: 13,
-              background: '#9CC297',
-              color: '#1F2A1E',
+              background: T.accent,
+              color: T.onColor,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '7px 7px 0 0 #5E7F5A',
+              boxShadow: `7px 7px 0 0 ${groupSide('basic')}, 0 0 18px ${alpha(T.accent, 0.5)}`,
               marginBottom: 18,
             }}
           >
             <Ico id="i-anchor" size={28} />
           </div>
-          <div className="tr-num" style={{ fontWeight: 700, fontSize: 20, color: '#9CC297' }}>
+          <div className="tr-num" style={{ fontWeight: 700, fontSize: 20, color: T.accent }}>
             GV Science
           </div>
           <div className="tr-num" style={{ fontSize: 30, fontWeight: 700, letterSpacing: '0.12em' }}>
             ANCHOR TREE
           </div>
-          <div style={{ fontSize: 13, color: '#A9B5A5' }}>演習の問題を解き直して、ツリーを育てよう</div>
+          <div style={{ fontSize: 13, color: T.sub }}>演習の問題を解き直して、ツリーを育てよう</div>
         </div>
 
         <form
@@ -77,7 +78,7 @@ export function TreeLoginScreen({ onLoggedIn }: { onLoggedIn: () => void }) {
           style={{
             marginTop: 32,
             padding: '22px 20px',
-            boxShadow: '0 24px 60px -16px rgba(0,0,0,0.5)',
+            boxShadow: `0 0 20px ${alpha(T.accent, 0.14)}, 0 24px 60px -16px rgba(0,0,0,0.5)`,
             display: 'flex',
             flexDirection: 'column',
             gap: 14,
@@ -98,7 +99,7 @@ export function TreeLoginScreen({ onLoggedIn }: { onLoggedIn: () => void }) {
             value={id}
             onChange={(e) => setId(e.target.value)}
           />
-          <div style={{ fontSize: 12, color: '#A9B5A5', lineHeight: 1.6 }}>
+          <div style={{ fontSize: 12, color: T.sub, lineHeight: 1.6 }}>
             ログインIDは GV Science（LINE）のホーム →「別のブラウザで使う」からコピーできます。
           </div>
           <button type="submit" className="tr-cta" disabled={!id.trim() || busy}>
@@ -119,7 +120,7 @@ export function TreeLoginScreen({ onLoggedIn }: { onLoggedIn: () => void }) {
             padding: '24px 0 calc(env(safe-area-inset-bottom, 0px) + 34px)',
             textAlign: 'center',
             fontSize: 11,
-            color: 'rgba(249,247,242,0.4)',
+            color: alpha(T.text, 0.4),
           }}
         >
           このアプリは Great Voyage 理科教室の塾生専用です

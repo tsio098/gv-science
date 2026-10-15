@@ -5,7 +5,7 @@
 import type { FieldGroup, QType, TreeManifest, TreeProgress } from '../../lib/treeApi';
 import { QTYPES, QTYPE_LABEL, gradeLabel } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
-import { fmtScore, groupColor } from './treeTheme';
+import { REVIEW_COLOR, T, alpha, fmtScore, groupColor, groupSide } from './treeTheme';
 
 interface Props {
   manifest: TreeManifest;
@@ -50,7 +50,14 @@ export function TreeSummaryPanel({ manifest, progress, grade, nickname, onSelect
   return (
     <div className="tr-dock-sec">
       <div className="tr-pop-head">
-        <div className="tr-pop-tile" style={{ width: 48, height: 48, borderRadius: 12, background: '#9CC297', color: '#1F2A1E', boxShadow: '5px 5px 0 0 #5E7F5A' }}>
+        <div className="tr-pop-tile" style={{
+            width: 48,
+            height: 48,
+            borderRadius: 12,
+            background: T.accent,
+            color: T.onColor,
+            boxShadow: `5px 5px 0 0 ${groupSide('basic')}, 0 0 16px ${alpha(T.accent, 0.4)}`,
+          }}>
           <Ico id="i-anchor" size={26} />
         </div>
         <div className="tr-pop-title">
@@ -112,11 +119,11 @@ export function TreeSummaryPanel({ manifest, progress, grade, nickname, onSelect
               const worst = [...unmet].sort((a, b) => (a.plays ?? 0) - (b.plays ?? 0) || (a.rate ?? 0) - (b.rate ?? 0))[0]!;
               return (
                 <button key={f.id} type="button" onClick={() => onSelect(f.id)}>
-                  <i style={{ background: '#2A3628', border: `1.5px solid ${col}`, color: col }}>
+                  <i style={{ background: T.faceLocked, border: `1.5px solid ${col}`, color: col, boxShadow: `0 0 8px ${alpha(col, 0.4)}` }}>
                     <Ico id={f.icon} size={14} />
                   </i>
                   <span>{f.name}</span>
-                  <em className="tr-num" style={{ color: '#F7C59F', fontStyle: 'normal', fontSize: 12, fontWeight: 700 }}>
+                  <em className="tr-num" style={{ color: REVIEW_COLOR, fontStyle: 'normal', fontSize: 12, fontWeight: 700 }}>
                     {byId.get(worst.field)?.name ?? worst.field} {worst.plays ?? 0}/{progress.unlockPlays ?? 5} 回 · {Math.round(worst.rate ?? 0)}%
                   </em>
                 </button>

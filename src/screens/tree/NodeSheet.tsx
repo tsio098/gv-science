@@ -8,7 +8,7 @@
 import type { QType, RankInfo, TreeField, TreeManifest, TreeProgress } from '../../lib/treeApi';
 import { QTYPES, QTYPE_LABEL } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
-import { GROUP_NAME, QTYPE_ICON, distPct, fmtScore, groupColor, groupSide } from './treeTheme';
+import { GROUP_NAME, QTYPE_ICON, REVIEW_COLOR, T, alpha, distPct, fmtScore, groupColor, groupSide } from './treeTheme';
 import type { FieldGroup } from '../../lib/treeApi';
 
 interface Props {
@@ -43,13 +43,13 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
     return (
       <div className={box} role="dialog" aria-label={field.name}>
         <div className="tr-pop-head">
-          <div className="tr-pop-tile" style={{ border: '1.5px solid rgba(249,247,242,0.22)', color: 'rgba(249,247,242,0.5)' }}>
+          <div className="tr-pop-tile" style={{ border: `1.5px solid ${alpha(T.text, 0.2)}`, color: alpha(T.text, 0.45) }}>
             <Ico id={field.icon} size={22} />
           </div>
           <div className="tr-pop-title">
             <div>
               <span className="tr-pop-name">{field.name}</span>
-              <span className="tr-tag" style={{ color: '#A9B5A5' }}>準備中</span>
+              <span className="tr-tag" style={{ color: T.sub }}>準備中</span>
             </div>
             <div className="tr-pop-meta">まだ問題がありません。演習で扱うと追加されます。</div>
           </div>
@@ -65,14 +65,19 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
         <div className="tr-pop-head">
           <div
             className="tr-pop-tile"
-            style={{ background: '#2A3628', border: `1.5px solid ${col}`, color: col, boxShadow: '4px 4px 0 0 #1F2A1E' }}
+            style={{
+              background: T.faceLocked,
+              border: `1.5px solid ${alpha(col, 0.35)}`,
+              color: alpha(col, 0.45),
+              boxShadow: `4px 4px 0 0 ${T.sideDark}`,
+            }}
           >
             <Ico id={field.icon} size={22} />
           </div>
           <div className="tr-pop-title">
             <div>
               <span className="tr-pop-name">{field.name}</span>
-              <span className="tr-tag" style={{ color: '#A9B5A5' }}>
+              <span className="tr-tag" style={{ color: T.sub }}>
                 <Ico id="i-lock" size={10} />
                 未解放
               </span>
@@ -83,13 +88,13 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
           </div>
           {close}
         </div>
-        <div style={{ fontSize: 12, fontWeight: 700, color: '#A9B5A5' }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: T.sub }}>
           解放条件 · 前提分野で挑戦 {progress.unlockPlays ?? 5} 回以上・正答率 {progress.unlockPct}% 以上
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {p?.prereqs.map((pr) => {
             const f = nameOf(pr.field);
-            const g = (f?.group ?? 'theory') as FieldGroup;
+            const g = groupColor(f?.group ?? 'basic');
             return (
               <div key={pr.field} className="tr-row" style={{ borderRadius: 12 }}>
                 <div
@@ -98,14 +103,15 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
                     width: 22,
                     height: 22,
                     borderRadius: 6,
-                    background: pr.done ? groupColor(g) : 'rgba(249,247,242,0.1)',
-                    color: pr.done ? '#1F2A1E' : '#F9F7F2',
+                    background: pr.done ? g : 'transparent',
+                    color: pr.done ? T.onColor : alpha(T.text, 0.5),
+                    boxShadow: pr.done ? `0 0 10px ${alpha(g, 0.6)}` : `inset 0 0 0 1px ${alpha(T.text, 0.2)}`,
                   }}
                 >
                   <Ico id={f?.icon ?? 'i-lock'} size={13} />
                 </div>
                 <span style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{f?.name ?? pr.field}</span>
-                <span className="tr-num" style={{ fontSize: 12, fontWeight: 700, color: pr.done ? '#9CC297' : '#F7C59F' }}>
+                <span className="tr-num" style={{ fontSize: 12, fontWeight: 700, color: pr.done ? T.accent : REVIEW_COLOR }}>
                   {pr.done ? '達成' : '未達成'}
                 </span>
               </div>
@@ -116,16 +122,27 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
     );
   }
 
+  const glowBox = docked
+    ? undefined
+    : {
+        borderColor: col,
+        boxShadow: `0 0 0 1px rgba(0,0,0,0.3), 0 0 28px ${alpha(col, 0.4)}, 0 24px 60px -16px rgba(0,0,0,0.7)`,
+      };
   return (
-    <div className={box} role="dialog" aria-label={field.name}>
+    <div className={box} role="dialog" aria-label={field.name} style={glowBox}>
       <div className="tr-pop-head">
-        <div className="tr-pop-tile" style={{ background: col, color: '#1F2A1E', boxShadow: `4px 4px 0 0 ${side}` }}>
+        <div
+          className="tr-pop-tile"
+          style={{ background: col, color: T.onColor, boxShadow: `4px 4px 0 0 ${side}, 0 0 16px ${alpha(col, 0.4)}` }}
+        >
           <Ico id={field.icon} size={22} />
         </div>
         <div className="tr-pop-title">
           <div>
             <span className="tr-pop-name">{field.name}</span>
-            <span className="tr-tag" style={{ color: col }}>{GROUP_NAME[field.group as FieldGroup] ?? ''}</span>
+            <span className="tr-tag" style={{ color: col, boxShadow: `0 0 8px ${alpha(col, 0.4)}` }}>
+              {GROUP_NAME[field.group as FieldGroup] ?? ''}
+            </span>
           </div>
           <div className="tr-pop-meta">
             マスター度 <b className="tr-num">{Math.round(p.mastery * 100)}%</b> · スコア{' '}
@@ -151,7 +168,12 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
             <div key={t} className="tr-row">
               <div
                 className="tr-row-tile"
-                style={{ background: m > 0 ? col : 'rgba(249,247,242,0.1)', color: m > 0 ? '#1F2A1E' : '#F9F7F2' }}
+                style={{
+                  background: m > 0 ? col : 'transparent',
+                  border: `1px solid ${col}`,
+                  color: m > 0 ? T.onColor : col,
+                  boxShadow: `0 0 ${m > 0 ? 10 : 6}px ${alpha(col, m > 0 ? 0.6 : 0.25)}`,
+                }}
               >
                 <Ico id={QTYPE_ICON[t]} size={15} />
               </div>
@@ -164,9 +186,9 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
                   {nw > 0 && <span className="tr-new">新着 {nw}</span>}
                 </div>
                 <div className="tr-distbar">
-                  <i style={{ width: `${w.mastered}%`, background: col }} />
-                  <i style={{ width: `${w.solved}%`, background: col, opacity: 0.5 }} />
-                  <i style={{ width: `${w.review}%`, background: '#F7C59F' }} />
+                  <i style={{ width: `${w.mastered}%`, background: col, boxShadow: `0 0 8px ${col}` }} />
+                  <i style={{ width: `${w.solved}%`, background: col, opacity: 0.45 }} />
+                  <i style={{ width: `${w.review}%`, background: REVIEW_COLOR }} />
                 </div>
               </div>
               <button type="button" className="tr-go" disabled={!count || starting} onClick={() => onStart(t)}>
