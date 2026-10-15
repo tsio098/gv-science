@@ -12,6 +12,7 @@ export function TreeSprite() {
         <symbol id="i-ryo" viewBox="0 0 24 24"><path d="M12 4v16M5 20h14M6 7h12M6 7l-3 6h6l-3-6zM18 7l-3 6h6l-3-6z" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"/></symbol>
         <symbol id="i-san" viewBox="0 0 24 24"><path d="M12 3s6 7 6 11a6 6 0 0 1-12 0c0-4 6-11 6-11z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></symbol>
         <symbol id="i-sanka" viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></symbol>
+        <symbol id="i-nodo" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" strokeLinecap="round"><path d="M10 3h4M10.5 3v7.2A6 6 0 1 0 13.5 10.2V3M9.5 6.5h5M6.3 16h11.4"/></g></symbol>
         <symbol id="i-denchi" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"><rect x="3" y="8" width="16" height="8" rx="2"/><path d="M21 11v2M12.5 9l-2.5 3h3l-2.5 3"/></g></symbol>
         <symbol id="i-santai" viewBox="0 0 24 24"><g fill="currentColor"><circle cx="7" cy="16" r="2.6"/><circle cx="12" cy="7.5" r="2.6"/><circle cx="17" cy="16" r="2.6"/></g></symbol>
         <symbol id="i-kitai" viewBox="0 0 24 24"><path d="M7 18h10a4 4 0 0 0 0-8 6 6 0 0 0-11 2 3 3 0 0 0 1 6z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></symbol>

@@ -17,6 +17,12 @@ export const GROUP_COLOR: Record<FieldGroup, string> = {
   response: '#FF7AB8',
   ecology: '#FFD84A',
   evolution: '#D08BFF',
+  // 化学基礎も同じ 5 色を使い回す（2026-10-16）
+  composition: '#2DF4C6',
+  bonding: '#4FC3FF',
+  mole: '#FF7AB8',
+  acidbase: '#FFD84A',
+  redox: '#D08BFF',
 };
 /** 系統色（立方体の側面 5px）*/
 export const GROUP_SIDE: Record<FieldGroup, string> = {
@@ -30,6 +36,11 @@ export const GROUP_SIDE: Record<FieldGroup, string> = {
   response: '#A8336E',
   ecology: '#A88A14',
   evolution: '#7A47B0',
+  composition: '#0F8F77',
+  bonding: '#1C6FA3',
+  mole: '#A8336E',
+  acidbase: '#A88A14',
+  redox: '#7A47B0',
 };
 export const GROUP_NAME: Record<FieldGroup, string> = {
   basic: '理論 · 化学基礎範囲',
@@ -42,6 +53,11 @@ export const GROUP_NAME: Record<FieldGroup, string> = {
   response: '環境応答',
   ecology: '生態',
   evolution: '進化と系統',
+  composition: '物質の構成',
+  bonding: '化学結合',
+  mole: '物質量と濃度',
+  acidbase: '酸と塩基',
+  redox: '酸化還元',
 };
 export const QTYPE_ICON: Record<QType, string> = { tf: 'i-tf', calc: 'i-calc', reason: 'i-reason' };
 

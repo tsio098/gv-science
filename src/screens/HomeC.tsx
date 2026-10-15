@@ -58,9 +58,12 @@ const AnchorIcon = ({ size = 22 }: { size?: number }) => (
  * 下の行は科目（履修科目のうちツリーがあるもの・最後に開いた科目。Phase 6）のマスター度と新着数
  * （/tree/progress。塾生登録の前・その科目の問題がまだ無いときなどで取れなければ説明文）。
  */
-function AnchorTreeCard({ onOpen, subjects }: { onOpen: () => void; subjects: readonly string[] }) {
-  const subject = pickTreeSubject(treeSubjectsFor(subjects));
-  const prog = useAsync(() => fetchTreeProgress(subject), [subject], { cacheKey: 'tree:progress:' + subject });
+function AnchorTreeCard({ onOpen, subjects, staff }: { onOpen: () => void; subjects: readonly string[]; staff: boolean }) {
+  // 選択科目にツリーが無ければ取りに行かない（Worker も SUBJECT_NOT_ALLOWED で拒否する。2026-10-16）
+  const subject = pickTreeSubject(treeSubjectsFor(subjects, staff));
+  const prog = useAsync(() => (subject ? fetchTreeProgress(subject) : Promise.resolve(null)), [subject], {
+    cacheKey: 'tree:progress:' + (subject ?? 'none'),
+  });
   const [share, setShare] = useState(false);
   const timer = useRef<number | null>(null);
   const start = useRef<{ x: number; y: number } | null>(null);
@@ -73,9 +76,11 @@ function AnchorTreeCard({ onOpen, subjects }: { onOpen: () => void; subjects: re
   };
   const p = prog.data;
   const nw = p ? p.total.newCount ?? 0 : 0;
-  const sub = p
-    ? `${TREE_SUBJECT_NAME[subject]} ${Math.round(p.total.mastery * 100)}%${nw > 0 ? ` · 新着 ${nw}` : ''}`
-    : '演習の問題をスキルツリーで解き直す';
+  const sub = !subject
+    ? '選択科目のツリーは準備中です'
+    : p
+      ? `${TREE_SUBJECT_NAME[subject]} ${Math.round(p.total.mastery * 100)}%${nw > 0 ? ` · 新着 ${nw}` : ''}`
+      : '演習の問題をスキルツリーで解き直す';
 
   return (
     <>
@@ -328,7 +333,7 @@ export function HomeC({ nav }: HomeCProps) {
           </div>
         </button>
 
-        <AnchorTreeCard onOpen={() => nav('tree')} subjects={user.subjects ?? []} />
+        <AnchorTreeCard onOpen={() => nav('tree')} subjects={user.subjects ?? []} staff={user.grade === '先生'} />
 
         {/* 記事フィード（横スクロール） */}
         <div className="c-feed-head">

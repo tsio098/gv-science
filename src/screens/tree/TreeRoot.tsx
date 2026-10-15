@@ -23,6 +23,7 @@ import { type TreeSubject, pickTreeSubject, rememberTreeSubject, treeSubjectsFor
 import { TreeScreen } from './TreeScreen';
 import { PlayScreen } from './PlayScreen';
 import { ResultScreen } from './ResultScreen';
+import { SUBJECT_JA, type ScheduleSubject } from '../../lib/types';
 import '../../styles/tree.css';
 
 /**
@@ -108,7 +109,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           setProgress(pg);
           return;
         } catch (e) {
-          if (!(e instanceof TreeApiError && e.code === 'NO_CONTENT')) throw e;
+          // 問題がまだ無い科目・名簿の科目が変わって開けなくなった科目は飛ばす
+          if (!(e instanceof TreeApiError && (e.code === 'NO_CONTENT' || e.code === 'SUBJECT_NOT_ALLOWED'))) throw e;
           empty.add(s);
         }
       }
@@ -123,7 +125,9 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       .then(async (m) => {
         setMe(m);
         const list = treeSubjectsFor(m.subjects, m.grade === '先生');
-        await openSubject(list, pickTreeSubject(list));
+        const want = pickTreeSubject(list);
+        if (!want) throw new TreeApiError('NO_CONTENT', 404); // 選択科目にツリーが無い（2026-10-16 先生決定: 他の科目は開けない）
+        await openSubject(list, want);
       })
       .catch(fail);
   }, [fail, openSubject]);
@@ -231,6 +235,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
 
   if (error) {
     const notRegistered = error === 'NOT_REGISTERED';
+    const noTree = error === 'NO_CONTENT' || error === 'SUBJECT_NOT_ALLOWED';
     return (
       <div className={rootClass()}>
         <TreeSprite />
@@ -248,6 +253,16 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
                 </div>
               )}
             </>
+          ) : noTree ? (
+            <>
+              <div style={{ color: T.text, fontWeight: 700, fontSize: 16 }}>選択科目の ANCHOR TREE はまだありません</div>
+              <div>
+                {me && me.subjects.length
+                  ? `あなたの選択科目（${me.subjects.map((s) => SUBJECT_JA[s as ScheduleSubject] ?? s).join('・')}）のツリーは準備中です。`
+                  : '理科の選択科目が登録されていません。先生に確認してください。'}
+                ANCHOR TREE は選択科目のツリーだけ開けます。
+              </div>
+            </>
           ) : (
             <>
               <div style={{ color: T.text, fontWeight: 700, fontSize: 16 }}>読み込めませんでした</div>
@@ -262,7 +277,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
               ホームへ戻る
             </button>
           )}
-          {mode === 'external' && notRegistered && (
+          {mode === 'external' && (notRegistered || noTree) && (
             <button type="button" className="tr-ghost" style={{ width: 240 }} onClick={onLogout}>
               別のIDでログイン
             </button>

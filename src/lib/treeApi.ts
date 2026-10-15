@@ -25,7 +25,9 @@ export const QTYPE_LABEL: Record<QType, string> = { tf: '正誤問題', calc: '�
 export type FieldGroup =
   | 'basic' | 'applied' | 'inorganic' | 'organic' | 'polymer'
   // 生物（2026-10-15 Phase 6・教科書の編）: 生命現象と物質 / 遺伝情報と発生 / 環境応答 / 生態 / 進化と系統
-  | 'matter' | 'gene' | 'response' | 'ecology' | 'evolution';
+  | 'matter' | 'gene' | 'response' | 'ecology' | 'evolution'
+  // 化学基礎（2026-10-16 Phase 6・教科書の章）: 物質の構成 / 化学結合 / 物質量と濃度 / 酸と塩基 / 酸化還元
+  | 'composition' | 'bonding' | 'mole' | 'acidbase' | 'redox';
 type RawFieldGroup = FieldGroup | 'theory';
 
 /** 理論化学のうち化学基礎範囲の分野（ブリーフ §2.1）。残りの理論は化学応用範囲 */
