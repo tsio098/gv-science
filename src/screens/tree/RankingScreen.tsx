@@ -4,15 +4,17 @@
  * 分野・種別は、開いた場所（選んでいたノード・結果画面）を初期値にし、チップで切り替える。
  */
 import { useEffect, useMemo, useState } from 'react';
-import type { QType, TreeManifest, TreeRanking } from '../../lib/treeApi';
+import type { QType, TreeManifest, TreeRanking, TreeStage } from '../../lib/treeApi';
 import { QTYPES, QTYPE_LABEL, fetchTreeRanking, gradeLabel } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
-import { T, alpha, fmtScore, groupColor } from './treeTheme';
+import { T, alpha, fmtScore, groupColor, rootClass } from './treeTheme';
 
 export type RankScope = 'subject' | 'field' | 'type';
 
 interface Props {
   manifest: TreeManifest;
+  /** ABYSS のランキングは ROUTE と別集計 */
+  stage?: TreeStage;
   initial: { scope: RankScope; field: string | null; qtype: QType };
   onBack: () => void;
 }
@@ -29,7 +31,7 @@ const PODIUM = [
 ];
 const QTYPE_SHORT: Record<QType, string> = { tf: '正誤', calc: '計算', reason: '考察' };
 
-export function RankingScreen({ manifest, initial, onBack }: Props) {
+export function RankingScreen({ manifest, stage = 'front', initial, onBack }: Props) {
   const ready = useMemo(() => manifest.fields.filter((f) => f.total > 0), [manifest]);
   const [scope, setScope] = useState<RankScope>(initial.scope);
   const [field, setField] = useState<string>(() =>
@@ -57,15 +59,15 @@ export function RankingScreen({ manifest, initial, onBack }: Props) {
     setData(null);
     const req =
       scope === 'subject'
-        ? fetchTreeRanking(manifest.subject)
+        ? fetchTreeRanking(manifest.subject, '*', '*', stage)
         : scope === 'field'
-          ? fetchTreeRanking(manifest.subject, field)
-          : fetchTreeRanking(manifest.subject, field, qtype);
+          ? fetchTreeRanking(manifest.subject, field, '*', stage)
+          : fetchTreeRanking(manifest.subject, field, qtype, stage);
     req.then((d) => alive && setData(d)).catch(() => alive && setError(true));
     return () => {
       alive = false;
     };
-  }, [scope, field, qtype, manifest.subject, nonce]);
+  }, [scope, field, qtype, manifest.subject, stage, nonce]);
 
   const title =
     scope === 'subject' ? `${manifest.name} 全体` : scope === 'field' ? f?.name ?? '' : `${f?.name ?? ''} · ${QTYPE_SHORT[qtype]}`;
@@ -73,7 +75,7 @@ export function RankingScreen({ manifest, initial, onBack }: Props) {
   const rows = data?.top.slice(3) ?? [];
 
   return (
-    <div className="tr-root tr-rank">
+    <div className={rootClass('tr-rank')}>
       <div className="tr-rank-head">
         <button type="button" className="tr-iconbtn" aria-label="戻る" onClick={onBack}>
           <Ico id="i-back" size={20} />
@@ -83,6 +85,7 @@ export function RankingScreen({ manifest, initial, onBack }: Props) {
             <Ico id="i-trophy" size={20} />
           </span>
           <span>ランキング</span>
+          {stage === 'back' && <span className="ab-pill">ABYSS</span>}
         </div>
       </div>
 

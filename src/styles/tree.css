@@ -1768,3 +1768,316 @@ button.tr-stat {
   font-weight: 700;
   box-shadow: 0 0 12px rgba(var(--tr-accent-rgb), 0.5);
 }
+
+/* ── ABYSS（二次問題・設計書 §5.6 / モック BackPlay・BackPlayTerm）──────────────
+   選択中・フォーカスはステージ色（ABYSS ではシアン）。入力欄の文字は 16px 以上（iOS で拡大されないように） */
+.tr-stagetoggle {
+  margin-right: auto;
+  height: 40px;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1.5px solid rgba(var(--tr-accent-rgb), 0.45);
+  background: rgba(var(--tr-ground-rgb), 0.55);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.tr-stagetoggle button {
+  height: 32px;
+  min-width: 32px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+  color: var(--tr-sub);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-family: var(--f-en);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.tr-stagetoggle button.is-on {
+  background: var(--tr-accent);
+  color: var(--tr-on);
+  box-shadow: var(--tr-cta-glow);
+}
+.ab-pill {
+  font-family: var(--f-en);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  background: var(--tr-accent);
+  color: var(--tr-on);
+  box-shadow: var(--tr-cta-glow);
+  border-radius: 999px;
+  padding: 2px 7px;
+  margin-right: 6px;
+}
+.ab-answer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 6px 4px 4px;
+}
+.ab-prompt {
+  font-size: 14px;
+  line-height: 1.65;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(var(--tr-accent-rgb), 0.1);
+  border: 1px solid rgba(var(--tr-accent-rgb), 0.35);
+}
+.ab-prompt-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--tr-on);
+  background: var(--tr-accent);
+  border-radius: 6px;
+  padding: 1px 6px;
+  margin-right: 6px;
+  vertical-align: 1px;
+}
+.ab-hint {
+  font-size: 11px;
+  color: var(--tr-sub);
+}
+.ab-part {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ab-part-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 700;
+}
+.ab-part-head small {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--tr-sub);
+}
+.ab-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ab-optlist {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ab-struct-grid {
+  display: grid;
+  /* スマホは 2 列、iPad など広い画面は 4 列まで */
+  grid-template-columns: repeat(auto-fill, minmax(max(140px, calc(25% - 8px)), 1fr));
+  gap: 8px;
+}
+.ab-opt {
+  min-height: 44px;
+  min-width: 52px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(var(--tr-text-rgb), 0.2);
+  background: var(--tr-well);
+  color: var(--tr-text);
+  box-shadow: 3px 3px 0 0 var(--tr-shadow-dark);
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  transition: transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.ab-opt:active {
+  transform: scale(0.97);
+}
+.ab-opt.is-sel {
+  border-color: var(--tr-accent);
+  background: rgba(var(--tr-accent-rgb), 0.16);
+  box-shadow: 3px 3px 0 0 var(--tr-accent-deep), 0 0 12px rgba(var(--tr-accent-rgb), 0.45);
+}
+.ab-opt-key {
+  flex: none;
+  font-family: var(--f-en);
+  font-size: 16px;
+  font-weight: 700;
+}
+.ab-opt.is-sel .ab-opt-key {
+  color: var(--tr-accent);
+}
+.ab-optlist .ab-opt-key {
+  width: 30px;
+  text-align: center;
+}
+.ab-opt-text {
+  font-size: 14px;
+  line-height: 1.55;
+}
+.ab-struct-grid .ab-opt {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 6px;
+  gap: 4px;
+}
+.ab-struct-img,
+.ab-struct-ph {
+  display: block;
+  width: 100%;
+  aspect-ratio: 36 / 26;
+  border-radius: 8px;
+  background: #fff;
+  object-fit: contain;
+}
+.ab-struct-ph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #97a092;
+  font-size: 11px;
+}
+.ab-term {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ab-input {
+  height: 52px;
+  border-radius: 14px;
+  border: 2px solid rgba(var(--tr-text-rgb), 0.25);
+  background: var(--tr-ground);
+  color: var(--tr-text);
+  padding: 0 14px;
+  font-size: 18px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.ab-input:focus {
+  outline: none;
+  border-color: var(--tr-accent);
+}
+.ab-input::placeholder {
+  color: rgba(var(--tr-text-rgb), 0.3);
+  font-size: 14px;
+}
+.ab-syms {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.ab-sym {
+  flex: none;
+  min-width: 40px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--tr-text-rgb), 0.25);
+  background: var(--tr-well);
+  color: var(--tr-text);
+  font-family: var(--f-en);
+  font-size: 15px;
+  font-weight: 600;
+}
+.ab-num {
+  height: 52px;
+  border-radius: 14px;
+  border: 2px solid rgba(var(--tr-text-rgb), 0.25);
+  background: var(--tr-ground);
+  color: var(--tr-text);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 14px;
+  font-size: 20px;
+  font-weight: 600;
+}
+.ab-num.is-focus {
+  border-color: var(--tr-accent);
+  box-shadow: 0 0 12px rgba(var(--tr-accent-rgb), 0.35);
+}
+.ab-keypad {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ab-keypad-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--tr-sub);
+}
+.ab-sci {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  color: var(--tr-sub);
+}
+.ab-sci-box,
+.ab-sci-exp {
+  height: 44px;
+  border-radius: 12px;
+  border: 2px solid rgba(var(--tr-text-rgb), 0.25);
+  background: var(--tr-ground);
+  color: var(--tr-text);
+  font-size: 20px;
+  font-weight: 600;
+  padding: 0 12px;
+}
+.ab-sci-box {
+  flex: 1;
+  text-align: right;
+}
+.ab-sci-exp {
+  width: 72px;
+}
+.ab-sci-box.is-on,
+.ab-sci-exp.is-on {
+  border-color: var(--tr-accent);
+}
+.ab-preview {
+  font-size: 11px;
+  color: var(--tr-sub);
+}
+.ab-keys {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.ab-key {
+  height: 46px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(var(--tr-text-rgb), 0.2);
+  background: var(--tr-well);
+  color: var(--tr-text);
+  font-family: var(--f-en);
+  font-size: 20px;
+  font-weight: 700;
+  box-shadow: 3px 3px 0 0 var(--tr-shadow-dark);
+  transition: transform 0.14s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.ab-key:active {
+  transform: scale(0.93);
+}
+.ab-key.is-special {
+  background: rgba(var(--tr-text-rgb), 0.08);
+  color: var(--tr-accent);
+  font-size: 14px;
+}
+.ab-key.is-active {
+  background: var(--tr-text);
+  color: var(--tr-on);
+}
+.ab-key:disabled {
+  background: transparent;
+  color: rgba(var(--tr-text-rgb), 0.2);
+  border-color: rgba(var(--tr-text-rgb), 0.08);
+  box-shadow: none;
+}

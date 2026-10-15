@@ -10,7 +10,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { usePanZoom } from './usePanZoom';
-import type { QType, TreeManifest, TreeProgress } from '../../lib/treeApi';
+import type { QType, TreeManifest, TreeProgress, TreeStage } from '../../lib/treeApi';
 import { TREE_SUBJECT_NAME, type TreeSubject } from '../../lib/treeSubject';
 import { QTYPES } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
@@ -28,6 +28,7 @@ import {
   alpha,
   groupColor,
   groupSide,
+  rootClass,
 } from './treeTheme';
 
 interface Props {
@@ -36,6 +37,10 @@ interface Props {
   /** 開ける科目（2 つ以上なら科目チップで切り替え。Phase 6）*/
   subjects: TreeSubject[];
   onSubject: (s: TreeSubject) => void;
+  /** いまのステージと、ABYSS を開けるか（ROUTE 全解放 / 先生）。開けるときだけ ROUTE / ABYSS のトグルを出す */
+  stage: TreeStage;
+  abyssOpen: boolean;
+  onStage: (s: TreeStage) => void;
   selected: string | null;
   onSelect: (field: string | null) => void;
   onStart: (field: string, qtype: QType) => void;
@@ -138,7 +143,7 @@ export function TreeScreen(props: Props) {
 
   const share = props.onShare;
   return (
-    <div className={`tr-root${wide ? ' is-wide' : ''}`}>
+    <div className={rootClass(wide ? 'is-wide' : '')}>
       <div className="tr-caustic" />
       <div className="tr-pan" ref={pz.viewRef} onClick={() => {
           if (menu) setMenu(false);
@@ -322,6 +327,28 @@ export function TreeScreen(props: Props) {
           {manifest.name} <span className="tr-num">{pct}%</span>
           {canSwitch && <Ico id="i-chev-down" size={14} />}
         </button>
+        {props.abyssOpen && (
+          // 選択中の側だけ「アイコン + 名前」、もう片方はアイコンだけ（2026-10-15 先生決定）
+          <div className="tr-stagetoggle" role="radiogroup" aria-label="ステージ">
+            {(['front', 'back'] as const).map((st) => {
+              const on = props.stage === st;
+              return (
+                <button
+                  key={st}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  aria-label={st === 'front' ? 'ROUTE（共通テスト型）' : 'ABYSS（二次問題）'}
+                  className={on ? 'is-on' : undefined}
+                  onClick={() => !on && props.onStage(st)}
+                >
+                  <Ico id={st === 'front' ? 'i-route' : 'i-depth'} size={15} />
+                  {on && <span>{st === 'front' ? 'ROUTE' : 'ABYSS'}</span>}
+                </button>
+              );
+            })}
+          </div>
+        )}
         <div className="tr-chrome-r">
           <button type="button" className="tr-iconbtn" aria-label="ランキング" onClick={() => props.onRanking(selected)}>
             <Ico id="i-trophy" size={18} />

@@ -51,7 +51,9 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
               <span className="tr-pop-name">{field.name}</span>
               <span className="tr-tag" style={{ color: T.sub }}>準備中</span>
             </div>
-            <div className="tr-pop-meta">まだ問題がありません。演習で扱うと追加されます。</div>
+            <div className="tr-pop-meta">
+              {T.name === 'ABYSS' ? 'まだ二次問題がありません。追加されるまでお待ちください。' : 'まだ問題がありません。演習で扱うと追加されます。'}
+            </div>
           </div>
           {close}
         </div>

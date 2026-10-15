@@ -95,8 +95,16 @@ export const STAGE: Record<'front' | 'back', StageTheme> = {
     sideDark: '#01030A',
   },
 };
-/** いま描くステージ（ABYSS は Phase 6。そのときは TreeRoot から渡す）*/
-export const T = STAGE.front;
+/**
+ * いま描くステージの色。各画面は描画のたびに T.xxx を読むので、TreeRoot がステージを切り替えたら
+ * setTreeStage() で中身を入れ替えてから描き直す（ABYSS・2026-10-15）
+ */
+export const T: StageTheme = { ...STAGE.front };
+export function setTreeStage(stage: 'front' | 'back') {
+  Object.assign(T, STAGE[stage]);
+}
+/** 画面の外枠の class（ABYSS は .is-abyss で CSS 変数を深海に）*/
+export const rootClass = (extra = '') => `tr-root${T.name === 'ABYSS' ? ' is-abyss' : ''}${extra ? ' ' + extra : ''}`;
 
 /** 役割色（ROUTE / ABYSS 共通）*/
 export const NEW_COLOR = '#FF7A45';

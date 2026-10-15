@@ -9,14 +9,17 @@
  * - 時間は単位（単問 / セット）ごとに、画像がそろってから「決定」までを測る。
  *   セットは小問に等分して送る（サーバはセット内の合計でタイムボーナスを出す）
  * - 画像はその場でピンチ拡大、タップで全画面ビューア（§4.6）。全画面中もタイマーは止めない
+ * - ABYSS（二次問題・§5.6）: 設問ごとに画像の下へ解答欄（AbyssAnswer）を置き、数値はパッドの位置にキーパッドを出す。
+ *   時間ボーナスは無いので経過時間だけ表示する
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { FieldGroup, PlayQuestion, SubmitResult, TreeSession } from '../../lib/treeApi';
+import type { AbyssPart, FieldGroup, PlayQuestion, SubmitResult, TreeSession } from '../../lib/treeApi';
 import { QTYPE_LABEL, TreeApiError, circled, submitTreeSession, treeImage } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
 import { ZoomImage } from './ZoomImage';
 import { PlayZoomScreen, type ZoomTab } from './PlayZoomScreen';
-import { T, alpha, fmtTime, groupColor } from './treeTheme';
+import { AbyssAnswer, AbyssKeypad, emptyRaw, isFilled, toValue, type RawVal } from './AbyssAnswer';
+import { T, alpha, fmtTime, groupColor, rootClass } from './treeTheme';
 
 interface Props {
   session: TreeSession;
@@ -29,7 +32,10 @@ interface Props {
 
 type ImgState = Record<string, string | 'error'>;
 
-const boxLabel = (q: PlayQuestion) => q.answer.boxes.map((b) => b.n).join('・');
+/** ROUTE のマーク欄（ABYSS の設問は空）*/
+const boxesOf = (q: PlayQuestion) => (q.answer.kind === 'choice' ? q.answer.boxes : []);
+const boxLabel = (q: PlayQuestion) => boxesOf(q).map((b) => b.n).join('・');
+const partsOf = (q: PlayQuestion): AbyssPart[] => (q.answer.kind === 'parts' ? q.answer.parts : []);
 
 export function PlayScreen({ session, subjectName, fieldName, group, onExit, onDone }: Props) {
   const col = groupColor(group);
@@ -37,6 +43,10 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
   const totalQ = units.reduce((s, u) => s + u.qids.length, 0);
   const [idx, setIdx] = useState(0);
   const [picks, setPicks] = useState<Record<string, string[]>>({});
+  /** ABYSS: 設問ごとの欄の入力と、キーパッドで入力中の数値欄 */
+  const isBack = session.stage === 'back';
+  const [raws, setRaws] = useState<Record<string, RawVal[]>>({});
+  const [numFocus, setNumFocus] = useState<{ qid: string; i: number } | null>(null);
   const [imgs, setImgs] = useState<ImgState>({});
   const [confirmExit, setConfirmExit] = useState(false);
   const [zoomPath, setZoomPath] = useState<string | null>(null);
@@ -75,6 +85,16 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.sessionId]);
 
+  // キーパッドを出すと問題の枠が縮むので、入力中の数値欄を見える位置へ（スマホでキーパッドの裏に隠れないように）
+  useEffect(() => {
+    if (!numFocus) return;
+    const id = requestAnimationFrame(() => {
+      const el = areaRef.current?.querySelector(`[data-num="${CSS.escape(`${numFocus.qid}#${numFocus.i}`)}"]`);
+      el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [numFocus]);
+
   const ready = unitPaths(idx).every((p) => imgs[p]);
   useEffect(() => {
     if (ready && unitStart.current === null) unitStart.current = performance.now();
@@ -89,7 +109,18 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
   const limitMs = unit.limitSec * 1000;
   const bonus = Math.round(25 * Math.max(0, (limitMs - elapsed) / limitMs));
   const doneQ = units.slice(0, idx).reduce((s, u) => s + u.qids.length, 0);
-  const allPicked = qs.every((q) => q.answer.boxes.every((_, k) => !!picks[q.id]?.[k]));
+  const filledQ = (q: PlayQuestion) =>
+    q.answer.kind === 'parts'
+      ? partsOf(q).every((p, i) => isFilled(p, raws[q.id]?.[i]))
+      : boxesOf(q).every((_, k) => !!picks[q.id]?.[k]);
+  const allPicked = qs.every(filledQ);
+  const setRaw = (qid: string, i: number, v: RawVal) =>
+    setRaws((s) => {
+      const q = session.questions[qid];
+      const cur = s[qid] ? [...s[qid]!] : partsOf(q!).map(emptyRaw);
+      cur[i] = v;
+      return { ...s, [qid]: cur };
+    });
 
   const pick = (qid: string, k: number, n: number, boxes: number) => {
     setPicks((s) => {
@@ -104,7 +135,14 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
     setSubmitError(null);
     try {
       const answers = units.flatMap((u) =>
-        u.qids.map((qid) => ({ qid, value: (picks[qid] ?? []).filter((v) => v !== ''), timeMs: Math.round(times.current[qid] ?? 0) }))
+        u.qids.map((qid) => {
+          const q = session.questions[qid];
+          const value =
+            q && q.answer.kind === 'parts'
+              ? partsOf(q).map((p, i) => toValue(p, raws[qid]?.[i]))
+              : (picks[qid] ?? []).filter((v) => v !== '');
+          return { qid, value, timeMs: Math.round(times.current[qid] ?? 0) };
+        })
       );
       onDone(await submitTreeSession(session.sessionId, answers));
     } catch (e) {
@@ -128,6 +166,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
     }
     unitStart.current = null;
     setZoomPath(null);
+    setNumFocus(null);
     setIdx(idx + 1);
     areaRef.current?.scrollTo({ top: 0 });
   };
@@ -169,12 +208,12 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
   });
 
   const renderChoices = (q: PlayQuestion, small: boolean) =>
-    q.answer.boxes.map((b, k) => (
+    boxesOf(q).map((b, k) => (
       <div key={b.n} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {q.answer.boxes.length > 1 && (
+        {boxesOf(q).length > 1 && (
           <div className="tr-boxlabel">
             解答番号 <span className="tr-num">{b.n}</span>
-            {q.answer.group === 'unordered' && k === 0 ? '（順不同）' : ''}
+            {q.answer.kind === 'choice' && q.answer.group === 'unordered' && k === 0 ? '（順不同）' : ''}
           </div>
         )}
         <div className="tr-choices">
@@ -187,7 +226,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
                 className={`tr-ch${on ? ' is-sel' : ''}${small ? ' is-sm' : ''}`}
                 aria-label={`解答番号 ${b.n} 選択肢 ${n}`}
                 aria-pressed={on}
-                onClick={() => pick(q.id, k, n, q.answer.boxes.length)}
+                onClick={() => pick(q.id, k, n, boxesOf(q).length)}
               >
                 {n}
               </button>
@@ -214,13 +253,14 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
   const isLast = idx + 1 >= units.length;
 
   return (
-    <div className="tr-root tr-play">
+    <div className={rootClass('tr-play')}>
       <div className="tr-bar">
         <button type="button" className="tr-iconbtn" aria-label="中断してツリーへ" onClick={() => setConfirmExit(true)}>
           <Ico id="i-close" size={16} />
         </button>
         <div className="tr-bar-mid">
           <div className="tr-crumb">
+            {isBack && <span className="ab-pill">ABYSS</span>}
             {crumb}
             <span style={{ color: col, fontWeight: 700 }}>{QTYPE_LABEL[session.qtype]}</span>
           </div>
@@ -239,17 +279,52 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
           <div className="tr-num">
             <Ico id="i-clock" size={13} />
             {fmtTime(elapsed)}
-            <span> / {fmtTime(limitMs)}</span>
+            {!isBack && <span> / {fmtTime(limitMs)}</span>}
           </div>
-          <small className="tr-num" style={{ color: bonus > 0 ? T.accent : alpha(T.text, 0.45) }}>
-            タイムボーナス +{bonus}
-          </small>
+          {isBack ? (
+            <small style={{ color: alpha(T.text, 0.45) }}>時間ボーナスなし</small>
+          ) : (
+            <small className="tr-num" style={{ color: bonus > 0 ? T.accent : alpha(T.text, 0.45) }}>
+              タイムボーナス +{bonus}
+            </small>
+          )}
         </div>
       </div>
 
-      <div className={`tr-qarea${isSet || leadPath ? '' : ' is-fill'}`} ref={areaRef}>
+      <div className={`tr-qarea${isBack || isSet || leadPath ? '' : ' is-fill'}`} ref={areaRef}>
         {given(isSet ? [...new Set(qs.flatMap((q) => q.given))] : first?.given ?? [])}
-        {isSet ? (
+        {isBack ? (
+          <>
+            {leadPath && (
+              <div className="tr-frame">
+                <div className="tr-member-head">
+                  <span>リード文</span>
+                </div>
+                <div className="tr-paper">{renderImg(leadPath, 'リード文')}</div>
+              </div>
+            )}
+            {qs.map((q, i) => (
+              <div key={q.id} className="tr-frame tr-member">
+                <div className="tr-member-head">
+                  <span>{isSet ? `小問 ${i + 1} / ${qs.length}` : '設問'}</span>
+                  {q.label && (
+                    <span className="tr-num" style={{ color: T.sub, fontWeight: 500 }}>
+                      {q.label}
+                    </span>
+                  )}
+                </div>
+                <div className="tr-paper">{renderImg(q.img.body, `問題 ${q.label ?? ''}`)}</div>
+                <AbyssAnswer
+                  q={q}
+                  values={raws[q.id] ?? partsOf(q).map(emptyRaw)}
+                  onChange={(k, v) => setRaw(q.id, k, v)}
+                  numFocus={numFocus?.qid === q.id ? numFocus.i : null}
+                  onNumFocus={(k) => setNumFocus({ qid: q.id, i: k })}
+                />
+              </div>
+            ))}
+          </>
+        ) : isSet ? (
           <>
             <div className="tr-frame">
               <div className="tr-member-head">
@@ -313,11 +388,43 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
       </div>
 
       <div className="tr-pad">
-        {isSet ? (
+        {isBack ? (
+          (() => {
+            const fq = numFocus ? session.questions[numFocus.qid] : null;
+            const fp = fq ? partsOf(fq)[numFocus!.i] : null;
+            if (fq && fp && fp.kind === 'numeric') {
+              const v = (raws[fq.id]?.[numFocus!.i] as { m: string; e: string } | undefined) ?? { m: '', e: '' };
+              return (
+                <AbyssKeypad
+                  key={`${fq.id}:${numFocus!.i}`}
+                  part={fp}
+                  value={v}
+                  onChange={(nv) => setRaw(fq.id, numFocus!.i, nv)}
+                  onClose={() => setNumFocus(null)}
+                  onNext={(() => {
+                    // この画面（単位）の数値欄を上から順に。最後の欄なら出さない
+                    const order = qs.flatMap((q) => partsOf(q).flatMap((p, k) => (p.kind === 'numeric' ? [{ qid: q.id, i: k }] : [])));
+                    const at = order.findIndex((x) => x.qid === fq.id && x.i === numFocus!.i);
+                    const next = order[at + 1];
+                    return next ? () => setNumFocus(next) : undefined;
+                  })()}
+                />
+              );
+            }
+            return (
+              <div className="tr-pad-head">
+                <span>すべての欄に答えてから決定</span>
+                <span>
+                  <b className="tr-num">{qs.filter(filledQ).length}</b> / {qs.length}
+                </span>
+              </div>
+            );
+          })()
+        ) : isSet ? (
           <div className="tr-pad-head">
             <span>小問ごとに解答をえらんでから決定</span>
             <span>
-              <b className="tr-num">{qs.filter((q) => q.answer.boxes.every((_, k) => !!picks[q.id]?.[k])).length}</b> / {qs.length}
+              <b className="tr-num">{qs.filter(filledQ).length}</b> / {qs.length}
             </span>
           </div>
         ) : (

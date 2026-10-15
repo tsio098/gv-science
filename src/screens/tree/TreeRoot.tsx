@@ -4,7 +4,7 @@
  * LIFF 内は「…」から ID / URL のモーダル（別のブラウザで使う）を開ける。
  */
 import { useCallback, useEffect, useState } from 'react';
-import type { QType, SubmitResult, TreeManifest, TreeMe, TreeProgress, TreeSession } from '../../lib/treeApi';
+import type { QType, SubmitResult, TreeManifest, TreeMe, TreeProgress, TreeSession, TreeStage } from '../../lib/treeApi';
 import {
   TreeApiError,
   fetchTreeManifest,
@@ -17,7 +17,7 @@ import {
 import { RankingScreen, type RankScope } from './RankingScreen';
 import { TreeShareModal } from './TreeShareModal';
 import { TreeSprite } from './TreeIcons';
-import { T, alpha } from './treeTheme';
+import { T, alpha, rootClass, setTreeStage } from './treeTheme';
 import { getLiffStatus } from '../../lib/liff';
 import { type TreeSubject, pickTreeSubject, rememberTreeSubject, treeSubjectsFor } from '../../lib/treeSubject';
 import { TreeScreen } from './TreeScreen';
@@ -69,6 +69,13 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   const [starting, setStarting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
+  /**
+   * ステージ（ROUTE / ABYSS・設計書 §5.6）。ABYSS は ROUTE を全解放した生徒（先生は常に）だけ開ける。
+   * abyssOpen は ROUTE の進捗の abyss.open（ABYSS を見ている間も保つ）
+   */
+  const [stage, setStage] = useState<TreeStage>('front');
+  const [abyssOpen, setAbyssOpen] = useState(false);
+  setTreeStage(stage);
 
   const fail = useCallback(
     (e: unknown) => {
@@ -95,6 +102,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           const [mf, pg] = await Promise.all([fetchTreeManifest(s), fetchTreeProgress(s)]);
           setSubjects(list.filter((x) => !empty.has(x)));
           setSubject(s);
+          setStage('front');
+          setAbyssOpen(!!pg.abyss?.open);
           setManifest(mf);
           setProgress(pg);
           return;
@@ -136,23 +145,44 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
 
   useEffect(load, [load]);
 
+  /** ROUTE ⇄ ABYSS。ABYSS の問題がまだ無い科目（NO_CONTENT）は切り替えずに知らせる */
+  const switchStage = useCallback(
+    async (next: TreeStage) => {
+      if (!subject || next === stage) return;
+      setSelected(null);
+      setMessage(null);
+      try {
+        const [mf, pg] = await Promise.all([fetchTreeManifest(subject, next), fetchTreeProgress(subject, next)]);
+        setStage(next);
+        setManifest(mf);
+        setProgress(pg);
+        if (pg.abyss) setAbyssOpen(pg.abyss.open);
+      } catch (e) {
+        if (e instanceof TreeApiError && e.code === 'NO_CONTENT') setMessage('この科目の ABYSS（二次問題）はまだ準備中です。');
+        else fail(e);
+      }
+    },
+    [subject, stage, fail]
+  );
+
   const refreshProgress = useCallback(() => {
     // manifest が差し替わっていたら一緒に取り直す（版がずれると問題 ID が合わない）
     if (!subject) return;
-    fetchTreeProgress(subject)
+    fetchTreeProgress(subject, stage)
       .then((pg) => {
         setProgress(pg);
-        if (manifest && pg.version !== manifest.version) fetchTreeManifest(subject).then(setManifest).catch(() => {});
+        if (pg.abyss) setAbyssOpen(pg.abyss.open);
+        if (manifest && pg.version !== manifest.version) fetchTreeManifest(subject, stage).then(setManifest).catch(() => {});
       })
       .catch(() => {});
-  }, [manifest, subject]);
+  }, [manifest, subject, stage]);
 
   const start = async (field: string, qtype: QType) => {
     setStarting(true);
     setMessage(null);
     try {
       if (!subject) return;
-      const s = await startTreeSession(subject, field, qtype);
+      const s = await startTreeSession(subject, field, qtype, stage);
       setView({ kind: 'play', session: s });
     } catch (e) {
       const code = e instanceof TreeApiError ? e.code : '';
@@ -160,6 +190,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       setMessage(
         code === 'LOCKED'
           ? 'この分野はまだ解放されていません。'
+          : code === 'ABYSS_LOCKED'
+            ? 'ABYSS は ROUTE の全分野を解放すると開きます。'
           : code === 'NO_QUESTIONS'
             ? 'この種別の問題はまだありません。'
             : '問題を読み込めませんでした。通信状況を確かめてもう一度お試しください。'
@@ -200,7 +232,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   if (error) {
     const notRegistered = error === 'NOT_REGISTERED';
     return (
-      <div className="tr-root">
+      <div className={rootClass()}>
         <TreeSprite />
         <div className="tr-center">
           {notRegistered ? (
@@ -242,7 +274,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
 
   if (!me || !manifest || !progress || !subject) {
     return (
-      <div className="tr-root">
+      <div className={rootClass()}>
         <div className="tr-center">
           <div className="tr-spinner" />
           <div>ANCHOR TREE を準備中…</div>
@@ -262,6 +294,9 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           progress={progress}
           subjects={subjects}
           onSubject={switchSubject}
+          stage={stage}
+          abyssOpen={abyssOpen}
+          onStage={(st) => void switchStage(st)}
           selected={selected}
           onSelect={setSelected}
           onStart={start}
@@ -319,6 +354,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       {view.kind === 'ranking' && (
         <RankingScreen
           manifest={manifest}
+          stage={stage}
           initial={{ scope: view.scope, field: view.field, qtype: view.qtype }}
           onBack={() => setView(view.back)}
         />

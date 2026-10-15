@@ -6,10 +6,10 @@
  * 分野の順位の前後（Phase 4）・間違えた問題の「解答がおかしい」報告（課題 #21）。
  */
 import { useState } from 'react';
-import type { FieldGroup, SubmitResult, TreeManifest, TreeSession } from '../../lib/treeApi';
+import type { FieldGroup, PartValue, PlayQuestion, SubmitResult, TreeManifest, TreeSession } from '../../lib/treeApi';
 import { QTYPE_LABEL, circled, examLabel, gradeLabel, treeImage } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
-import { REVIEW_COLOR, T, alpha, fmtScore, fmtTime, groupColor, groupSide } from './treeTheme';
+import { REVIEW_COLOR, T, alpha, fmtScore, fmtTime, groupColor, groupSide, rootClass } from './treeTheme';
 
 interface Props {
   result: SubmitResult;
@@ -96,6 +96,17 @@ function WrongItem({
   );
 }
 
+/** 自分の答えの表示: ROUTE は ①・③、ABYSS は欄ごと（「共有結合 / イ / 4.00e-2」）*/
+function mineLabel(q: PlayQuestion | undefined, value: PartValue[]) {
+  if (!value.length || value.every((v) => (Array.isArray(v) ? !v.length : !String(v).trim()))) return '未回答';
+  if (q && q.answer.kind === 'parts') {
+    return value
+      .map((v) => (Array.isArray(v) ? v.join('・') : String(v).replace(/e(-?\d+)$/, ' × 10^$1')) || '—')
+      .join(' / ');
+  }
+  return value.map((v) => circled(String(v))).join('・');
+}
+
 const rankUp = (b: number | null, a: number | null) => a != null && (b == null || a < b);
 /** 「12位 → ▲3」「初ランクイン · 38 人中」「変わらず」*/
 function rankDelta(b: number | null, a: number | null, of: number) {
@@ -139,7 +150,7 @@ export function ResultScreen({ result, session, manifest, grade, nickname, onSav
   const fs = result.fieldScore;
 
   return (
-    <div className="tr-root tr-result">
+    <div className={rootClass('tr-result')}>
       <div className="tr-result-head">
         <div
           style={{
@@ -255,14 +266,16 @@ export function ResultScreen({ result, session, manifest, grade, nickname, onSav
             </div>
             {wrong.map((r) => {
               const q = session.questions[r.qid];
-              const label = q
-                ? `${q.source.kind === 'basic' ? '基本 · ' : ''}${examLabel(q.source.exam)} · 解答番号 ${q.answer.boxes.map((b) => b.n).join('・')}`
-                : r.qid;
+              const label = !q
+                ? r.qid
+                : q.answer.kind === 'parts'
+                  ? `${examLabel(q.source.exam)} · ${q.label ?? ''}`
+                  : `${q.source.kind === 'basic' ? '基本 · ' : ''}${examLabel(q.source.exam)} · 解答番号 ${q.answer.boxes.map((b) => b.n).join('・')}`;
               return (
                 <WrongItem
                   key={r.qid}
                   label={label}
-                  mine={r.value.length ? r.value.map(circled).join('・') : '未回答'}
+                  mine={mineLabel(q, r.value)}
                   body={q?.img.body ?? null}
                   onReport={() => onReport(r.qid)}
                 />

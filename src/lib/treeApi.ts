@@ -13,6 +13,8 @@ const BASE = (import.meta.env.VITE_TREE_ENDPOINT || 'https://gv-science-proxy.t-
 const FETCH_TIMEOUT_MS = 30_000;
 
 export type QType = 'tf' | 'calc' | 'reason';
+/** ステージ: ROUTE（表・共通テスト型）/ ABYSS（裏・二次問題）。設計書 §5.6 */
+export type TreeStage = 'front' | 'back';
 export const QTYPES: QType[] = ['tf', 'calc', 'reason'];
 export const QTYPE_LABEL: Record<QType, string> = { tf: '正誤問題', calc: '計算問題', reason: '考察問題' };
 
@@ -49,6 +51,8 @@ export interface TreeField {
 
 export interface TreeManifest {
   subject: string;
+  /** ABYSS の manifest は 'back'（ROUTE は無いか 'front'）*/
+  stage?: TreeStage;
   name: string;
   version: number;
   unlockPct: number;
@@ -103,6 +107,9 @@ export interface TreeProgress {
   /** 科目・分野ごとの自分の順位（Phase 4）*/
   rank?: { total: RankInfo; fields: Record<string, RankInfo> };
   newDays?: number;
+  stage?: TreeStage;
+  /** ABYSS が開いているか（ROUTE の全分野が解放 / 先生は常に。2026-10-15〜）*/
+  abyss?: { open: boolean };
 }
 
 export interface TreeMe {
@@ -113,18 +120,49 @@ export interface TreeMe {
   nickname: string;
 }
 
+/** ROUTE のマーク式。min: 0 は ⓪〜⑨ の数字マーク（Phase 5 の Proxy から。無ければ 1）*/
+export interface ChoiceAnswer {
+  kind: 'choice';
+  boxes: { n: number; choices: number; min?: number }[];
+  group: 'unordered' | null;
+}
+
+/**
+ * ABYSS の解答欄（正解は渡ってこない）。
+ *   choice  … options（ア・(a) 等）。optionText = 作り変えた選択肢の文 / optionImg = 構造式の候補画像。multi = すべて選ぶ
+ *   term    … 語句・化学式（端末キーボード + 記号バー）。equation = 反応式
+ *   numeric … 専用キーパッド。sci = 仮数 × 10^指数 / plain = 整数・小数。fixedExp があれば仮数だけ
+ */
+export type AbyssPart =
+  | { kind: 'choice'; label: string | null; options: string[]; multi: boolean; optionText?: Record<string, string>; optionImg?: Record<string, string> }
+  | { kind: 'term'; label: string | null; equation: boolean }
+  | { kind: 'numeric'; label: string | null; format: 'sci' | 'plain'; unit: string | null; fixedExp?: number };
+
+export interface PartsAnswer {
+  kind: 'parts';
+  parts: AbyssPart[];
+  /** 欄の順序を問わない（「3 つ答えよ」等）*/
+  unordered: boolean;
+}
+
 export interface PlayQuestion {
   id: string;
   type: QType;
   field: string;
-  /** min: 0 は ⓪〜⑨ の数字マーク（Phase 5 の Proxy から。無ければ 1）*/
-  answer: { kind: 'choice'; boxes: { n: number; choices: number; min?: number }[]; group: 'unordered' | null };
+  answer: ChoiceAnswer | PartsAnswer;
   img: { lead: string | null; body: string | null };
   given: string[];
   text: string | null;
-  source: { kind: string; exam: string; n: number | null };
+  /** ABYSS: 設問の見出し（例「1 問2 ア」）*/
+  label?: string | null;
+  /** ABYSS: 作り変えた問い（説明・構造式・式を答える問題を選択式にしたもの）。画像の問題文の代わりにこれに答える */
+  prompt?: string | null;
+  source: { kind: string; exam: string; n: number | string | null };
   set: string | null;
 }
+
+/** 欄の値: choice は記号（multi は配列）、term・numeric は文字列（numeric は '1.6e-3' の形）*/
+export type PartValue = string | string[];
 
 export interface PlayUnit {
   set: string | null;
@@ -136,6 +174,7 @@ export interface PlayUnit {
 export interface TreeSession {
   sessionId: string;
   subject: string;
+  stage?: TreeStage;
   field: string;
   qtype: QType;
   version: number;
@@ -148,7 +187,8 @@ export interface AnswerResult {
   qid: string;
   set: string | null;
   correct: boolean;
-  value: string[];
+  /** ROUTE は選んだ番号、ABYSS は欄ごとの値 */
+  value: PartValue[];
   /** 正解は返さない（2026-10-15〜）。古い Proxy の応答にだけある */
   answer?: string[];
   timeMs: number;
@@ -160,6 +200,7 @@ export interface AnswerResult {
 
 export interface SubmitResult {
   sessionId: string;
+  stage?: TreeStage;
   nickname: string | null;
   results: AnswerResult[];
   summary: {
@@ -191,6 +232,7 @@ export interface RankRow {
 
 export interface TreeRanking {
   subject: string;
+  stage?: TreeStage;
   field: string;
   qtype: QType | '*';
   count: number;
@@ -250,16 +292,19 @@ const post = <T>(path: string, body: unknown, auth = true) =>
 
 export const treeLogin = (loginId: string) => post<{ token: string; exp: number }>('/tree/login', { loginId }, false);
 export const fetchTreeMe = () => get<TreeMe>('/tree/me');
-export const fetchTreeManifest = (subject: string) =>
-  get<TreeManifest>(`/tree/manifest?subject=${encodeURIComponent(subject)}`).then(normalizeGroups);
-export const fetchTreeProgress = (subject: string) => get<TreeProgress>(`/tree/progress?subject=${encodeURIComponent(subject)}`);
-export const startTreeSession = (subject: string, field: string, qtype: QType) =>
-  post<TreeSession>('/tree/session/start', { subject, field, qtype });
-export const submitTreeSession = (sessionId: string, answers: { qid: string; value: string[]; timeMs: number }[]) =>
+const stageQ = (stage: TreeStage) => (stage === 'back' ? '&stage=back' : '');
+export const fetchTreeManifest = (subject: string, stage: TreeStage = 'front') =>
+  get<TreeManifest>(`/tree/manifest?subject=${encodeURIComponent(subject)}${stageQ(stage)}`).then(normalizeGroups);
+export const fetchTreeProgress = (subject: string, stage: TreeStage = 'front') =>
+  get<TreeProgress>(`/tree/progress?subject=${encodeURIComponent(subject)}${stageQ(stage)}`);
+export const startTreeSession = (subject: string, field: string, qtype: QType, stage: TreeStage = 'front') =>
+  post<TreeSession>('/tree/session/start', stage === 'back' ? { subject, field, qtype, stage } : { subject, field, qtype });
+export const submitTreeSession = (sessionId: string, answers: { qid: string; value: PartValue[]; timeMs: number }[]) =>
   post<SubmitResult>('/tree/session/submit', { sessionId, answers });
 export const saveTreeNickname = (nickname: string) => post<{ nickname: string }>('/tree/profile', { nickname });
-export const fetchTreeRanking = (subject: string, field = '*', qtype: QType | '*' = '*') => {
+export const fetchTreeRanking = (subject: string, field = '*', qtype: QType | '*' = '*', stage: TreeStage = 'front') => {
   const q = new URLSearchParams({ subject });
+  if (stage === 'back') q.set('stage', 'back');
   if (field !== '*') q.set('field', field);
   if (qtype !== '*') q.set('qtype', qtype);
   return get<TreeRanking>('/tree/ranking?' + q.toString());
