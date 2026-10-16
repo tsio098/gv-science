@@ -52,6 +52,8 @@ interface Props {
   onShare?: () => void;
   /** ランキング（選んでいる分野があればその分野から）*/
   onRanking: (field: string | null) => void;
+  /** 先生用アカウントだけ: 生徒の進捗一覧（2026-10-17）*/
+  onStaff?: () => void;
   loginId?: string;
   grade: string;
   nickname: string;
@@ -392,6 +394,19 @@ export function TreeScreen(props: Props) {
 
       {menu && (
         <div className="tr-card tr-menu" role="menu">
+          {props.onStaff && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenu(false);
+                props.onStaff?.();
+              }}
+            >
+              <Ico id="i-lines" size={15} />
+              生徒の進捗（先生用）
+            </button>
+          )}
           {props.loginId && !share && (
             <div>
               ログインID <span className="tr-mono" style={{ color: T.text }}>{props.loginId}</span>

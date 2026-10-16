@@ -319,6 +319,71 @@ export const fetchTreeRanking = (subject: string, field = '*', qtype: QType | '*
 export const reportTreeQuestion = (sessionId: string, qid: string) =>
   post<{ ok: boolean; already: boolean }>('/tree/report', { sessionId, qid });
 
+/* ── 先生用 進捗一覧（2026-10-17）──────────────────────────
+ * Proxy は生徒を key（userId のハッシュ）で返し、氏名は持たない。
+ * 本名は先生のブラウザが GAS（action=treeNames）から { key: 氏名 } を直接もらう（Proxy を通さない）。 */
+
+/** その日（JST）の挑戦の集計。gain = スコアの増加（自己ベストの増分）*/
+export interface StaffDay {
+  gain: number;
+  plays: number;
+  correct: number;
+  total: number;
+}
+
+export interface StaffSubject {
+  /** その日の終わりのスコア */
+  score: number;
+  day: StaffDay;
+  prev: StaffDay;
+  /** 今年度の累計（いまの時点）*/
+  season: { plays: number; correct: number; total: number };
+  fields: Record<string, { score: number; day: StaffDay; prev: StaffDay }>;
+}
+
+export interface StaffStudent {
+  key: string;
+  grade: string;
+  nickname: string;
+  subjects: string[];
+  lastAt: number | null;
+  /** 科目キー（ABYSS は 'chemistry@back'）→ 集計。記録が無い科目は無い */
+  subj: Record<string, StaffSubject>;
+}
+
+export interface StaffOverview {
+  date: string;
+  prevDate: string;
+  today: string;
+  minDate: string;
+  students: StaffStudent[];
+  names: { url: string; exp: number; sig: string } | null;
+}
+
+export const fetchStaffOverview = (date?: string) =>
+  get<StaffOverview>('/tree/staff/overview' + (date ? '?date=' + encodeURIComponent(date) : ''));
+
+let namesMemo: { at: number; names: Record<string, string> } | null = null;
+const NAMES_MEMO_MS = 10 * 60_000;
+
+/** 本名 { key: 氏名 } を GAS から直接取る（Proxy を通さない）。10 分は覚えておく */
+export async function fetchStaffNames(ticket: NonNullable<StaffOverview['names']>): Promise<Record<string, string>> {
+  if (namesMemo && Date.now() - namesMemo.at < NAMES_MEMO_MS) return namesMemo.names;
+  const q = new URLSearchParams({ action: 'treeNames', exp: String(ticket.exp), sig: ticket.sig });
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), FETCH_TIMEOUT_MS);
+  try {
+    // ヘッダーを付けない単純な GET（GAS はプリフライトに答えない）
+    const res = await fetch(ticket.url + '?' + q.toString(), { credentials: 'omit', signal: ac.signal });
+    const data = (await res.json().catch(() => null)) as { names?: Record<string, string>; error?: string } | null;
+    if (!res.ok || !data || data.error || !data.names) throw new TreeApiError(data?.error || `HTTP ${res.status}`, res.status);
+    namesMemo = { at: Date.now(), names: data.names };
+    return data.names;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 const imageCache = new Map<string, Promise<string>>();
 
 /** 認証付き画像 → blob URL（同じパスは 1 回だけ取る。失敗したら次回取り直す）*/

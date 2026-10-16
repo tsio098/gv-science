@@ -23,6 +23,7 @@ import { type TreeSubject, pickTreeSubject, rememberTreeSubject, treeSubjectsFor
 import { TreeScreen } from './TreeScreen';
 import { PlayScreen } from './PlayScreen';
 import { ResultScreen } from './ResultScreen';
+import { StaffScreen } from './StaffScreen';
 import { SUBJECT_JA, type ScheduleSubject } from '../../lib/types';
 import '../../styles/tree.css';
 
@@ -47,7 +48,9 @@ type View =
   | { kind: 'tree' }
   | { kind: 'play'; session: TreeSession }
   | { kind: 'result'; session: TreeSession; result: SubmitResult }
-  | { kind: 'ranking'; scope: RankScope; field: string | null; qtype: QType; back: View };
+  | { kind: 'ranking'; scope: RankScope; field: string | null; qtype: QType; back: View }
+  /** 先生用 生徒の進捗一覧（2026-10-17・先生用アカウントだけ）*/
+  | { kind: 'staff' };
 
 interface Props {
   mode: 'liff' | 'external';
@@ -322,6 +325,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           onRanking={(field) =>
             setView({ kind: 'ranking', scope: field ? 'field' : 'subject', field, qtype: 'tf', back: { kind: 'tree' } })
           }
+          onStaff={me.grade === '先生' ? () => setView({ kind: 'staff' }) : undefined}
           loginId={me.loginId}
           grade={me.grade}
           nickname={me.nickname}
@@ -374,6 +378,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           onBack={() => setView(view.back)}
         />
       )}
+      {view.kind === 'staff' && <StaffScreen onBack={() => setView({ kind: 'tree' })} />}
       {sharing && <TreeShareModal loginId={me.loginId} onClose={() => setSharing(false)} />}
     </>
   );
