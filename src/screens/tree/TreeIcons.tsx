@@ -50,6 +50,13 @@ export function TreeSprite() {
         <symbol id="i-hassei" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.7"><circle cx="12" cy="12" r="9"/><circle cx="9.2" cy="9.2" r="2.6"/><circle cx="14.8" cy="9.2" r="2.6"/><circle cx="9.2" cy="14.8" r="2.6"/><circle cx="14.8" cy="14.8" r="2.6"/></g></symbol>
         {/* 系統と分類 = 系統樹（直角の分岐） */}
         <symbol id="i-keito" viewBox="0 0 24 24"><path d="M3 12h4M7 6v12M7 6h6M7 18h13M13 6V3.5M13 6v3M13 3.5h7M13 9h7" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></symbol>
+        {/* 生物基礎（Phase 6・2026-10-16）。生物の特徴・遺伝子の働き・生態系は生物の i-saibo / i-hatsugen / i-seitai を使い回す */}
+        {/* ヒトの体内環境 = 心臓と拍動 */}
+        <symbol id="i-tainai" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7a4.3 4.3 0 0 1 7.5 2.8C19.5 15.4 12 20 12 20z"/><path d="M7 12h2.6l1.2-2.2 2.2 4.4 1.2-2.2H17"/></g></symbol>
+        {/* 植生 = 林（2 本の木） */}
+        <symbol id="i-shokusei" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3.5L3.5 12h9zM8 12v8M16 7.5l-3.8 7h7.6zM16 14.5V20M3 20.5h18"/></g></symbol>
+        {/* 遷移 = 草 → 低木 → 高木 */}
+        <symbol id="i-senni" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 20.5h19M4.5 20.5c0-1.8.4-2.8 1-3.3M6.5 20.5c0-1.8-.4-2.8-1-3.3M10.5 18v2.5M17 13v7.5"/><circle cx="10.5" cy="15.5" r="2.5"/><circle cx="17" cy="9" r="4"/></g></symbol>
         <symbol id="i-tf" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><circle cx="8" cy="12" r="4.5"/><path d="M15 8.5l6 7M21 8.5l-6 7"/></g></symbol>
         <symbol id="i-calc" viewBox="0 0 24 24"><path d="M6 5h12L11.5 12 18 19H6" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/></symbol>
         <symbol id="i-reason" viewBox="0 0 24 24"><path d="M9.5 18h5M10.5 21h3M12 3a6 6 0 0 0-4 10.5c.7.6 1 1.5 1 2.5h6c0-1 .3-1.9 1-2.5A6 6 0 0 0 12 3z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></symbol>

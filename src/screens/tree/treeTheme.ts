@@ -23,6 +23,12 @@ export const GROUP_COLOR: Record<FieldGroup, string> = {
   mole: '#FF7AB8',
   acidbase: '#FFD84A',
   redox: '#D08BFF',
+  // 生物基礎も同じ 5 色を使い回す（2026-10-16）
+  feature: '#2DF4C6',
+  genefunc: '#4FC3FF',
+  body: '#FF7AB8',
+  vegetation: '#FFD84A',
+  ecosystem: '#D08BFF',
 };
 /** 系統色（立方体の側面 5px）*/
 export const GROUP_SIDE: Record<FieldGroup, string> = {
@@ -41,6 +47,11 @@ export const GROUP_SIDE: Record<FieldGroup, string> = {
   mole: '#A8336E',
   acidbase: '#A88A14',
   redox: '#7A47B0',
+  feature: '#0F8F77',
+  genefunc: '#1C6FA3',
+  body: '#A8336E',
+  vegetation: '#A88A14',
+  ecosystem: '#7A47B0',
 };
 export const GROUP_NAME: Record<FieldGroup, string> = {
   basic: '理論 · 化学基礎範囲',
@@ -58,6 +69,11 @@ export const GROUP_NAME: Record<FieldGroup, string> = {
   mole: '物質量と濃度',
   acidbase: '酸と塩基',
   redox: '酸化還元',
+  feature: '生物の特徴',
+  genefunc: '遺伝子とその働き',
+  body: 'ヒトのからだの調節',
+  vegetation: '植生と遷移',
+  ecosystem: '生態系とその保全',
 };
 export const QTYPE_ICON: Record<QType, string> = { tf: 'i-tf', calc: 'i-calc', reason: 'i-reason' };
 
