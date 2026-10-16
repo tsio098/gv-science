@@ -29,7 +29,9 @@ export type FieldGroup =
   // 化学基礎（2026-10-16 Phase 6・教科書の章）: 物質の構成 / 化学結合 / 物質量と濃度 / 酸と塩基 / 酸化還元
   | 'composition' | 'bonding' | 'mole' | 'acidbase' | 'redox'
   // 生物基礎（2026-10-16 Phase 6・教科書の章）: 生物の特徴 / 遺伝子とその働き / ヒトのからだの調節 / 植生と遷移 / 生態系とその保全
-  | 'feature' | 'genefunc' | 'body' | 'vegetation' | 'ecosystem';
+  | 'feature' | 'genefunc' | 'body' | 'vegetation' | 'ecosystem'
+  // 地学基礎（2026-10-16 Phase 6・教科書の編）: 固体地球 / 地球の歴史 / 大気と海洋 / 宇宙 / 自然との共生
+  | 'solid' | 'history' | 'atmos' | 'space' | 'coexist';
 type RawFieldGroup = FieldGroup | 'theory';
 
 /** 理論化学のうち化学基礎範囲の分野（ブリーフ §2.1）。残りの理論は化学応用範囲 */

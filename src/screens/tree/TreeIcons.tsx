@@ -57,6 +57,27 @@ export function TreeSprite() {
         <symbol id="i-shokusei" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3.5L3.5 12h9zM8 12v8M16 7.5l-3.8 7h7.6zM16 14.5V20M3 20.5h18"/></g></symbol>
         {/* 遷移 = 草 → 低木 → 高木 */}
         <symbol id="i-senni" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 20.5h19M4.5 20.5c0-1.8.4-2.8 1-3.3M6.5 20.5c0-1.8-.4-2.8-1-3.3M10.5 18v2.5M17 13v7.5"/><circle cx="10.5" cy="15.5" r="2.5"/><circle cx="17" cy="9" r="4"/></g></symbol>
+        {/* 地学基礎（Phase 6・2026-10-16）。10 分野すべて新規 */}
+        {/* 地球の形と内部構造 = 地殻・マントル・核の同心円 */}
+        <symbol id="i-chikyu" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.5"/><circle cx="12" cy="12" r="2" fill="currentColor"/></g></symbol>
+        {/* プレートと地震 = 地震計の波形 */}
+        <symbol id="i-plate" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 12h4l1.5-5 3 10 3-12 2.5 9 1.5-2h3.5"/></g></symbol>
+        {/* 火山と火成岩 = 火山と噴煙 */}
+        <symbol id="i-kazan" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 20.5l6.5-10h6l6.5 10z"/><path d="M10.5 7.5c0-1.8 1.5-2 1.5-4M14 7.5c0-1.3 1.3-1.6 1.3-3"/></g></symbol>
+        {/* 地層と堆積岩 = 傾いた地層 */}
+        <symbol id="i-chiso" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 10l18-2.5M3 14.5l18-2.5M3 18.5l18-2.5"/></g></symbol>
+        {/* 化石と地球の歴史 = アンモナイト */}
+        <symbol id="i-kaseki" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 12.5a1.5 1.5 0 0 1 3 0a3 3 0 0 1-6 0a4.5 4.5 0 0 1 9 0a6 6 0 0 1-12 0a7.5 7.5 0 0 1 15 0"/></g></symbol>
+        {/* 大気の構造と熱収支 = 太陽と大気の層 */}
+        <symbol id="i-taiki" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 20.5h19M3.5 16c4-1.6 13-1.6 17 0M3.5 11.5c4-1.6 13-1.6 17 0"/><circle cx="12" cy="5" r="2"/></g></symbol>
+        {/* 大気と海洋の循環 = 循環の矢印 */}
+        <symbol id="i-junkan" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M18.5 8.5A7.5 7.5 0 0 0 5 9.5M5.5 15.5A7.5 7.5 0 0 0 19 14.5M19 4.5v4h-4M5 19.5v-4h4"/></g></symbol>
+        {/* 宇宙と太陽系 = 環のある惑星 */}
+        <symbol id="i-uchu" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><ellipse cx="12" cy="12" rx="10" ry="3.3" transform="rotate(-20 12 12)"/></g></symbol>
+        {/* 日本の自然と災害 = 大波 */}
+        <symbol id="i-saigai" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 19c2.5 0 3-1.5 4.5-1.5s2 1.5 4.5 1.5 3-1.5 4.5-1.5 2 1.5 5.5 1.5"/><path d="M4 15c0-6 5-10 10-10 3 0 5 1.5 5.5 3.5-2-1-4.5-.5-5.5 1.5s.5 4.5 2 5"/></g></symbol>
+        {/* 地球環境 = 地球儀（経線と緯線） */}
+        <symbol id="i-kankyo" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></g></symbol>
         <symbol id="i-tf" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><circle cx="8" cy="12" r="4.5"/><path d="M15 8.5l6 7M21 8.5l-6 7"/></g></symbol>
         <symbol id="i-calc" viewBox="0 0 24 24"><path d="M6 5h12L11.5 12 18 19H6" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/></symbol>
         <symbol id="i-reason" viewBox="0 0 24 24"><path d="M9.5 18h5M10.5 21h3M12 3a6 6 0 0 0-4 10.5c.7.6 1 1.5 1 2.5h6c0-1 .3-1.9 1-2.5A6 6 0 0 0 12 3z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></symbol>

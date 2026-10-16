@@ -29,6 +29,12 @@ export const GROUP_COLOR: Record<FieldGroup, string> = {
   body: '#FF7AB8',
   vegetation: '#FFD84A',
   ecosystem: '#D08BFF',
+  // 地学基礎も同じ 5 色を使い回す（2026-10-16）
+  solid: '#2DF4C6',
+  history: '#4FC3FF',
+  atmos: '#FF7AB8',
+  space: '#FFD84A',
+  coexist: '#D08BFF',
 };
 /** 系統色（立方体の側面 5px）*/
 export const GROUP_SIDE: Record<FieldGroup, string> = {
@@ -52,6 +58,11 @@ export const GROUP_SIDE: Record<FieldGroup, string> = {
   body: '#A8336E',
   vegetation: '#A88A14',
   ecosystem: '#7A47B0',
+  solid: '#0F8F77',
+  history: '#1C6FA3',
+  atmos: '#A8336E',
+  space: '#A88A14',
+  coexist: '#7A47B0',
 };
 export const GROUP_NAME: Record<FieldGroup, string> = {
   basic: '理論 · 化学基礎範囲',
@@ -74,6 +85,11 @@ export const GROUP_NAME: Record<FieldGroup, string> = {
   body: 'ヒトのからだの調節',
   vegetation: '植生と遷移',
   ecosystem: '生態系とその保全',
+  solid: '固体地球',
+  history: '地球の歴史',
+  atmos: '大気と海洋',
+  space: '宇宙',
+  coexist: '自然との共生',
 };
 export const QTYPE_ICON: Record<QType, string> = { tf: 'i-tf', calc: 'i-calc', reason: 'i-reason' };
 

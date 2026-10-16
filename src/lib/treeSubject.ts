@@ -7,7 +7,7 @@
  */
 
 /** ツリーを作った科目（R2 に manifest がある順）。科目を足したらここに足す */
-export const TREE_SUBJECTS = ['chemistry', 'biology', 'chemistry-basic', 'biology-basic'] as const;
+export const TREE_SUBJECTS = ['chemistry', 'biology', 'chemistry-basic', 'biology-basic', 'earth-basic'] as const;
 export type TreeSubject = (typeof TREE_SUBJECTS)[number];
 
 export const TREE_SUBJECT_NAME: Record<TreeSubject, string> = {
@@ -15,6 +15,7 @@ export const TREE_SUBJECT_NAME: Record<TreeSubject, string> = {
   biology: '生物',
   'chemistry-basic': '化学基礎',
   'biology-basic': '生物基礎',
+  'earth-basic': '地学基礎',
 };
 
 /** 履修科目に加えて開ける科目（Worker の ALSO_OPENS と同じ）*/
