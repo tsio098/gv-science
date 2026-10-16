@@ -76,10 +76,10 @@ function AnchorTreeCard({ onOpen, subjects, staff }: { onOpen: () => void; subje
   };
   const p = prog.data;
   const nw = p ? p.total.newCount ?? 0 : 0;
-  // 選択科目にツリーが無いときも説明文のまま（「準備中です」は出さない。2026-10-16 先生の指示）
+  // 進捗が無いとき（読み込み中・選択科目にツリーが無い）は「ANCHOR TREE」だけ（説明文・「準備中です」は出さない。2026-10-17 先生の指示）
   const sub = subject && p
     ? `${TREE_SUBJECT_NAME[subject]} ${Math.round(p.total.mastery * 100)}%${nw > 0 ? ` · 新着 ${nw}` : ''}`
-    : '演習の問題をスキルツリーで解き直す';
+    : null;
 
   return (
     <>
@@ -116,7 +116,7 @@ function AnchorTreeCard({ onOpen, subjects, staff }: { onOpen: () => void; subje
         </div>
         <div className="at-home-tx">
           <div className="t1">ANCHOR TREE</div>
-          <div className="t2">{sub}</div>
+          {sub && <div className="t2">{sub}</div>}
         </div>
         <ChevRightIcon size={14} />
       </button>
