@@ -11,7 +11,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePanZoom } from './usePanZoom';
 import type { QType, TreeManifest, TreeProgress, TreeStage } from '../../lib/treeApi';
-import { TREE_SUBJECT_NAME, type TreeSubject } from '../../lib/treeSubject';
+import { TREE_SUBJECT_ICON, TREE_SUBJECT_NAME, type TreeSubject } from '../../lib/treeSubject';
 import { QTYPES } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
 import { NodeSheet } from './NodeSheet';
@@ -324,8 +324,10 @@ export function TreeScreen(props: Props) {
             setSubjMenu((v) => !v);
           }}
         >
-          {manifest.name} <span className="tr-num">{pct}%</span>
-          {canSwitch && <Ico id="i-chev-down" size={14} />}
+          {/* スマホ幅は科目名の代わりに科目アイコン（基礎科目は「基」付き）。科目名は切り替えメニューに出す（2026-10-17 先生の指示）*/}
+          <SubjectIcon subject={manifest.subject} />
+          {wide && manifest.name} <span className="tr-num">{pct}%</span>
+          {canSwitch && <Ico id="i-chev-down" size={wide ? 14 : 12} />}
         </button>
         {props.abyssOpen && (
           // 選択中の側だけ「アイコン + 名前」、もう片方はアイコンだけ（2026-10-15 先生決定）
@@ -381,6 +383,7 @@ export function TreeScreen(props: Props) {
                 props.onSubject(s);
               }}
             >
+              <SubjectIcon subject={s} />
               {TREE_SUBJECT_NAME[s]}
             </button>
           ))}
@@ -474,5 +477,17 @@ export function TreeScreen(props: Props) {
         />
       )}
     </div>
+  );
+}
+
+/** 科目アイコン（基礎科目は右上に「基」）。未知の科目キーなら何も出さない */
+function SubjectIcon({ subject }: { subject: string }) {
+  const def = (TREE_SUBJECT_ICON as Record<string, { icon: string; kiso: boolean } | undefined>)[subject];
+  if (!def) return null;
+  return (
+    <span className="tr-subj-ic">
+      <Ico id={def.icon} size={18} />
+      {def.kiso && <i className="tr-kiso">基</i>}
+    </span>
   );
 }

@@ -18,6 +18,15 @@ export const TREE_SUBJECT_NAME: Record<TreeSubject, string> = {
   'earth-basic': '地学基礎',
 };
 
+/** 科目のアイコン（TreeIcons の symbol id）と、基礎科目か（アイコンに「基」を添える）。スマホ幅の科目チップで科目名の代わりに使う（2026-10-17 先生の指示）*/
+export const TREE_SUBJECT_ICON: Record<TreeSubject, { icon: string; kiso: boolean }> = {
+  chemistry: { icon: 's-chem', kiso: false },
+  biology: { icon: 's-bio', kiso: false },
+  'chemistry-basic': { icon: 's-chem', kiso: true },
+  'biology-basic': { icon: 's-bio', kiso: true },
+  'earth-basic': { icon: 's-earth', kiso: true },
+};
+
 /** 履修科目に加えて開ける科目（Worker の ALSO_OPENS と同じ）*/
 const ALSO_OPENS: Partial<Record<string, readonly TreeSubject[]>> = { biology: ['biology-basic'] };
 

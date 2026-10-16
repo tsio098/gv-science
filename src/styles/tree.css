@@ -1768,6 +1768,73 @@ button.tr-stat {
   font-weight: 700;
   box-shadow: 0 0 12px rgba(var(--tr-accent-rgb), 0.5);
 }
+/* 科目アイコン（2026-10-17）: スマホ幅の科目チップは科目名の代わりにこれだけ（「化学基礎」が 2 行に折れていた）。
+   基礎科目は右上に「基」。チップは折り返さない */
+.tr-subject {
+  flex: none;
+  white-space: nowrap;
+}
+.tr-root:not(.is-wide) .tr-subject {
+  padding: 0 11px 0 10px;
+  gap: 6px;
+}
+.tr-subj-ic {
+  position: relative;
+  display: inline-flex;
+  color: var(--tr-accent);
+}
+.tr-kiso {
+  position: absolute;
+  right: -7px;
+  top: -6px;
+  min-width: 13px;
+  height: 13px;
+  padding: 0 1px;
+  border-radius: 7px;
+  background: var(--tr-accent);
+  color: var(--tr-on);
+  font-size: 8.5px;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 13px;
+  text-align: center;
+}
+/* スマホ幅の上部の列（科目チップ・ROUTE/ABYSS・ランキング・その他・閉じる）を詰める。
+   LIFF で ABYSS が開いている生徒・先生は 5 つ並び、375px 幅で右端がはみ出していた（2026-10-17） */
+.tr-root:not(.is-wide) .tr-chrome {
+  padding: 0 12px;
+  gap: 6px;
+}
+.tr-root:not(.is-wide) .tr-chrome-r {
+  gap: 6px;
+}
+.tr-root:not(.is-wide) .tr-chrome .tr-iconbtn {
+  width: 36px;
+  height: 36px;
+}
+.tr-root:not(.is-wide) .tr-stagetoggle button {
+  padding: 0 6px;
+}
+.tr-root:not(.is-wide) .tr-subjmenu {
+  left: 12px;
+}
+.tr-root:not(.is-wide) .tr-menu:not(.tr-subjmenu) {
+  right: 12px;
+}
+.tr-subjmenu .tr-subj-ic {
+  margin-right: 6px;
+}
+/* iPad・PC 幅は科目名も出すので、チップの「基」は出さない */
+.tr-root.is-wide .tr-subject .tr-kiso {
+  display: none;
+}
+.tr-subjmenu > button.is-on .tr-subj-ic {
+  color: var(--tr-on);
+}
+.tr-subjmenu > button.is-on .tr-kiso {
+  background: var(--tr-on);
+  color: var(--tr-accent);
+}
 
 /* ── ABYSS（二次問題・設計書 §5.6 / モック BackPlay・BackPlayTerm）──────────────
    選択中・フォーカスはステージ色（ABYSS ではシアン）。入力欄の文字は 16px 以上（iOS で拡大されないように） */

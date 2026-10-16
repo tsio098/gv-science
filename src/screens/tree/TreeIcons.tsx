@@ -92,6 +92,10 @@ export function TreeSprite() {
         <symbol id="i-alert" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></g></symbol>
         <symbol id="i-lines" viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h7" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/></symbol>
         <symbol id="i-expand" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></symbol>
+        {/* 科目（左上の科目チップ。スマホ幅では科目名の代わりに出す・2026-10-17）: 化学 = 液の入ったフラスコ / 生物 = 葉 / 地学 = 地球 */}
+        <symbol id="s-chem" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9.5 3h5M10.5 3v6.5L5 19a1.4 1.4 0 0 0 1.2 2h11.6a1.4 1.4 0 0 0 1.2-2l-5.5-9.5V3"/><path d="M7.4 15h9.2"/><circle cx="10.5" cy="18" r=".9" fill="currentColor"/><circle cx="14" cy="17.2" r=".7" fill="currentColor"/></g></symbol>
+        <symbol id="s-bio" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 19C5 10.5 10.5 5 19 5c0 8.5-5.5 14-14 14z"/><path d="M5 19l9-9"/></g></symbol>
+        <symbol id="s-earth" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M4 9q8 3 16 0M4 15q8 3 16 0M12 3c-2.5 3-2.5 15 0 18"/></g></symbol>
         {/* ABYSS = 三重の波（錨 i-anchor はアプリロゴ専用）*/}
         <symbol id="i-depth" viewBox="0 0 24 24"><path d="M4 7c2.5 2 5.5 2 8 0s5.5-2 8 0M4 12c2.5 2 5.5 2 8 0s5.5-2 8 0M4 17c2.5 2 5.5 2 8 0s5.5-2 8 0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></symbol>
         {/* ROUTE = コンパス */}
