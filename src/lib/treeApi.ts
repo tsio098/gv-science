@@ -338,7 +338,8 @@ export interface StaffSubject {
   prev: StaffDay;
   /** 今年度の累計（いまの時点）*/
   season: { plays: number; correct: number; total: number };
-  fields: Record<string, { score: number; day: StaffDay; prev: StaffDay }>;
+  /** 分野ごと。season = その分野の今年度の累計 */
+  fields: Record<string, { score: number; day: StaffDay; prev: StaffDay; season: StaffSubject['season'] }>;
 }
 
 export interface StaffStudent {

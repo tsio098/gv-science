@@ -1,6 +1,6 @@
 /**
  * ANCHOR TREE — 先生用 生徒の進捗一覧（2026-10-17）。先生用アカウント（学年「先生」）だけ「…」メニューから開ける。
- * 選んだ日（JST）と前日の スコアの増加・挑戦回数・正答率、その日の終わりの総スコア、分野ごとのスコアを本名つきで一覧にする。
+ * 選んだ日（JST）と前日の スコアの増加・挑戦回数・正答率、その日の終わりの総スコア、分野ごとのスコア・正答率を本名つきで一覧にする。
  * 数字は Proxy の /tree/staff/overview（生徒は key で、氏名なし）、本名は GAS の treeNames から直接（Proxy を通さない）。
  */
 import { Fragment, useEffect, useMemo, useState } from 'react';
@@ -41,6 +41,10 @@ const addDay = (a: StaffDay, b: StaffDay): StaffDay => ({
 const rateOf = (d: { correct: number; total: number }) => (d.total ? (d.correct / d.total) * 100 : null);
 const fmtRate = (r: number | null) => (r == null ? '—' : `${Math.round(r)}%`);
 const fmtGain = (g: number) => (g > 0 ? '+' + fmtScore(g) : '0');
+/** 今年度の正答率がこれ未満の分野はオレンジ（解いた問題が LOW_MIN 問以上のときだけ）*/
+const LOW_RATE = 50;
+const LOW_MIN = 10;
+const zeroSeason = { plays: 0, correct: 0, total: 0 };
 
 interface Row {
   s: StaffStudent;
@@ -348,7 +352,7 @@ export function StaffScreen({ onBack }: Props) {
             )}
             <div className="st-foot">
               増加 = その日に上がったスコア（自己ベストの更新分）。総スコア = その日の終わりの時点。正答率 = その日に解いた問題のうち正解の割合。
-              行を押すと分野ごとの内訳が開きます。
+              行を押すと分野ごとの内訳（今年度の正答率つき。{LOW_MIN} 問以上解いて {LOW_RATE}% 未満の分野はオレンジ）が開きます。
             </div>
           </>
         )}
@@ -409,6 +413,7 @@ function Detail({ row, manifests }: { row: Row; manifests: Record<string, TreeMa
                 <span>増加</span>
                 <span>プレイ</span>
                 <span>正答率</span>
+                <span>今年度</span>
               </div>
               {fields.map((f) => {
                 const x = sj?.fields[f.id];
@@ -416,8 +421,11 @@ function Detail({ row, manifests }: { row: Row; manifests: Record<string, TreeMa
                 const pct = max && x ? Math.min(100, (x.score / max) * 100) : 0;
                 const day = x?.day ?? zeroDay();
                 const prev = x?.prev ?? zeroDay();
+                const season = x?.season ?? zeroSeason;
+                const sr = rateOf(season);
+                const low = sr != null && season.total >= LOW_MIN && sr < LOW_RATE;
                 return (
-                  <div key={f.id} className={`st-frow${x && (x.score > 0 || day.plays || prev.plays) ? '' : ' is-zero'}`}>
+                  <div key={f.id} className={`st-frow${x && (x.score > 0 || season.plays || day.plays || prev.plays) ? '' : ' is-zero'}`}>
                     <span className="st-fname">
                       <i style={{ background: groupColor(f.group) }} />
                       {f.name}
@@ -440,6 +448,10 @@ function Detail({ row, manifests }: { row: Row; manifests: Record<string, TreeMa
                     <span className="tr-num st-fcell">
                       {fmtRate(rateOf(day))}
                       <small>前日 {fmtRate(rateOf(prev))}</small>
+                    </span>
+                    <span className={`tr-num st-fcell${low ? ' is-low' : ''}`}>
+                      {fmtRate(sr)}
+                      <small>今年度 {season.plays} 回</small>
                     </span>
                   </div>
                 );
