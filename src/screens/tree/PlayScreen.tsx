@@ -502,7 +502,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
             <div style={{ fontWeight: 700, fontSize: 16 }}>中断しますか？</div>
             <div style={{ color: T.sub }}>
               {isArena
-                ? '今シーズンの挑戦はもう始まっています（やり直しはできません）。中断しても時間は進み続けます。ツリーの一番下の門から、続きの問題を再開できます。'
+                ? '今シーズンの挑戦はもう始まっています（やり直しはできません）。中断しても時間は進み続けます。ツリーの一番下のアリーナのノードから、続きの問題を再開できます。'
                 : 'この挑戦の解答は記録されません。'}
             </div>
             <button type="button" className="tr-cta" onClick={() => setConfirmExit(false)}>

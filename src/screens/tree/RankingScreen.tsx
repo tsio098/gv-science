@@ -2,10 +2,11 @@
  * ANCHOR TREE — ランキング（設計書 §5.4 / モック Ranking.dc.html）。
  * 科目 / 分野 / 種別 の 3 階層。表示は学年 + ニックネーム、上位 50 + 自分の行（クリーム・下に固定）。
  * 分野・種別は、開いた場所（選んでいたノード・結果画面）を初期値にし、チップで切り替える。
- * 「アリーナ」タブ（ROUTE だけ・設計書 §5.7）: チャンピオンアリーナの今シーズン / 前シーズン（スコア → 時間の短い順）。前シーズンの 1 位に王冠
+ * 「アリーナ」タブ（ROUTE だけ・設計書 §5.7）: 今シーズン / 前シーズン / 2 シーズン合算（スコア → 時間の短い順）。
+ * 前シーズンの 1 位は「チャンピオン」。2 シーズン合算の 1 位にボーナスチケット（未実装）
  */
 import { useEffect, useMemo, useState } from 'react';
-import type { ArenaSeason, QType, TreeManifest, TreeRanking, TreeStage } from '../../lib/treeApi';
+import type { ArenaRankWhich, ArenaSeason, QType, TreeManifest, TreeRanking, TreeStage } from '../../lib/treeApi';
 import { QTYPES, QTYPE_LABEL, fetchArenaRanking, fetchTreeRanking, gradeLabel } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
 import { ARENA_GOLD, T, alpha, arenaPeriod, arenaSeasonName, fmtScore, fmtTime, groupColor, rootClass } from './treeTheme';
@@ -42,8 +43,8 @@ export function RankingScreen({ manifest, stage = 'front', initial, arena = fals
   const ready = useMemo(() => manifest.fields.filter((f) => f.total > 0), [manifest]);
   const arenaOn = arena && stage === 'front';
   const [scope, setScope] = useState<RankScope>(initial.scope === 'arena' && !arenaOn ? 'subject' : initial.scope);
-  const [arenaSeason, setArenaSeason] = useState<'current' | 'prev'>('current');
-  const [seasonInfo, setSeasonInfo] = useState<ArenaSeason | null>(null);
+  const [arenaSeason, setArenaSeason] = useState<ArenaRankWhich>('current');
+  const [seasonInfo, setSeasonInfo] = useState<ArenaSeason[] | null>(null);
   const [played, setPlayed] = useState(false);
   const [field, setField] = useState<string>(() =>
     initial.field && ready.some((f) => f.id === initial.field) ? initial.field : ready[0]?.id ?? ''
@@ -72,7 +73,7 @@ export function RankingScreen({ manifest, stage = 'front', initial, arena = fals
       fetchArenaRanking(manifest.subject, arenaSeason)
         .then((d) => {
           if (!alive) return;
-          setSeasonInfo(d.season);
+          setSeasonInfo(d.pair ?? [d.season]);
           setPlayed(d.me.played);
           setData({ subject: d.subject, field: '*', qtype: '*', count: d.count, top: d.top, me: d.me });
         })
@@ -96,7 +97,9 @@ export function RankingScreen({ manifest, stage = 'front', initial, arena = fals
   const isArena = scope === 'arena';
   const title = isArena
     ? seasonInfo
-      ? `${arenaSeasonName(seasonInfo.n)} · ${arenaPeriod(seasonInfo, true)}`
+      ? seasonInfo.length > 1
+        ? `${seasonInfo[0]!.n >= 1 ? `シーズン ${seasonInfo.map((s) => s.n).join('・')}` : 'プレシーズン'} 合算 · ${arenaPeriod({ start: seasonInfo[0]!.start, end: seasonInfo[seasonInfo.length - 1]!.end }, true)}`
+        : `${arenaSeasonName(seasonInfo[0]!.n)} · ${arenaPeriod(seasonInfo[0]!, true)}`
       : ''
     : scope === 'subject'
       ? `${manifest.name} 全体`
@@ -141,7 +144,7 @@ export function RankingScreen({ manifest, stage = 'front', initial, arena = fals
 
         {isArena && (
           <div className="tr-chips" role="listbox" aria-label="シーズン">
-            {(['current', 'prev'] as const).map((s) => (
+            {(['current', 'prev', 'pair'] as const).map((s) => (
               <button
                 key={s}
                 type="button"
@@ -152,7 +155,7 @@ export function RankingScreen({ manifest, stage = 'front', initial, arena = fals
                 onClick={() => setArenaSeason(s)}
               >
                 <Ico id="i-crown" size={12} />
-                {s === 'current' ? '今シーズン' : '前シーズン'}
+                {s === 'current' ? '今シーズン' : s === 'prev' ? '前シーズン' : '2シーズン合算'}
               </button>
             ))}
           </div>
@@ -204,7 +207,7 @@ export function RankingScreen({ manifest, stage = 'front', initial, arena = fals
 
         <div className="tr-rank-sub">
           <span>{title}</span>
-          <span>{data ? `${isArena ? 'スコア→時間順' : 'スコア順'} · ${data.count} 人` : ''}</span>
+          {!isArena && <span style={{ whiteSpace: 'nowrap' }}>{data ? `スコア順 · ${data.count} 人` : ''}</span>}
         </div>
 
         {error ? (
@@ -223,7 +226,9 @@ export function RankingScreen({ manifest, stage = 'front', initial, arena = fals
             {isArena
               ? arenaSeason === 'prev'
                 ? 'このシーズンの記録はありません。'
-                : '今シーズンはまだ誰も載っていません。ツリーの一番下の門から挑戦できます。'
+                : arenaSeason === 'pair'
+                  ? 'この 2 シーズンの記録はまだありません。'
+                  : '今シーズンはまだ誰も載っていません。ツリーの一番下のアリーナのノードから挑戦できます。'
               : 'まだ誰も載っていません。1 問正解するとランキングに載ります。'}
           </div>
         ) : (
@@ -239,7 +244,7 @@ export function RankingScreen({ manifest, stage = 'front', initial, arena = fals
                   >
                     <div className="tr-num" style={{ fontSize: 12, fontWeight: 700, color: c.top, display: 'flex', alignItems: 'center', gap: 3 }}>
                       {champion(p) && <Ico id="i-crown" size={12} />}
-                      {champion(p) ? '王者' : `${p.rank}位`}
+                      {champion(p) ? 'チャンピオン' : `${p.rank}位`}
                     </div>
                     <div className="tr-avatar" style={{ background: c.avatar }}>
                       {[...p.nickname][0]}
@@ -297,7 +302,9 @@ export function RankingScreen({ manifest, stage = 'front', initial, arena = fals
                   ? '0 点はランキングに載りません'
                   : arenaSeason === 'prev'
                     ? 'このシーズンは挑戦していません'
-                    : '今シーズン未挑戦 · ツリーの一番下の門から挑戦できます'
+                    : arenaSeason === 'pair'
+                      ? 'この 2 シーズンは未挑戦です'
+                      : '今シーズン未挑戦 · ツリーの一番下のアリーナのノードから挑戦できます'
               : data.me.rank
                 ? 'ニックネームは結果画面で変えられます'
                 : '1 問正解するとランキングに載ります · ニックネームは結果画面で変えられます'}

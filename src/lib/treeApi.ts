@@ -380,6 +380,8 @@ export interface ArenaRankRow extends RankRow {
 export interface ArenaRanking {
   subject: string;
   season: ArenaSeason;
+  /** 2 シーズン合算（season=pair）のときの 2 シーズン。ボーナスチケットはこの合算 1 位に配る（未実装）*/
+  pair?: ArenaSeason[];
   count: number;
   top: ArenaRankRow[];
   me: { rank: number | null; score: number; played: boolean; grade: string; nickname: string };
@@ -389,8 +391,9 @@ export const fetchArena = (subject: string) => get<ArenaInfo>(`/tree/arena?subje
 export const startArena = (subject: string) => post<ArenaSession>('/tree/arena/start', { subject });
 export const submitArena = (sessionId: string, answers: { qid: string; value: PartValue[]; timeMs: number }[]) =>
   post<ArenaResult>('/tree/arena/submit', { sessionId, answers });
-export const fetchArenaRanking = (subject: string, season: 'current' | 'prev' = 'current') =>
-  get<ArenaRanking>(`/tree/arena/ranking?subject=${encodeURIComponent(subject)}${season === 'prev' ? '&season=prev' : ''}`);
+export type ArenaRankWhich = 'current' | 'prev' | 'pair';
+export const fetchArenaRanking = (subject: string, season: ArenaRankWhich = 'current') =>
+  get<ArenaRanking>(`/tree/arena/ranking?subject=${encodeURIComponent(subject)}${season === 'current' ? '' : `&season=${season}`}`);
 
 /* ── 先生用 進捗一覧（2026-10-17）──────────────────────────
  * Proxy は生徒を key（userId のハッシュ）で返し、氏名は持たない。

@@ -1,6 +1,6 @@
 /**
- * ANCHOR TREE — チャンピオンアリーナ（設計書 §5.7）の入口。ツリーの一番下の門から開く。
- * シーズン（2 週間）・ルール・開放条件（全分野それぞれマスター度 70%）・自分の挑戦・前シーズンのチャンピオン。
+ * ANCHOR TREE — チャンピオンアリーナ（設計書 §5.7）の入口。ツリーの一番下のノードから開く。
+ * シーズン（2 週間）・開放条件（全分野それぞれマスター度 70%）・自分の挑戦・前シーズンのチャンピオン。
  * 挑戦は 1 シーズン 1 回で、始めた時点で使う → 始める前に確認する。途中で閉じた挑戦は「続きから再開」。
  */
 import { useState } from 'react';
@@ -24,7 +24,7 @@ export function ArenaScreen({ info, manifest, starting, message, onStart, onRank
   const e = info.entry;
   const nameOf = (id: string) => manifest.fields.find((f) => f.id === id)?.name ?? id;
   const canStart = info.open && (info.staff || !e || e.status === 'started');
-  const startLabel = e?.status === 'started' && !info.staff ? '続きから再開' : info.staff ? '挑戦する（先生用・何度でも）' : '挑戦する（今シーズン 1 回だけ）';
+  const startLabel = e?.status === 'started' && !info.staff ? '続きから再開' : '挑戦する';
 
   return (
     <div className={rootClass('tr-result')}>
@@ -60,14 +60,6 @@ export function ArenaScreen({ info, manifest, starting, message, onStart, onRank
               参加 <b className="tr-num" style={{ color: T.text }}>{info.count}</b> 人
             </span>
           </div>
-          <ul className="tr-arena-rules">
-            <li>全員共通の 10 問（全分野から・計算 3 問以上・考察 2 問以上）</li>
-            <li>
-              1 問 = 正解の基礎点 <b>25</b> + タイムボーナス 最大 <b>75</b>（満点 1,000）。<b>不正解はどれだけ速くても 0 点</b>
-            </li>
-            <li>挑戦は 1 シーズンに 1 回だけ。始めた時点で使い、やり直せません（中断しても時間は進みます）</li>
-            <li>自己ベスト・マスター度・ツリーのランキングには影響しません</li>
-          </ul>
         </div>
 
         {!info.open ? (
@@ -117,7 +109,7 @@ export function ArenaScreen({ info, manifest, starting, message, onStart, onRank
           </div>
         ) : null}
 
-        {info.staff && <div className="tr-note">先生用アカウントは開放条件なしで何度でも挑戦でき、ランキングには載りません。</div>}
+        {info.staff && <div className="tr-note">先生用アカウント: 常に開放・何度でも挑戦できます（システムチェック用。記録はランキングに載りません）。</div>}
 
         {info.champion && (
           <div className="tr-panel" style={{ borderColor: alpha(ARENA_GOLD, 0.5) }}>
@@ -159,7 +151,7 @@ export function ArenaScreen({ info, manifest, starting, message, onStart, onRank
           <div className="tr-card">
             <div style={{ fontWeight: 700, fontSize: 16 }}>今シーズンの挑戦を始めますか？</div>
             <div style={{ color: T.sub }}>
-              挑戦は 1 シーズンに 1 回だけです。始めた時点で使い、やり直しはできません。10 問を続けて解き、最後にまとめて採点します。
+              挑戦は 1 シーズンにつき 1 回のみです。
             </div>
             <button
               type="button"

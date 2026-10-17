@@ -98,7 +98,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
    */
   const [stage, setStage] = useState<TreeStage>('front');
   const [abyssOpen, setAbyssOpen] = useState(false);
-  /** チャンピオンアリーナ（ROUTE の科目ごと）。古い Proxy・マイグレーション前は null（門を出さない）*/
+  /** チャンピオンアリーナ（ROUTE の科目ごと）。古い Proxy・マイグレーション前は null（ノードを出さない）*/
   const [arena, setArena] = useState<ArenaInfo | null>(null);
   const [arenaMessage, setArenaMessage] = useState<string | null>(null);
   setTreeStage(stage);
@@ -485,11 +485,9 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       {view.kind === 'arenaResult' && (
         <ArenaResultScreen
           result={view.result}
-          session={view.session}
           grade={me.grade}
           nickname={me.nickname}
           onSaveNick={saveNick}
-          onReport={(qid) => report(view.session.sessionId, qid)}
           onBack={() => {
             refreshProgress();
             setView({ kind: 'tree' });
