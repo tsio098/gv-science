@@ -3,7 +3,7 @@
  * 今回の加算（新規正解 +75・タイムボーナス更新の差分）・累積スコア・マスター度・間違えた問題（出題状況の前後は 2026-10-15 先生の指示で出さない）。
  * 間違えた問題は問題（画像）と自分の答えだけを見せ、正解は表示しない（2026-10-15 先生決定）。
  * ニックネームはここで入力し、離れるときに保存する（/tree/profile。NG ワードなら離れずに知らせる）。
- * 分野の順位の前後（Phase 4）・間違えた問題の「解答がおかしい」報告（課題 #21）。
+ * 分野の順位の前後（Phase 4）・間違えた問題の報告（課題 #21）。ボタンで文章の入力欄を開き、問題画像と文章を先生の Google Chat に送る（2026-10-17）。
  */
 import { useState } from 'react';
 import type { FieldGroup, PartValue, PlayQuestion, SubmitResult, TreeManifest, TreeSession } from '../../lib/treeApi';
@@ -22,19 +22,13 @@ interface Props {
   onRetry: () => void;
   onBack: () => void;
   onRanking: () => void;
-  onReport: (qid: string) => Promise<'sent' | 'already' | 'error'>;
+  onReport: (qid: string, message: string, label: string, img: string | null) => Promise<'sent' | 'already' | 'error'>;
   busy: boolean;
 }
 
-type ReportState = 'idle' | 'sending' | 'sent' | 'already' | 'error';
+type ReportState = 'idle' | 'open' | 'sending' | 'sent' | 'already' | 'error';
 
-const REPORT_LABEL: Record<ReportState, string> = {
-  idle: '解答がおかしい？ 先生に報告',
-  sending: '送信中…',
-  sent: '報告しました。先生が確認します',
-  already: 'この問題は報告済みです',
-  error: '送れませんでした（タップでもう一度）',
-};
+const REPORT_MAX = 500;
 
 function WrongItem({
   label,
@@ -45,12 +39,13 @@ function WrongItem({
   label: string;
   mine: string;
   body: string | null;
-  onReport: () => Promise<'sent' | 'already' | 'error'>;
+  onReport: (message: string) => Promise<'sent' | 'already' | 'error'>;
 }) {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [report, setReport] = useState<ReportState>('idle');
+  const [text, setText] = useState('');
   const toggle = () => {
     setOpen((v) => !v);
     if (!url && body) {
@@ -58,11 +53,12 @@ function WrongItem({
       treeImage(body).then(setUrl).catch(() => setFailed(true));
     }
   };
-  const doReport = async () => {
-    if (report !== 'idle' && report !== 'error') return;
+  const send = async () => {
+    if (!text.trim() || report === 'sending') return;
     setReport('sending');
-    setReport(await onReport());
+    setReport(await onReport(text.trim()));
   };
+  const writing = report === 'open' || report === 'sending' || report === 'error';
   return (
     <div className="tr-wrong">
       <button type="button" className="tr-wrong-head" onClick={toggle} aria-expanded={open}>
@@ -81,15 +77,44 @@ function WrongItem({
           <div className="tr-paper">
             {url ? <img src={url} alt={label} /> : <div className="tr-imgph">{failed ? '画像を読み込めませんでした' : '読み込み中…'}</div>}
           </div>
-          <button
-            type="button"
-            className={`tr-report is-${report}`}
-            disabled={report === 'sending' || report === 'sent' || report === 'already'}
-            onClick={doReport}
-          >
-            <Ico id="i-flag" size={13} />
-            {REPORT_LABEL[report]}
-          </button>
+          {report === 'idle' && (
+            <button type="button" className="tr-report" onClick={() => setReport('open')}>
+              <Ico id="i-flag" size={13} />
+              この問題について先生に質問・報告
+            </button>
+          )}
+          {writing && (
+            <div className="tr-report-form">
+              <textarea
+                className="tr-report-text"
+                value={text}
+                maxLength={REPORT_MAX}
+                rows={3}
+                placeholder="聞きたいこと・おかしいと思うところを書いてください"
+                onChange={(e) => setText(e.target.value)}
+                disabled={report === 'sending'}
+                autoFocus
+              />
+              {report === 'error' && <div className="tr-report-err">送れませんでした。もう一度送ってください</div>}
+              <div className="tr-report-row">
+                <span className="tr-num" style={{ fontSize: 11, color: T.sub }}>
+                  {text.length}/{REPORT_MAX}
+                </span>
+                <button type="button" className="tr-report-cancel" onClick={() => setReport('idle')} disabled={report === 'sending'}>
+                  やめる
+                </button>
+                <button type="button" className="tr-report-send" onClick={send} disabled={!text.trim() || report === 'sending'}>
+                  {report === 'sending' ? '送信中…' : '先生に送る'}
+                </button>
+              </div>
+            </div>
+          )}
+          {(report === 'sent' || report === 'already') && (
+            <div className="tr-report is-sent">
+              <Ico id="i-flag" size={13} />
+              {report === 'sent' ? '送りました。先生が確認します' : 'この問題は送信済みです'}
+            </div>
+          )}
         </>
       )}
     </div>
@@ -277,7 +302,7 @@ export function ResultScreen({ result, session, manifest, grade, nickname, onSav
                   label={label}
                   mine={mineLabel(q, r.value)}
                   body={q?.img.body ?? null}
-                  onReport={() => onReport(r.qid)}
+                  onReport={(message) => onReport(r.qid, message, label, q?.img.body ?? null)}
                 />
               );
             })}

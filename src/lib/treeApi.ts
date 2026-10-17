@@ -318,9 +318,9 @@ export const fetchTreeRanking = (subject: string, field = '*', qtype: QType | '*
   if (qtype !== '*') q.set('qtype', qtype);
   return get<TreeRanking>('/tree/ranking?' + q.toString());
 };
-/** 解答表の誤り報告（課題 #21）。1 人 1 問 1 回（2 回目は already: true）*/
-export const reportTreeQuestion = (sessionId: string, qid: string) =>
-  post<{ ok: boolean; already: boolean }>('/tree/report', { sessionId, qid });
+/** 問題の報告（課題 #21）。文章と問題画像を先生の Google Chat に送る。1 人 1 問 1 回（2 回目は already: true）*/
+export const reportTreeQuestion = (r: { sessionId: string; qid: string; message: string; label: string; img: string | null }) =>
+  post<{ ok: boolean; already: boolean }>('/tree/report', r);
 
 /* ── チャンピオンアリーナ（設計書 §5.7・2026-10-17）────────────
  * ROUTE の全分野それぞれのマスター度 70% 以上で開放。2 週間 1 シーズン・全員共通の 10 問・1 人 1 回。

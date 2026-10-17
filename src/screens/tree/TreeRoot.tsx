@@ -400,9 +400,9 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
     }
   };
 
-  const report = async (sessionId: string, qid: string): Promise<'sent' | 'already' | 'error'> => {
+  const report = async (sessionId: string, qid: string, message: string, label: string, img: string | null): Promise<'sent' | 'already' | 'error'> => {
     try {
-      const r = await reportTreeQuestion(sessionId, qid);
+      const r = await reportTreeQuestion({ sessionId, qid, message, label, img });
       return r.already ? 'already' : 'sent';
     } catch {
       return 'error';
@@ -537,7 +537,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           nickname={me.nickname}
           busy={starting}
           onSaveNick={saveNick}
-          onReport={(qid) => report(view.session.sessionId, qid)}
+          onReport={(qid, message, label, img) => report(view.session.sessionId, qid, message, label, img)}
           onRetry={() => {
             refreshProgress();
             void start(view.session.field, view.session.qtype);
