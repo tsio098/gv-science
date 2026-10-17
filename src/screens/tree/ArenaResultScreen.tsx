@@ -14,13 +14,15 @@ interface Props {
   result: ArenaResult;
   grade: string;
   nickname: string;
+  /** 自分のカニの種名（空欄で保存したときの名前）。無ければ「プレイヤー」 */
+  crab: string | null;
   onSaveNick: (nickname: string) => Promise<string | null>;
   onBack: () => void;
   onRanking: () => void;
 }
 
-export function ArenaResultScreen({ result, grade, nickname, onSaveNick, onBack, onRanking }: Props) {
-  const [nick, setNick] = useState(nickname === 'プレイヤー' ? '' : nickname);
+export function ArenaResultScreen({ result, grade, nickname, crab, onSaveNick, onBack, onRanking }: Props) {
+  const [nick, setNick] = useState(nickname === 'プレイヤー' || nickname === crab ? '' : nickname);
   const [nickError, setNickError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const leave = async (go: () => void) => {
@@ -61,7 +63,7 @@ export function ArenaResultScreen({ result, grade, nickname, onSaveNick, onBack,
 
       <div className="tr-ar-foot" style={{ gap: 10 }}>
         <label htmlFor="tr-nick" style={{ fontSize: 12, color: 'var(--tr-sub)' }}>
-          ランキングに表示するニックネーム（空欄なら「プレイヤー」）
+          ランキングに表示するニックネーム（空欄なら「{crab || 'プレイヤー'}」）
         </label>
         <div style={{ display: 'flex', gap: 8 }}>
           {grade && <span className="tr-ar-gradebox">{gradeLabel(grade)}</span>}
@@ -69,7 +71,7 @@ export function ArenaResultScreen({ result, grade, nickname, onSaveNick, onBack,
             id="tr-nick"
             className="tr-input tr-ar-input"
             type="text"
-            placeholder="プレイヤー"
+            placeholder={crab || 'プレイヤー'}
             maxLength={12}
             value={nick}
             aria-invalid={!!nickError}

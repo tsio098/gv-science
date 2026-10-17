@@ -398,10 +398,10 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
     }
   };
 
-  /** ニックネームの保存。NG ワードだけは止めて知らせる（通信エラーは止めない。次の機会に保存し直せる）*/
+  /** ニックネームの保存。NG ワードと他の人のカニの名前だけは止めて知らせる（通信エラーは止めない。次の機会に保存し直せる）*/
   const saveNick = async (nick: string): Promise<string | null> => {
     if (!me) return null;
-    const next = nick.trim() || 'プレイヤー';
+    const next = nick.trim() || me.crab || 'プレイヤー';
     if (next === me.nickname) return null;
     try {
       const r = await saveTreeNickname(next);
@@ -410,6 +410,9 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
     } catch (e) {
       if (e instanceof TreeApiError && e.code === 'NG_NICKNAME') {
         return 'このニックネームは使えません。別の名前にしてください。';
+      }
+      if (e instanceof TreeApiError && e.code === 'NICKNAME_TAKEN') {
+        return 'この名前は他の人が使っています。別の名前にしてください。';
       }
       return null;
     }
@@ -550,6 +553,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           manifest={manifest}
           grade={me.grade}
           nickname={me.nickname}
+          crab={me.crab ?? null}
           busy={starting}
           onSaveNick={saveNick}
           onReport={(qid, message, label, img) => report(view.session.sessionId, qid, message, label, img)}
@@ -626,6 +630,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           result={view.result}
           grade={me.grade}
           nickname={me.nickname}
+          crab={me.crab ?? null}
           onSaveNick={saveNick}
           onBack={() => {
             refreshProgress();

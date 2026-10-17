@@ -127,6 +127,8 @@ export interface TreeMe {
   grade: string;
   subjects: string[];
   nickname: string;
+  /** 自分に割り当てたカニの種名（ニックネーム未記入のときの名前・2026-10-17）。古い Proxy・未割り当ては null / 無し */
+  crab?: string | null;
 }
 
 /** ROUTE のマーク式。min: 0 は ⓪〜⑨ の数字マーク（Phase 5 の Proxy から。無ければ 1）*/

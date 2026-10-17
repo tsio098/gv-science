@@ -17,6 +17,8 @@ interface Props {
   manifest: TreeManifest;
   grade: string;
   nickname: string;
+  /** 自分のカニの種名（空欄で保存したときの名前）。無ければ「プレイヤー」 */
+  crab: string | null;
   /** ニックネームを保存。だめならエラー文（NG ワード等）、良ければ null */
   onSaveNick: (nickname: string) => Promise<string | null>;
   onRetry: () => void;
@@ -142,12 +144,12 @@ function rankDelta(b: number | null, a: number | null, of: number) {
   return `${of} 人中`;
 }
 
-export function ResultScreen({ result, session, manifest, grade, nickname, onSaveNick, onRetry, onBack, onRanking, onReport, busy }: Props) {
+export function ResultScreen({ result, session, manifest, grade, nickname, crab, onSaveNick, onRetry, onBack, onRanking, onReport, busy }: Props) {
   const field = manifest.fields.find((f) => f.id === session.field);
   const group = (field?.group ?? 'basic') as FieldGroup;
   const col = groupColor(group);
   const side = groupSide(group);
-  const [nick, setNick] = useState(nickname === 'プレイヤー' ? '' : nickname);
+  const [nick, setNick] = useState(nickname === 'プレイヤー' || nickname === crab ? '' : nickname);
   const [nickError, setNickError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   /** ニックネームを保存してから離れる（NG ならここに留まって知らせる）*/
@@ -312,7 +314,7 @@ export function ResultScreen({ result, session, manifest, grade, nickname, onSav
 
       <div className="tr-foot">
         <label htmlFor="tr-nick" style={{ fontSize: 12, color: T.sub }}>
-          ランキングに表示するニックネーム（空欄なら「プレイヤー」）
+          ランキングに表示するニックネーム（空欄なら「{crab || 'プレイヤー'}」）
         </label>
         <div style={{ display: 'flex', gap: 8 }}>
           {grade && (
@@ -337,7 +339,7 @@ export function ResultScreen({ result, session, manifest, grade, nickname, onSav
             id="tr-nick"
             className="tr-input"
             type="text"
-            placeholder="プレイヤー"
+            placeholder={crab || 'プレイヤー'}
             maxLength={12}
             value={nick}
             aria-invalid={!!nickError}
