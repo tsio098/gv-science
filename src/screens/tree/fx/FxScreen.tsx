@@ -220,7 +220,7 @@ export function FxUnlockAbyss({ subjectName }: SceneProps) {
           />
           <Reveal src={img('text_abyss-open')} alt="ABYSS OPEN" style={{ left: 65, top: 340, width: 260 }} dur={0.7} delay={1.4} steps={10} />
           <div className="fx-abs" style={{ left: 0, right: 0, top: 486, textAlign: 'center', fontSize: 16, fontWeight: 600, ...an('fxUp', 0.5, 2.2) }}>
-            {subjectName}の ROUTE をすべて解放しました
+            {subjectName}の全分野でマスター度 60% を達成しました
           </div>
           <FxButton label="深海へ" action="tree" style={{ bottom: wide ? 56 : 36, ...an('fxUp', 0.5, 2.6) }} />
         </Col>

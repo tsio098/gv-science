@@ -1,6 +1,6 @@
 /**
  * ANCHOR TREE — チャンピオンアリーナ（設計書 §5.7）の入口。ツリーの一番下のノードから開く。
- * シーズン（2 週間）・開放条件（全分野それぞれマスター度 70%）・自分の挑戦・前シーズンのチャンピオン・先生のスコア。
+ * シーズン（2 週間）・開放条件（全分野それぞれ今年度の正答率 70%。2026-10-17 夕方にマスター度から変更）・自分の挑戦・前シーズンのチャンピオン・先生のスコア。
  * 挑戦は 1 シーズン 1 回で、始めた時点で使う → 始める前に確認する。途中で閉じた挑戦は「続きから再開」。
  * 見た目は夜の紫 + 金（2026-10-17 先生決定・デザインボード A03〜A05・A14）。
  */
@@ -58,6 +58,8 @@ export function ArenaScreen({ info, manifest, starting, message, tickets = 0, ti
   const staffSelf = arenaIsStaffSelf(info);
   const staffScore = arenaStaffScore(info);
   const nameOf = (id: string) => manifest.fields.find((f) => f.id === id)?.name ?? id;
+  // 開放条件の数え方（新しい Proxy = 正答率・古い Proxy = マスター度）
+  const byRate = info.cond.basis === 'rate';
   const canStart = info.open && (staffSelf || !e || e.status === 'started');
   const startLabel = e?.status === 'started' && !staffSelf ? '続きから再開' : '挑戦する';
 
@@ -90,7 +92,7 @@ export function ArenaScreen({ info, manifest, starting, message, tickets = 0, ti
           <div className="tr-ar-card" style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600 }}>
               <Ico id="i-lock" size={14} />
-              開放条件 · 全分野それぞれマスター度 {info.cond.need}% 以上
+              開放条件 · 全分野それぞれ{byRate ? '正答率' : 'マスター度'} {info.cond.need}% 以上
             </div>
             <div style={{ fontSize: 12, color: 'var(--tr-sub)' }}>
               達成 <b style={{ color: 'var(--tr-text)' }}>{info.cond.done}</b> / {info.cond.of} 分野
@@ -99,7 +101,7 @@ export function ArenaScreen({ info, manifest, starting, message, tickets = 0, ti
               <div key={f.id} className="tr-ar-cond">
                 <span>{nameOf(f.id)}</span>
                 <span className="tr-mono" style={{ color: 'var(--tr-review)' }}>
-                  {Math.floor(f.mastery)}% / {info.cond.need}%
+                  {Math.floor(byRate ? f.rate ?? f.mastery : f.mastery)}% / {info.cond.need}%
                 </span>
               </div>
             ))}

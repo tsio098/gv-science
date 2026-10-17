@@ -1,5 +1,7 @@
 /**
- * ANCHOR TREE — ボーナスチケット（2026-10-17 先生決定・実装手順_ロゴ・アリーナ・演出 §5.5）。
+ * ANCHOR TREE — チケット（2026-10-17 先生決定・実装手順_ロゴ・アリーナ・演出 §5.5）。
+ * 2 種類: ABYSS チケット（全分野マスター度 60% を初めて満たした科目ごとに 1 枚・ボード TicketAbyss の深海配色）と、
+ * 総合優勝のボーナスチケット（下）。使い方はどちらも同じ（半券を切る・サーバで 1 回だけ）。
  * 2 シーズン（組）の総合チャンピオンに 1 枚。先生の 2 シーズン合算を超えていればプレミアム。
  * 表記は「SEASON n–n+1 総合チャンピオン」・学年 · ニックネーム・小さく「先生へ提示してください」だけ（特典・番号・期限は出さない）。
  * 使い方: 先生の前で半券（横向きは右端・縦向きは下端の点線から先）を横へスワイプして切り取る →
@@ -7,8 +9,8 @@
  * 途中で離した・通信に失敗したら半券は元に戻る。使用済み（409 TICKET_USED）なら使用済みの表示にする。
  */
 import { useEffect, useRef, useState } from 'react';
-import type { ArenaTicket } from '../../lib/treeApi';
-import { TreeApiError, gradeLabel, redeemArenaTicket } from '../../lib/treeApi';
+import type { TreeTicket } from '../../lib/treeApi';
+import { TreeApiError, gradeLabel, redeemTreeTicket } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
 import { rootClass } from './treeTheme';
 import '../../styles/tree-ticket.css';
@@ -18,7 +20,7 @@ const BRAND = '/tree/brand/';
 const CUT_RATIO = 0.6;
 
 interface Props {
-  tickets: ArenaTicket[];
+  tickets: TreeTicket[];
   subjectName: (subject: string) => string;
   onUsed: (id: string, usedAt: number) => void;
   onBack: () => void;
@@ -47,11 +49,23 @@ export function ArenaTicketScreen({ tickets, subjectName, onUsed, onBack, demo =
   const wide = useWide();
   /** テストのやり直し（チケットを作り直して半券を戻す）*/
   const [round, setRound] = useState(0);
+  // ABYSS チケットだけなら深海の画面・見出しは錨 + 「{科目} · ABYSS」、総合優勝のチケットがあればアリーナの画面
+  const abyssOnly = tickets.length > 0 && tickets.every((t) => t.kind === 'abyss');
+  const subjects = [...new Set(tickets.map((t) => t.subject))];
   return (
-    <div className={rootClass('tk-screen') + ' is-arena'}>
+    <div className={rootClass('tk-screen') + (abyssOnly ? ' is-abyss' : ' is-arena')}>
       <div className="tr-ar-head">
-        <img className="crown" src={BRAND + 'icon_crown.svg'} alt="" style={{ width: 28 }} />
-        <img className="logo" src={BRAND + 'arena_logo-1line.svg'} alt="CHAMPION ARENA" style={{ width: 160 }} />
+        {abyssOnly ? (
+          <>
+            <img className="crown" src={BRAND + 'icon_abyss.svg'} alt="" style={{ width: 26 }} />
+            <span className="tk-abyss-head">{subjects.length === 1 ? `${subjectName(subjects[0]!)} · ABYSS` : 'ABYSS'}</span>
+          </>
+        ) : (
+          <>
+            <img className="crown" src={BRAND + 'icon_crown.svg'} alt="" style={{ width: 28 }} />
+            <img className="logo" src={BRAND + 'arena_logo-1line.svg'} alt="CHAMPION ARENA" style={{ width: 160 }} />
+          </>
+        )}
         <button type="button" className="tr-ar-close" aria-label="閉じる" onClick={onBack}>
           <Ico id="i-close" size={16} />
         </button>
@@ -60,8 +74,14 @@ export function ArenaTicketScreen({ tickets, subjectName, onUsed, onBack, demo =
         {demo && <div className="tk-demo-note">先生用のテスト表示です。半券を切っても記録されません。</div>}
         {tickets.map((t) => (
           <div key={`${t.id}:${round}`} className="tk-item">
-            {(tickets.length > 1 || demo) && <div className="tk-cap">{demo ? (t.premium ? 'プレミアム（見本）' : '通常（見本）') : subjectName(t.subject)}</div>}
-            <Ticket ticket={t} wide={wide} onUsed={onUsed} demo={demo} />
+            {(tickets.length > 1 || demo) && (
+              <div className="tk-cap">
+                {demo
+                  ? t.kind === 'abyss' ? 'ABYSS（見本）' : t.premium ? 'プレミアム（見本）' : '通常（見本）'
+                  : `${subjectName(t.subject)} · ${t.kind === 'abyss' ? 'ABYSS' : '総合優勝'}`}
+              </div>
+            )}
+            <Ticket ticket={t} wide={wide} onUsed={onUsed} demo={demo} subjectName={subjectName(t.subject)} />
           </div>
         ))}
         {demo && (
@@ -70,6 +90,17 @@ export function ArenaTicketScreen({ tickets, subjectName, onUsed, onBack, demo =
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+/** ABYSS チケットの泡（小さな円・静止）*/
+function Bubbles() {
+  return (
+    <div className="tk-bubbles" aria-hidden="true">
+      <i style={{ left: '62%', top: '18%', width: 9, height: 9, borderColor: 'rgba(0,229,255,0.5)' }} />
+      <i style={{ left: '78%', top: '52%', width: 6, height: 6, borderColor: 'rgba(208,139,255,0.55)' }} />
+      <i style={{ left: '84%', top: '26%', width: 12, height: 12, borderColor: 'rgba(79,195,255,0.45)' }} />
     </div>
   );
 }
@@ -84,7 +115,7 @@ function Arrows() {
 
 type Phase = 'idle' | 'drag' | 'snap' | 'sending' | 'fly' | 'used';
 
-function Ticket({ ticket, wide, onUsed, demo }: { ticket: ArenaTicket; wide: boolean; onUsed: (id: string, usedAt: number) => void; demo: boolean }) {
+function Ticket({ ticket, wide, onUsed, demo, subjectName }: { ticket: TreeTicket; wide: boolean; onUsed: (id: string, usedAt: number) => void; demo: boolean; subjectName: string }) {
   const [phase, setPhase] = useState<Phase>(ticket.usedAt ? 'used' : 'idle');
   const [dx, setDx] = useState(0);
   const [err, setErr] = useState<string | null>(null);
@@ -98,16 +129,17 @@ function Ticket({ ticket, wide, onUsed, demo }: { ticket: ArenaTicket; wide: boo
   }, [ticket.usedAt]);
 
   const used = phase === 'used';
-  const premium = ticket.premium;
-  const [s1, s2] = ticket.pair;
-  const title = `SEASON ${s1?.n ?? ''}–${s2?.n ?? ''} 総合チャンピオン`;
+  const abyss = ticket.kind === 'abyss';
+  const premium = !abyss && ticket.premium;
+  const [s1, s2] = ticket.pair ?? [];
+  const title = abyss ? `${subjectName} ABYSS 開放` : `SEASON ${s1?.n ?? ''}–${s2?.n ?? ''} 総合チャンピオン`;
   const who = `${gradeLabel(ticket.grade)} · ${ticket.nickname}`;
 
   const cut = async () => {
     setPhase('sending');
     try {
       // 先生用のテストはサーバに送らない（通信の間を少しだけ再現）
-      const r = demo ? await new Promise<{ usedAt: number }>((ok) => window.setTimeout(() => ok({ usedAt: Date.now() }), 250)) : await redeemArenaTicket(ticket.id, ticket.sig);
+      const r = demo ? await new Promise<{ usedAt: number }>((ok) => window.setTimeout(() => ok({ usedAt: Date.now() }), 250)) : await redeemTreeTicket(ticket.kind, ticket.id, ticket.sig);
       setPhase('fly');
       window.setTimeout(() => {
         setPhase('used');
@@ -176,15 +208,20 @@ function Ticket({ ticket, wide, onUsed, demo }: { ticket: ArenaTicket; wide: boo
 
   return (
     <>
-      <div className={`tk ${wide ? 'tk--h' : 'tk--v'}${premium ? ' is-premium' : ''}${used ? ' is-used' : ''}`} role="group" aria-label={`ボーナスチケット ${title}${used ? '（使用済み）' : ''}`}>
+      <div
+        className={`tk ${wide ? 'tk--h' : 'tk--v'}${premium ? ' is-premium' : ''}${abyss ? ' is-abyss' : ''}${used ? ' is-used' : ''}`}
+        role="group"
+        aria-label={`${abyss ? 'ABYSS チケット' : 'ボーナスチケット'} ${title}${used ? '（使用済み）' : ''}`}
+      >
         <div className="tk-main">
           <div className="tk-face">
             {premium && <div className="tk-shine" aria-hidden="true" />}
+            {abyss && <Bubbles />}
             <div className="tk-content">
               <div className="tk-brand">
-                <img className="tk-crown" src={BRAND + 'icon_crown.svg'} alt="" />
+                <img className="tk-crown" src={BRAND + (abyss ? 'icon_abyss.svg' : 'icon_crown.svg')} alt="" />
                 <div className="tk-words">
-                  <img className="tk-champion" src={BRAND + 'text_champion.svg'} alt="CHAMPION" />
+                  <img className="tk-champion" src={BRAND + (abyss ? 'text_abyss.svg' : 'text_champion.svg')} alt={abyss ? 'ABYSS' : 'CHAMPION'} />
                   {premium && <img className="tk-premium" src={BRAND + 'text_premium.svg'} alt="PREMIUM" />}
                   {!used && !(premium && wide) && <div className="tk-bonus">BONUS TICKET</div>}
                 </div>

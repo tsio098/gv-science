@@ -3050,3 +3050,35 @@ button.tr-stat {
   font-size: 12px;
   letter-spacing: 0;
 }
+/* ツリーのヘッダーのチケットボタン（未使用のチケットがあるときだけ・枚数のバッジ）*/
+.tr-ticketbtn {
+  position: relative;
+}
+.tr-ticketbtn-n {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: var(--tr-orange);
+  color: var(--tr-new-fg);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+/* 先生用 演出の確認（2026-10-17 夕方）*/
+.tr-fxlab {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tr-fxlab > .tr-ghost {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}

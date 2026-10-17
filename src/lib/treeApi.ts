@@ -114,8 +114,11 @@ export interface TreeProgress {
   rank?: { total: RankInfo; fields: Record<string, RankInfo> };
   newDays?: number;
   stage?: TreeStage;
-  /** ABYSS が開いているか（ROUTE の全分野が解放 / 先生は常に。2026-10-15〜）*/
-  abyss?: { open: boolean };
+  /**
+   * ABYSS が開いているか（先生は常に）。2026-10-17 夕方から 条件 = 全分野マスター度 60% 以上（cond・未達の分野）。
+   * 一度 ABYSS で挑戦した生徒は条件を割っても開いたまま
+   */
+  abyss?: { open: boolean; cond?: { need: number; done: number; of: number; fields: { id: string; mastery: number }[] } };
 }
 
 export interface TreeMe {
@@ -337,8 +340,11 @@ export interface ArenaInfo {
   season: ArenaSeason;
   /** 開放済み（条件を満たした / 今シーズンに挑戦を始めた / 先生）*/
   open: boolean;
-  /** 開放条件: 全分野それぞれマスター度 need% 以上。fields = まだ届いていない分野 */
-  cond: { need: number; done: number; of: number; fields: { id: string; mastery: number }[] };
+  /**
+   * 開放条件。2026-10-17 夕方から basis = 'rate'（全分野それぞれ今年度の正答率 need% 以上・rate が未達の分野の正答率）。
+   * 古い Proxy は basis なし（マスター度 need%・mastery）
+   */
+  cond: { basis?: 'rate' | 'mastery'; need: number; done: number; of: number; fields: { id: string; mastery: number; rate?: number }[] };
   entry: null | {
     status: 'started' | 'done';
     startedAt: number;
@@ -439,7 +445,7 @@ export interface TreeEvent {
   season?: ArenaSeason;
   pair?: ArenaSeason[];
   score?: number;
-  ticket?: { id: string; premium: boolean };
+  ticket?: { id: string; premium?: boolean; kind?: TreeTicketKind };
 }
 
 /** ホームのカード・バナー用（/tree/progress?home=1）*/
@@ -450,6 +456,31 @@ export interface TreeHomeFlags {
 }
 
 export const fetchArenaTickets = () => get<{ tickets: ArenaTicket[] }>('/tree/arena/tickets');
+
+/**
+ * チケット（ABYSS チケットと総合優勝のボーナスチケット）。2026-10-17 夕方〜
+ * ABYSS チケット = 全分野マスター度 60% を初めて満たした科目ごとに 1 枚（化学・生物）。使い方はボーナスと同じ（半券を切る・1 回だけ）
+ */
+export type TreeTicketKind = 'abyss' | 'grand';
+export interface TreeTicket extends Omit<ArenaTicket, 'pair' | 'score'> {
+  kind: TreeTicketKind;
+  /** grand: 組の 2 シーズン / abyss: null */
+  pair: ArenaSeason[] | null;
+  score: number | null;
+  issuedAt?: number;
+}
+/** 両方のチケット。新しい Proxy が無い（404）ときは総合優勝のチケットだけ（/tree/arena/tickets）*/
+export async function fetchTreeTickets(): Promise<TreeTicket[]> {
+  try {
+    return (await get<{ tickets: TreeTicket[] }>('/tree/tickets')).tickets ?? [];
+  } catch (e) {
+    if (!(e instanceof TreeApiError && e.status === 404)) throw e;
+    return ((await fetchArenaTickets()).tickets ?? []).map((t) => ({ ...t, kind: 'grand' as const }));
+  }
+}
+/** 使用（総合優勝のチケットは古い Proxy でも通る /tree/arena/ticket/use）*/
+export const redeemTreeTicket = (kind: TreeTicketKind, id: string, sig: string) =>
+  kind === 'grand' ? redeemArenaTicket(id, sig) : post<{ ok: boolean; usedAt: number }>('/tree/ticket/use', { kind, id, sig });
 export const redeemArenaTicket = (id: string, sig: string) => post<{ ok: boolean; usedAt: number }>('/tree/arena/ticket/use', { id, sig });
 export const fetchTreeEvents = () => get<{ events: TreeEvent[] }>('/tree/events');
 export const markTreeEventsSeen = (keys: string[]) => post<{ ok: boolean }>('/tree/events/seen', { keys });

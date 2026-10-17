@@ -57,6 +57,11 @@ interface Props {
   onRanking: (field: string | null) => void;
   /** 先生用アカウントだけ: 生徒の進捗一覧（2026-10-17）*/
   onStaff?: () => void;
+  /** 先生用アカウントだけ: 演出の確認（5 つの演出を何度でも再生。2026-10-17 夕方）*/
+  onFxLab?: () => void;
+  /** 未使用のチケットの枚数（ABYSS・総合優勝）。1 枚以上のときだけヘッダーにボタン */
+  tickets?: number;
+  onTickets?: () => void;
   /** チャンピオンアリーナ（設計書 §5.7）。ROUTE のツリーの一番下にノードを置く。古い Proxy では null */
   arena?: ArenaInfo | null;
   onArena?: () => void;
@@ -376,6 +381,12 @@ export function TreeScreen(props: Props) {
           </div>
         )}
         <div className="tr-chrome-r">
+          {!!props.tickets && props.onTickets && (
+            <button type="button" className="tr-iconbtn tr-ticketbtn" aria-label={`チケット ${props.tickets} 枚`} onClick={props.onTickets}>
+              <Ico id="i-ticket" size={18} />
+              <span className="tr-ticketbtn-n">{props.tickets}</span>
+            </button>
+          )}
           <button type="button" className="tr-iconbtn" aria-label="ランキング" onClick={() => props.onRanking(selected)}>
             <Ico id="i-trophy" size={18} />
           </button>
@@ -427,6 +438,19 @@ export function TreeScreen(props: Props) {
             >
               <Ico id="i-lines" size={15} />
               生徒の進捗（先生用）
+            </button>
+          )}
+          {props.onFxLab && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenu(false);
+                props.onFxLab?.();
+              }}
+            >
+              <Ico id="i-star" size={15} />
+              演出の確認（先生用）
             </button>
           )}
           {props.loginId && !share && (

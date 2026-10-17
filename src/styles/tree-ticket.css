@@ -475,3 +475,64 @@
   flex: none;
   max-width: 420px;
 }
+
+/* ── ABYSS チケット（ボード TicketAbyss・2026-10-17 夕方）: 枠 シアン・深海の地・文字 #E8EEFF / #8A9AC8・泡の小円 ── */
+.tk.is-abyss {
+  --tk-gold: #00e5ff;
+  --tk-perf: rgba(0, 229, 255, 0.55);
+  --tk-notch-bg: #04081a;
+  --tk-notch-line: #00e5ff;
+  --tk-notch-line2: #00e5ff;
+  --tk-arrow: #00e5ff;
+  color: #e8eeff;
+}
+.tk.is-abyss .tk-face {
+  background: linear-gradient(160deg, #0b2147 0%, #061230 55%, #02040c 100%);
+}
+.tk.is-abyss .tk-stub .tk-face {
+  background: linear-gradient(160deg, #081a3a 0%, #02040c 100%);
+}
+.tk.is-abyss:not(.is-premium) .tk-main .tk-face {
+  box-shadow: 0 0 24px rgba(0, 229, 255, 0.3);
+}
+.tk.is-abyss:not(.is-premium) .tk-stub.is-moving .tk-face {
+  box-shadow: 8px 10px 20px rgba(0, 0, 0, 0.5), 0 0 18px rgba(0, 229, 255, 0.3);
+}
+.tk.is-abyss .tk-bonus {
+  color: #00e5ff;
+}
+.tk.is-abyss .tk-who,
+.tk.is-abyss .tk-show,
+.tk.is-abyss .tk-swipe {
+  color: #8a9ac8;
+}
+.tk.is-abyss .tk-crown {
+  width: 62px;
+}
+.tk--v.is-abyss .tk-crown {
+  width: 92px;
+}
+.tk.is-abyss .tk-champion {
+  width: 220px;
+}
+.tk--v.is-abyss .tk-champion {
+  width: 200px;
+}
+.tk-bubbles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.tk-bubbles > i {
+  position: absolute;
+  border-radius: 50%;
+  border: 1.5px solid;
+  box-sizing: border-box;
+}
+.tk-abyss-head {
+  font-family: var(--f-mono);
+  font-size: 13px;
+  letter-spacing: 0.24em;
+  color: #00e5ff;
+  white-space: nowrap;
+}

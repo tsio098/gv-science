@@ -8,8 +8,8 @@ import type {
   ArenaInfo,
   ArenaResult,
   ArenaSession,
-  ArenaTicket,
   TreeEvent,
+  TreeTicket,
   QType,
   SubmitResult,
   TreeManifest,
@@ -22,7 +22,7 @@ import {
   ARENA_SUBJECTS,
   TreeApiError,
   fetchArena,
-  fetchArenaTickets,
+  fetchTreeTickets,
   fetchTreeEvents,
   markTreeEventsSeen,
   fetchTreeManifest,
@@ -38,6 +38,7 @@ import { ArenaResultScreen } from './ArenaResultScreen';
 import { ArenaTicketScreen } from './ArenaTicketScreen';
 import { FxScreen } from './fx/FxScreen';
 import { preloadFxImages } from './fx/fxKit';
+import { FxLabScreen } from './fx/FxLabScreen';
 import { RankingScreen, type RankScope } from './RankingScreen';
 import { TreeShareModal } from './TreeShareModal';
 import { TreeSprite } from './TreeIcons';
@@ -80,7 +81,9 @@ type View =
   | { kind: 'arenaPlay'; session: ArenaSession }
   | { kind: 'arenaResult'; session: ArenaSession; result: ArenaResult }
   /** ボーナスチケット（本人のぶん。2026-10-17）*/
-  | { kind: 'tickets'; back: View };
+  | { kind: 'tickets'; back: View }
+  /** 先生用: 演出の確認（2026-10-17 夕方）*/
+  | { kind: 'fxlab' };
 
 /**
  * 演出を止めるフラグ（LIFF WebView でアニメーションが固まったとき用）。
@@ -98,16 +101,17 @@ function fxDisabled(): boolean {
 }
 
 /**
- * 先生用のテストのチケット（通常・プレミアム）。先生アカウントには本物が配られないので、
+ * 先生用のテストのチケット（ABYSS・総合優勝の通常・プレミアム）。先生アカウントには本物が配られないので、
  * 半券を切る操作だけ試せる見本を出す（サーバには記録しない。2026-10-17 先生の依頼）
  */
-function demoTickets(me: TreeMe, arena: ArenaInfo | null, subject: string): ArenaTicket[] {
+function demoTickets(me: TreeMe, arena: ArenaInfo | null, subject: string): TreeTicket[] {
   const now = Date.now();
   const pair = arena?.pair ?? (arena ? [arena.season, arena.season] : [{ n: 1, key: '', start: now, end: now }, { n: 2, key: '', start: now, end: now }]);
-  const base = { subject, pair, grade: me.grade, nickname: me.nickname, score: 0, usedAt: null, sig: '' };
+  const base = { subject, grade: me.grade, nickname: me.nickname, score: null, usedAt: null, sig: '' };
   return [
-    { ...base, id: 'demo-normal', premium: false },
-    { ...base, id: 'demo-premium', premium: true },
+    { ...base, kind: 'abyss', id: 'demo-abyss', pair: null, premium: false },
+    { ...base, kind: 'grand', id: 'demo-normal', pair, premium: false },
+    { ...base, kind: 'grand', id: 'demo-premium', pair, premium: true },
   ];
 }
 
@@ -150,8 +154,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   /** チャンピオンアリーナ（ROUTE の科目ごと）。古い Proxy・マイグレーション前は null（ノードを出さない）*/
   const [arena, setArena] = useState<ArenaInfo | null>(null);
   const [arenaMessage, setArenaMessage] = useState<string | null>(null);
-  /** 本人のボーナスチケット（古い Proxy・0006 前は空）*/
-  const [tickets, setTickets] = useState<ArenaTicket[]>([]);
+  /** 本人のチケット（ABYSS・総合優勝。古い Proxy・0006 前は空）*/
+  const [tickets, setTickets] = useState<TreeTicket[]>([]);
   /** まだ見ていない演出（順に 1 つずつ全画面で出す）*/
   const [events, setEvents] = useState<TreeEvent[]>([]);
   setTreeStage(stage);
@@ -168,8 +172,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   }, []);
 
   const loadTickets = useCallback(() => {
-    fetchArenaTickets()
-      .then((r) => setTickets(r.tickets ?? []))
+    fetchTreeTickets()
+      .then(setTickets)
       .catch(() => setTickets([]));
   }, []);
 
@@ -367,7 +371,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
         code === 'LOCKED'
           ? 'この分野はまだ解放されていません。'
           : code === 'ABYSS_LOCKED'
-            ? 'ABYSS は ROUTE の全分野を解放すると開きます。'
+            ? 'ABYSS は全分野のマスター度を 60% 以上にすると開きます。'
           : code === 'NO_QUESTIONS'
             ? 'この種別の問題はまだありません。'
             : '問題を読み込めませんでした。通信状況を確かめてもう一度お試しください。'
@@ -495,6 +499,9 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
             setView({ kind: 'ranking', scope: field ? 'field' : 'subject', field, qtype: 'tf', back: { kind: 'tree' } })
           }
           onStaff={me.grade === '先生' ? () => setView({ kind: 'staff' }) : undefined}
+          onFxLab={me.grade === '先生' ? () => setView({ kind: 'fxlab' }) : undefined}
+          tickets={tickets.filter((t) => !t.usedAt).length}
+          onTickets={() => setView({ kind: 'tickets', back: { kind: 'tree' } })}
           arena={arena}
           onArena={() => {
             setArenaMessage(null);
@@ -555,13 +562,16 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
         />
       )}
       {view.kind === 'staff' && <StaffScreen onBack={() => setView({ kind: 'tree' })} />}
+      {view.kind === 'fxlab' && (
+        <FxLabScreen grade={me.grade} nickname={me.nickname} subject={subject} subjectName={manifest.name} season={arena?.season ?? null} onTickets={() => setView({ kind: 'tickets', back: { kind: 'fxlab' } })} onBack={() => setView({ kind: 'tree' })} />
+      )}
       {view.kind === 'arena' && arena && (
         <ArenaScreen
           info={arena}
           manifest={manifest}
           starting={starting}
           message={arenaMessage}
-          tickets={me.grade === '先生' ? Math.max(1, tickets.length) : tickets.length}
+          tickets={me.grade === '先生' ? Math.max(1, tickets.length) : tickets.filter((t) => t.kind === 'grand').length}
           ticketLabel={me.grade === '先生' && !tickets.length ? 'チケット（テスト）' : undefined}
           onTickets={() => setView({ kind: 'tickets', back: { kind: 'arena' } })}
           onStart={() => void beginArena()}
