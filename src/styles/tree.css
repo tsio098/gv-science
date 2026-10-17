@@ -840,11 +840,6 @@ html.tr-noswipe #root * {
   -webkit-touch-callout: default;
   user-select: auto;
 }
-.tr-shot-hint {
-  font-size: 12px;
-  color: var(--tr-sub);
-  text-align: center;
-}
 .tr-pad-head {
   display: flex;
   align-items: center;

@@ -253,7 +253,6 @@ export function PlayShot({ target }: { target: RefObject<HTMLElement> }) {
                 alt="この画面のスクショ"
                 className="tr-shot-img"
               />
-              <div className="tr-shot-hint">画像を長押しすると保存できます</div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button
                   type="button"
