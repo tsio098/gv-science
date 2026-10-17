@@ -21,7 +21,7 @@ import { Ico } from './TreeIcons';
 import { ZoomImage } from './ZoomImage';
 import { PlayZoomScreen, type ZoomTab } from './PlayZoomScreen';
 import { AbyssAnswer, AbyssKeypad, emptyRaw, isFilled, toValue, type RawVal } from './AbyssAnswer';
-import { ARENA_GOLD, T, alpha, fmtTime, groupColor, rootClass } from './treeTheme';
+import { ARENA_GOLD, CROWN_MONO, T, alpha, fmtTime, groupColor, rootClass } from './treeTheme';
 
 interface Props {
   session: TreeSession;
@@ -295,7 +295,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
   const isLast = idx + 1 >= units.length;
 
   return (
-    <div className={rootClass('tr-play')}>
+    <div className={rootClass(isArena ? 'tr-play is-arena' : 'tr-play')}>
       <div className="tr-bar">
         <button type="button" className="tr-iconbtn" aria-label="中断してツリーへ" onClick={() => setConfirmExit(true)}>
           <Ico id="i-close" size={16} />
@@ -303,6 +303,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
         <div className="tr-bar-mid">
           <div className="tr-crumb">
             {isBack && <span className="ab-pill">ABYSS</span>}
+            {isArena && <img src={CROWN_MONO} alt="" className="tr-ar-chipcrown" style={{ width: 16 }} />}
             {crumb}
             <span style={{ color: col, fontWeight: 700 }}>{QTYPE_LABEL[isArena && first ? first.type : session.qtype]}</span>
           </div>
@@ -313,7 +314,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
             <span className="tr-num" style={{ fontSize: 13, fontWeight: 700 }}>
               {Math.min(doneQ + 1, totalQ)}
               {qs.length > 1 ? `–${doneQ + qs.length}` : ''}
-              <span style={{ color: T.sub, fontWeight: 500 }}> / {totalQ}</span>
+              <span style={{ color: 'var(--tr-sub)', fontWeight: 500 }}> / {totalQ}</span>
             </span>
           </div>
         </div>
@@ -350,7 +351,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
                 <div className="tr-member-head">
                   <span>{isSet ? `小問 ${i + 1} / ${qs.length}` : '設問'}</span>
                   {q.label && (
-                    <span className="tr-num" style={{ color: T.sub, fontWeight: 500 }}>
+                    <span className="tr-num" style={{ color: 'var(--tr-sub)', fontWeight: 500 }}>
                       {q.label}
                     </span>
                   )}
@@ -380,7 +381,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
                   <span>
                     小問 {i + 1} / {qs.length}
                   </span>
-                  <span className="tr-num" style={{ color: T.sub, fontWeight: 500 }}>
+                  <span className="tr-num" style={{ color: 'var(--tr-sub)', fontWeight: 500 }}>
                     解答番号 {boxLabel(q)}
                   </span>
                 </div>
@@ -400,7 +401,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
             <div className="tr-frame">
               <div className="tr-member-head">
                 <span>設問</span>
-                <span className="tr-num" style={{ color: T.sub, fontWeight: 500 }}>
+                <span className="tr-num" style={{ color: 'var(--tr-sub)', fontWeight: 500 }}>
                   解答番号 {boxLabel(first)}
                 </span>
               </div>
@@ -497,18 +498,18 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
       )}
 
       {confirmExit && (
-        <div className="tr-overlay" role="dialog" aria-label="中断の確認">
-          <div className="tr-card">
+        <div className={`tr-overlay${isArena ? ' tr-ar-overlay' : ''}`} role="dialog" aria-label="中断の確認">
+          <div className={isArena ? 'tr-ar-dialog' : 'tr-card'}>
             <div style={{ fontWeight: 700, fontSize: 16 }}>中断しますか？</div>
-            <div style={{ color: T.sub }}>
+            <div style={isArena ? { color: 'var(--tr-sub)', fontSize: 13, lineHeight: 1.8 } : { color: 'var(--tr-sub)' }}>
               {isArena
                 ? '今シーズンの挑戦はもう始まっています（やり直しはできません）。中断しても時間は進み続けます。ツリーの一番下のアリーナのノードから、続きの問題を再開できます。'
                 : 'この挑戦の解答は記録されません。'}
             </div>
-            <button type="button" className="tr-cta" onClick={() => setConfirmExit(false)}>
+            <button type="button" className={isArena ? 'tr-ar-btn' : 'tr-cta'} onClick={() => setConfirmExit(false)}>
               続ける
             </button>
-            <button type="button" className="tr-ghost" onClick={onExit}>
+            <button type="button" className={isArena ? 'tr-ar-btn2' : 'tr-ghost'} style={isArena ? { height: 50 } : undefined} onClick={onExit}>
               中断してツリーへ
             </button>
           </div>

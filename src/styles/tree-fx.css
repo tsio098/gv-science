@@ -1,0 +1,459 @@
+/* ============================================================
+   ANCHOR TREE — 演出（2026-10-17 先生決定・ボード F1〜F5 / F1i〜F5i）
+   ABYSS 解放 / アリーナ解放 / シーズン優勝 / 総合優勝 / 新シーズン開始。
+   ブリーフ §2.1「アニメーションなし」の例外はこの 5 画面だけ:
+   - CSS keyframes の transform / opacity / clip-path だけ（JS のループなし・1 回だけ・約 3 秒）
+   - 基底（animation なし）が最後の状態。keyframes の from で隠し、待ち時間は fill-mode backwards で保つ
+     → WebView で animation が止まっても、.is-done（タップ・保険のタイマー）で最後の状態が見える
+   - prefers-reduced-motion は最初から最後の状態
+   ============================================================ */
+
+.fx-root {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  overflow: hidden;
+  background: linear-gradient(180deg, #1c1236 0%, #0d0820 45%, #05030c 100%);
+  background-color: #05030c;
+  color: #fff6dd;
+  font-family: var(--f-jp);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.fx-root.is-abyss {
+  background: #02050e;
+  color: #e8eeff;
+}
+/* ボードの座標（スマホ 390×844・iPad 1194×834）のまま描き、画面に収まるよう拡大縮小して中央に置く */
+.fx-stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform-origin: 50% 50%;
+}
+.fx-shake {
+  position: absolute;
+  inset: 0;
+}
+.fx-abs {
+  position: absolute;
+  display: block;
+}
+.fx-img {
+  position: absolute;
+  display: block;
+  height: auto;
+}
+/* 消えて終わる飾り（泡・波紋・閃光・紙吹雪・走査線・金の粒）は基底を透明に */
+.fx-gone {
+  opacity: 0;
+  pointer-events: none;
+}
+.fx-dot {
+  font-family: 'DotGothic16', var(--f-jp);
+  font-weight: 400;
+}
+.fx-mono {
+  font-family: var(--f-mono);
+}
+.fx-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+.fx-chip {
+  border-radius: 999px;
+  border: 1.5px solid rgba(255, 216, 74, 0.45);
+  padding: 2px 10px;
+  font-size: 12px;
+  color: #ffd84a;
+  white-space: nowrap;
+}
+.fx-grade {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2df4c6;
+  white-space: nowrap;
+}
+.fx-nick {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+.fx-card {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  box-sizing: border-box;
+  border-radius: 22px;
+  background: rgba(42, 28, 69, 0.85);
+  border: 1.5px solid rgba(255, 216, 74, 0.5);
+  box-shadow: 0 0 20px rgba(255, 216, 74, 0.14);
+  padding: 16px 18px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.fx-btn {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  height: 54px;
+  border-radius: 999px;
+  border: none;
+  background: #ffd84a;
+  color: #1a0e00;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  box-shadow: 0 0 14px rgba(255, 216, 74, 0.5);
+}
+.fx-root.is-abyss .fx-btn {
+  background: #00e5ff;
+  color: #031b24;
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.5);
+}
+/* 光の筋（repeating-conic-gradient・30 秒で 1 回転・この画面の間だけ）*/
+.fx-rays {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 216, 74, 0.18) 0deg 7deg, rgba(255, 216, 74, 0) 7deg 22deg);
+  -webkit-mask-image: radial-gradient(circle, #000 18%, transparent 62%);
+  mask-image: radial-gradient(circle, #000 18%, transparent 62%);
+  animation: fxSpin 30s linear 0s infinite;
+}
+.fx-rays.is-wide {
+  background: repeating-conic-gradient(from 0deg, rgba(255, 216, 74, 0.16) 0deg 5deg, rgba(255, 216, 74, 0) 5deg 16deg);
+  -webkit-mask-image: radial-gradient(circle, #000 12%, transparent 62%);
+  mask-image: radial-gradient(circle, #000 12%, transparent 62%);
+  animation-duration: 40s;
+}
+/* 床の格子（perspective + rotateX・静止。背景の位置は動かさない）*/
+.fx-grid {
+  position: absolute;
+  bottom: 0;
+  transform-origin: center bottom;
+  background-image: linear-gradient(rgba(208, 139, 255, 0.7) 2px, transparent 2px),
+    linear-gradient(90deg, rgba(208, 139, 255, 0.55) 2px, transparent 2px);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 45%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 45%);
+}
+
+/* ── 演出の中のチケット（簡略版。本物はチケット画面）── */
+.fx-ticket {
+  position: absolute;
+  box-sizing: border-box;
+  overflow: hidden;
+  border-radius: 18px;
+  border: 2px solid #ffd84a;
+  background: linear-gradient(135deg, #2a1c45 0%, #160d2b 60%, #0d0820 100%);
+  box-shadow: 0 0 26px rgba(255, 216, 74, 0.35);
+}
+.fx-ticket.is-premium {
+  border: none;
+  border-radius: 20px;
+  padding: 3px;
+  overflow: visible;
+  background: linear-gradient(120deg, #2df4c6 0%, #4fc3ff 25%, #d08bff 50%, #ff7ab8 75%, #ffd84a 100%);
+  box-shadow: 0 0 28px rgba(208, 139, 255, 0.5);
+}
+.fx-ticket-in {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 17px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #2a1c45 0%, #160d2b 60%, #0d0820 100%);
+}
+.fx-ticket-shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, rgba(45, 244, 198, 0) 30%, rgba(45, 244, 198, 0.1) 40%, rgba(208, 139, 255, 0.15) 50%,
+      rgba(255, 122, 184, 0.1) 60%, rgba(255, 122, 184, 0) 70%);
+}
+.fx-notch {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #0d0820;
+  border: 2px solid #ffd84a;
+  box-sizing: border-box;
+}
+.fx-perf {
+  position: absolute;
+  border-left: 2px dashed rgba(255, 216, 74, 0.55);
+}
+.fx-ticket-label {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: 0.4em;
+  color: #ffd84a;
+}
+.fx-ticket.is-premium .fx-ticket-label {
+  color: #ffb3da;
+}
+
+/* ── 最後の状態へ（タップ・保険のタイマー・動きを減らす設定）── */
+.fx-root.is-done *:not(.fx-rays) {
+  animation: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fx-root * {
+    animation: none !important;
+  }
+}
+
+/* ── keyframes（transform / opacity / clip-path だけ）── */
+@keyframes fxFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes fxSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes fxDropA {
+  0% {
+    transform: translateY(-300px);
+    opacity: 0;
+  }
+  55% {
+    transform: translateY(14px);
+    opacity: 1;
+  }
+  75% {
+    transform: translateY(-6px);
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes fxDrop {
+  0% {
+    transform: translateY(-300px) scale(0.8);
+    opacity: 0;
+  }
+  55% {
+    transform: translateY(12px) scale(1.06);
+    opacity: 1;
+  }
+  75% {
+    transform: translateY(-5px) scale(0.98);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+@keyframes fxRing {
+  0% {
+    transform: scale(0.2);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+@keyframes fxRise {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateY(-760px);
+    opacity: 0;
+  }
+}
+@keyframes fxReveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+@keyframes fxGlow {
+  0% {
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes fxFlash {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+@keyframes fxBurst {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--x), var(--y)) scale(0.3);
+    opacity: 0;
+  }
+}
+@keyframes fxUp {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes fxPop {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes fxFall {
+  0% {
+    transform: translate(0, -40px) rotate(0deg);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--fall, 920px)) rotate(var(--r));
+    opacity: 0.9;
+  }
+}
+@keyframes fxTicket {
+  0% {
+    transform: translateY(420px) rotate(-8deg);
+    opacity: 0;
+  }
+  70% {
+    transform: translateY(-10px) rotate(1deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+}
+@keyframes fxTicketR {
+  0% {
+    transform: translateX(620px) rotate(10deg);
+    opacity: 0;
+  }
+  70% {
+    transform: translateX(-12px) rotate(-1deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(0) rotate(0deg);
+    opacity: 1;
+  }
+}
+@keyframes fxScan {
+  0% {
+    transform: translateY(-60px);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(900px);
+    opacity: 0;
+  }
+}
+@keyframes fxSlideL {
+  0% {
+    transform: translateX(-440px);
+    opacity: 0;
+  }
+  70% {
+    transform: translateX(10px);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+@keyframes fxSlam {
+  0% {
+    transform: scale(3);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(0.9);
+    opacity: 1;
+  }
+  75% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes fxShake {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  20% {
+    transform: translate(-6px, 3px);
+  }
+  40% {
+    transform: translate(5px, -3px);
+  }
+  60% {
+    transform: translate(-3px, 2px);
+  }
+  80% {
+    transform: translate(2px, -1px);
+  }
+}

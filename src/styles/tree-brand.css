@@ -1,0 +1,132 @@
+/* ============================================================
+   ANCHOR TREE のロゴ周り（2026-10-17・デザインボード「バナー」「ログイン」）
+   - .tb-*  GV Science ホームのバナー（1200×400）
+   - .tl-*  外部ブラウザのログイン画面（背景 login-bg_*.svg ＋縦組みロゴ）
+   発光は SVG フィルタ・box-shadow だけ（アニメーションなし）。
+   ============================================================ */
+
+/* ── ホームのバナー ── */
+.tb-banner {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 1;
+  padding: 0;
+  border: none;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #043039;
+  box-shadow: 0 6px 18px rgba(4, 48, 57, 0.28);
+  cursor: pointer;
+  font: inherit;
+  transition: transform 0.12s;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.tb-banner:active {
+  transform: scale(0.99);
+}
+.tb-bg,
+.tb-over {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+}
+.tb-bg {
+  object-fit: cover;
+}
+
+/* ── ログイン画面 ── */
+.tl-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+.tl-inner {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  min-height: 100%;
+  margin: 0 auto;
+  padding: calc(env(safe-area-inset-top, 0px) + 92px) 0 calc(env(safe-area-inset-bottom, 0px) + 28px);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.tl-logo {
+  width: 250px;
+  max-width: 70vw;
+  height: auto;
+  display: block;
+}
+.tl-tagline {
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  color: #bdeff5;
+}
+.tr-root.is-abyss .tl-tagline {
+  color: #c2ccf0;
+}
+.tl-stage {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  letter-spacing: 0.24em;
+  color: #00e5ff;
+  border: 1.5px solid rgba(0, 229, 255, 0.5);
+  border-radius: 999px;
+  padding: 5px 12px;
+}
+.tl-form {
+  width: 100%;
+  margin-top: auto;
+  box-sizing: border-box;
+  border-radius: 22px;
+  padding: 20px 18px;
+  background: rgba(7, 62, 75, 0.82);
+  border: 1.5px solid rgba(45, 244, 198, 0.5);
+  box-shadow: 0 0 20px rgba(45, 244, 198, 0.14);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.tr-root.is-abyss .tl-form {
+  background: rgba(10, 19, 40, 0.85);
+  border-color: rgba(0, 229, 255, 0.5);
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.14);
+}
+.tl-form label {
+  font-size: 12px;
+  color: var(--tr-sub);
+}
+.tl-form .tr-login-id {
+  height: 48px;
+  margin-top: -6px;
+  font-size: 18px;
+  border-color: var(--tr-line);
+  background: var(--tr-ground);
+}
+.tr-root.is-abyss .tl-form .tr-login-id {
+  background: #050b1c;
+}
+.tl-hint {
+  font-size: 11px;
+  color: var(--tr-sub);
+  text-align: center;
+  line-height: 1.7;
+}
+.tl-foot {
+  font-size: 11px;
+  color: rgba(var(--tr-text-rgb), 0.4);
+  text-align: center;
+}

@@ -219,9 +219,14 @@ export const fmtTime = (ms: number) => {
 export const fmtScore = (n: number) => Math.round(n).toLocaleString('ja-JP');
 
 /* チャンピオンアリーナ（設計書 §5.7）*/
-/** アリーナの色（金・ランキングの 1 位と同じ）と側面 */
+/** アリーナの金（ランキングの 1 位と同じ。他の色は tree.css の .tr-root.is-arena）*/
 export const ARENA_GOLD = '#FFD84A';
-export const ARENA_GOLD_SIDE = '#A88A14';
+/** ロゴ素材（public/tree/brand/・元は 大学リサーチ+app/ANCHOR_TREE_logo/svg。発光は SVG フィルタで静止）*/
+export const BRAND = '/tree/brand/';
+/** ドット王冠（大 = 34〜40px・小 = 16〜20px は mono）とアリーナのドット文字 */
+export const CROWN = BRAND + 'icon_crown.svg';
+export const CROWN_MONO = BRAND + 'icon_crown_mono.svg';
+export const ARENA_LOGO = BRAND + 'arena_logo-1line.svg';
 
 /** 残り時間の表示（「あと 9 日」「あと 5 時間」）*/
 export function arenaLeft(end: number, now = Date.now()) {

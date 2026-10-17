@@ -8,6 +8,8 @@ import type {
   ArenaInfo,
   ArenaResult,
   ArenaSession,
+  ArenaTicket,
+  TreeEvent,
   QType,
   SubmitResult,
   TreeManifest,
@@ -17,8 +19,12 @@ import type {
   TreeStage,
 } from '../../lib/treeApi';
 import {
+  ARENA_SUBJECTS,
   TreeApiError,
   fetchArena,
+  fetchArenaTickets,
+  fetchTreeEvents,
+  markTreeEventsSeen,
   fetchTreeManifest,
   fetchTreeMe,
   fetchTreeProgress,
@@ -29,6 +35,8 @@ import {
 } from '../../lib/treeApi';
 import { ArenaScreen } from './ArenaScreen';
 import { ArenaResultScreen } from './ArenaResultScreen';
+import { ArenaTicketScreen } from './ArenaTicketScreen';
+import { FxScreen } from './fx/FxScreen';
 import { RankingScreen, type RankScope } from './RankingScreen';
 import { TreeShareModal } from './TreeShareModal';
 import { TreeSprite } from './TreeIcons';
@@ -69,7 +77,33 @@ type View =
   /** チャンピオンアリーナ（設計書 §5.7）: 入口 → 出題 → 結果 */
   | { kind: 'arena' }
   | { kind: 'arenaPlay'; session: ArenaSession }
-  | { kind: 'arenaResult'; session: ArenaSession; result: ArenaResult };
+  | { kind: 'arenaResult'; session: ArenaSession; result: ArenaResult }
+  /** ボーナスチケット（本人のぶん。2026-10-17）*/
+  | { kind: 'tickets'; back: View };
+
+/**
+ * 演出を止めるフラグ（LIFF WebView でアニメーションが固まったとき用）。
+ * URL に ?fx=0 を付けて開く or localStorage['gvTree.fx']='0' で演出を出さない（既読にもしない）
+ */
+function fxDisabled(): boolean {
+  try {
+    const q = new URLSearchParams(window.location.search).get('fx');
+    if (q === '0') localStorage.setItem('gvTree.fx', '0');
+    if (q === '1') localStorage.removeItem('gvTree.fx');
+    return localStorage.getItem('gvTree.fx') === '0';
+  } catch {
+    return false;
+  }
+}
+
+/** ABYSS をどれか 1 科目でも解放した端末は、以後ログイン画面を深海版にする（解除しない。2026-10-17 先生決定）*/
+function rememberAbyssStyle() {
+  try {
+    localStorage.setItem('gvTree.abyssStyle', '1');
+  } catch {
+    /* ストレージが使えない端末は ROUTE 版のまま */
+  }
+}
 
 interface Props {
   mode: 'liff' | 'external';
@@ -101,13 +135,32 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   /** チャンピオンアリーナ（ROUTE の科目ごと）。古い Proxy・マイグレーション前は null（ノードを出さない）*/
   const [arena, setArena] = useState<ArenaInfo | null>(null);
   const [arenaMessage, setArenaMessage] = useState<string | null>(null);
+  /** 本人のボーナスチケット（古い Proxy・0006 前は空）*/
+  const [tickets, setTickets] = useState<ArenaTicket[]>([]);
+  /** まだ見ていない演出（順に 1 つずつ全画面で出す）*/
+  const [events, setEvents] = useState<TreeEvent[]>([]);
   setTreeStage(stage);
 
+  // アリーナは化学・生物だけ（2026-10-17 先生決定）。他の科目では取りに行かずノードも出さない
   const loadArena = useCallback((s: string) => {
+    if (!ARENA_SUBJECTS.includes(s)) {
+      setArena(null);
+      return;
+    }
     fetchArena(s)
       .then(setArena)
       .catch(() => setArena(null));
   }, []);
+
+  const loadTickets = useCallback(() => {
+    fetchArenaTickets()
+      .then((r) => setTickets(r.tickets ?? []))
+      .catch(() => setTickets([]));
+  }, []);
+
+  useEffect(() => {
+    if (abyssOpen) rememberAbyssStyle();
+  }, [abyssOpen]);
 
   const fail = useCallback(
     (e: unknown) => {
@@ -161,9 +214,21 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
         const want = pickTreeSubject(list);
         if (!want) throw new TreeApiError('NO_CONTENT', 404); // 選択科目にツリーが無い（2026-10-16 先生決定: 他の科目は開けない）
         await openSubject(list, want);
+        loadTickets();
+        // 演出（ABYSS 解放・アリーナ解放・優勝・新シーズン）は開いたときに 1 回だけ取る
+        if (!fxDisabled()) {
+          fetchTreeEvents()
+            .then((r) => {
+              const list = r.events ?? [];
+              setEvents(list);
+              if (list.some((e) => e.type === 'unlock_abyss')) rememberAbyssStyle();
+            })
+            .catch(() => {});
+        }
       })
       .catch(fail);
-  }, [fail, openSubject]);
+  }, [fail, openSubject, loadTickets]);
+
 
   /** 科目チップから科目を切り替える（ツリーに戻し、選択を外す）*/
   const switchSubject = useCallback(
@@ -201,6 +266,36 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       }
     },
     [subject, stage, fail]
+  );
+
+  /** 演出を閉じた → 既読にして次へ。ボタンに応じてツリー（ABYSS 解放は深海へ）/ アリーナ / チケットへ */
+  const closeFx = useCallback(
+    (ev: TreeEvent, action: 'tree' | 'arena' | 'ticket') => {
+      markTreeEventsSeen([ev.key]).catch(() => {});
+      setEvents((list) => list.filter((e) => e.key !== ev.key));
+      if (action === 'tree') {
+        setView({ kind: 'tree' });
+        if (ev.type === 'unlock_abyss' && ev.subject === subject) void switchStage('back');
+      } else if (action === 'ticket') {
+        loadTickets();
+        setView({ kind: 'tickets', back: { kind: 'tree' } });
+      } else if (action === 'arena' && ARENA_SUBJECTS.includes(ev.subject)) {
+        if (ev.subject !== subject && subjects.includes(ev.subject as TreeSubject)) {
+          rememberTreeSubject(ev.subject as TreeSubject);
+          setManifest(null);
+          setProgress(null);
+          setArena(null);
+          setSelected(null);
+          openSubject(subjects, ev.subject as TreeSubject)
+            .then(() => setView({ kind: 'arena' }))
+            .catch(fail);
+        } else {
+          if (subject) loadArena(subject);
+          setView({ kind: 'arena' });
+        }
+      }
+    },
+    [subject, subjects, openSubject, switchStage, loadArena, loadTickets, fail]
   );
 
   const refreshProgress = useCallback(() => {
@@ -450,6 +545,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           manifest={manifest}
           starting={starting}
           message={arenaMessage}
+          tickets={tickets.length}
+          onTickets={() => setView({ kind: 'tickets', back: { kind: 'arena' } })}
           onStart={() => void beginArena()}
           onRanking={() => setView({ kind: 'ranking', scope: 'arena', field: null, qtype: 'tf', back: { kind: 'arena' } })}
           onBack={() => setView({ kind: 'tree' })}
@@ -495,7 +592,23 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           onRanking={() => setView({ kind: 'ranking', scope: 'arena', field: null, qtype: 'tf', back: { kind: 'tree' } })}
         />
       )}
+      {view.kind === 'tickets' && (
+        <ArenaTicketScreen
+          tickets={tickets}
+          subjectName={(s) => SUBJECT_JA[s as ScheduleSubject] ?? s}
+          onUsed={(id, usedAt) => setTickets((list) => list.map((t) => (t.id === id ? { ...t, usedAt } : t)))}
+          onBack={() => setView(view.back)}
+        />
+      )}
       {sharing && <TreeShareModal loginId={me.loginId} onClose={() => setSharing(false)} />}
+      {events[0] && (
+        <FxScreen
+          key={events[0].key}
+          event={events[0]}
+          subjectName={SUBJECT_JA[events[0].subject as ScheduleSubject] ?? events[0].subject}
+          onClose={(action) => closeFx(events[0]!, action)}
+        />
+      )}
     </>
   );
 }

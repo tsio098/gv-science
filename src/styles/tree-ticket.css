@@ -1,0 +1,463 @@
+/* ============================================================
+   ANCHOR TREE — ボーナスチケット（2026-10-17・デザインボード「ボーナスチケット」「プレミアム」）
+   夜の紫 + 金。.tk--h = 横向き（幅 600px 以上・半券は右端）／.tk--v = 縦向き（スマホ・半券は下端）。
+   半券は横へスワイプで切り取る（touch-action: pan-y で縦スクロールは残す）。
+   使用済み = 半券なし・ギザギザの切り口・グレー・USED。
+   プレミアム = 枠を分野色 5 色の帯 + 斜めの淡い光の帯 + PREMIUM。
+   ============================================================ */
+
+.tk-screen {
+  display: flex;
+  flex-direction: column;
+}
+.tk-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 18px 22px calc(28px + var(--tr-bottom));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 26px;
+}
+.tk-item {
+  width: 100%;
+  max-width: 660px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.tk-cap {
+  align-self: stretch;
+  font-size: 12px;
+  color: var(--tr-sub);
+}
+.tk-err {
+  font-size: 12px;
+  color: #ffb38a;
+  text-align: center;
+}
+
+/* ── チケット本体 ── */
+.tk {
+  --tk-gold: #ffd84a;
+  --tk-perf: rgba(255, 216, 74, 0.55);
+  --tk-notch-bg: #120b26;
+  --tk-notch-line: #ffd84a;
+  --tk-notch-line2: #ffd84a;
+  --tk-arrow: #ffd84a;
+  position: relative;
+  display: flex;
+  color: #fff6dd;
+}
+.tk.is-premium {
+  --tk-perf: rgba(208, 139, 255, 0.6);
+  --tk-notch-line: #d08bff;
+  --tk-notch-line2: #ff7ab8;
+  --tk-arrow: #ff7ab8;
+}
+.tk--h {
+  flex-direction: row;
+  width: 100%;
+  max-width: 660px;
+  height: 230px;
+}
+.tk--h.is-premium {
+  height: 276px;
+}
+.tk--h.is-premium .tk-content {
+  top: 18px;
+  gap: 8px;
+}
+.tk--h.is-premium .tk-words {
+  gap: 4px;
+}
+.tk--h.is-premium .tk-champion {
+  width: 280px;
+}
+.tk--h.is-premium .tk-bonus {
+  padding-left: 0;
+}
+.tk--h.is-premium .tk-show {
+  bottom: 14px;
+}
+.tk--v {
+  flex-direction: column;
+  width: 100%;
+  max-width: 340px;
+  height: 504px;
+}
+
+/* 本体と半券の枠（通常 = 金 2px / プレミアム = 5 色の帯 3px）。境目は点線 */
+.tk-main,
+.tk-stub {
+  position: relative;
+  box-sizing: border-box;
+}
+.tk-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+.tk--h .tk-stub {
+  flex: none;
+  width: 156px;
+}
+.tk--v .tk-stub {
+  flex: none;
+  height: 112px;
+}
+.tk-face {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: linear-gradient(135deg, #2a1c45 0%, #160d2b 60%, #0d0820 100%);
+}
+.tk--v .tk-face {
+  background: linear-gradient(160deg, #2a1c45 0%, #160d2b 70%, #0d0820 100%);
+}
+.tk-stub .tk-face {
+  background: linear-gradient(135deg, #22163a 0%, #0d0820 100%);
+}
+
+/* 通常 */
+.tk:not(.is-premium) .tk-main .tk-face {
+  border: 2px solid var(--tk-gold);
+  box-shadow: 0 0 24px rgba(255, 216, 74, 0.3);
+}
+.tk:not(.is-premium) .tk-stub .tk-face {
+  border: 2px solid var(--tk-gold);
+}
+.tk--h:not(.is-premium) .tk-main .tk-face {
+  border-radius: 20px 0 0 20px;
+  border-right: 2px dashed var(--tk-perf);
+}
+.tk--h:not(.is-premium) .tk-stub .tk-face {
+  border-radius: 0 20px 20px 0;
+  border-left: 2px dashed transparent;
+}
+.tk--v:not(.is-premium) .tk-main .tk-face {
+  border-radius: 22px 22px 0 0;
+  border-bottom: 2px dashed var(--tk-perf);
+}
+.tk--v:not(.is-premium) .tk-stub .tk-face {
+  border-radius: 0 0 22px 22px;
+  border-top: 2px dashed transparent;
+}
+.tk:not(.is-premium) .tk-stub.is-moving .tk-face {
+  border-left-color: var(--tk-perf);
+  border-top-color: var(--tk-perf);
+  box-shadow: 8px 10px 20px rgba(0, 0, 0, 0.5), 0 0 18px rgba(255, 216, 74, 0.3);
+}
+.tk--h:not(.is-premium) .tk-stub.is-moving .tk-face {
+  border-top-color: var(--tk-gold);
+}
+.tk--v:not(.is-premium) .tk-stub.is-moving .tk-face {
+  border-left-color: var(--tk-gold);
+}
+
+/* プレミアム: 枠 = 帯の上に face を 3px 内側へ */
+.tk.is-premium .tk-main,
+.tk.is-premium .tk-stub {
+  padding: 3px;
+}
+.tk.is-premium {
+  filter: drop-shadow(0 0 14px rgba(208, 139, 255, 0.4));
+}
+.tk--h.is-premium .tk-main {
+  padding-right: 0;
+  border-radius: 22px 0 0 22px;
+  background: linear-gradient(120deg, #2df4c6 0%, #4fc3ff 30%, #d08bff 62%, #ff7ab8 100%);
+}
+.tk--h.is-premium .tk-stub {
+  padding-left: 0;
+  border-radius: 0 22px 22px 0;
+  background: linear-gradient(120deg, #ff7ab8 0%, #ffd84a 100%);
+}
+.tk--h.is-premium .tk-main .tk-face {
+  border-radius: 19px 0 0 19px;
+  border-right: 2px dashed var(--tk-perf);
+}
+.tk--h.is-premium .tk-stub .tk-face {
+  border-radius: 0 19px 19px 0;
+}
+.tk--v.is-premium .tk-main {
+  padding-bottom: 0;
+  border-radius: 24px 24px 0 0;
+  background: linear-gradient(160deg, #2df4c6 0%, #4fc3ff 30%, #d08bff 62%, #ff7ab8 100%);
+}
+.tk--v.is-premium .tk-stub {
+  padding-top: 0;
+  border-radius: 0 0 24px 24px;
+  background: linear-gradient(160deg, #ff7ab8 0%, #ffd84a 100%);
+}
+.tk--v.is-premium .tk-main .tk-face {
+  border-radius: 21px 21px 0 0;
+  border-bottom: 2px dashed var(--tk-perf);
+}
+.tk--v.is-premium .tk-stub .tk-face {
+  border-radius: 0 0 21px 21px;
+}
+/* 斜めの淡い光の帯（プレミアムだけ）*/
+.tk-shine {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, rgba(45, 244, 198, 0) 30%, rgba(45, 244, 198, 0.1) 40%, rgba(208, 139, 255, 0.14) 50%, rgba(255, 122, 184, 0.1) 60%, rgba(255, 122, 184, 0) 70%);
+}
+.tk--v .tk-shine {
+  background: linear-gradient(150deg, rgba(45, 244, 198, 0) 25%, rgba(45, 244, 198, 0.1) 38%, rgba(208, 139, 255, 0.14) 50%, rgba(255, 122, 184, 0.1) 62%, rgba(255, 122, 184, 0) 75%);
+}
+
+/* 切り取り線の丸い切り欠き */
+.tk-notch {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  box-sizing: border-box;
+  background: var(--tk-notch-bg);
+  border: 2px solid var(--tk-notch-line);
+  z-index: 2;
+  pointer-events: none;
+}
+.tk.is-premium .tk-notch {
+  border-width: 3px;
+}
+.tk--h .tk-notch {
+  right: calc(156px - 16px);
+}
+.tk--h .tk-notch.a {
+  top: -18px;
+}
+.tk--h .tk-notch.b {
+  bottom: -18px;
+  border-color: var(--tk-notch-line2);
+}
+.tk--v .tk-notch {
+  bottom: calc(112px - 16px);
+}
+.tk--v .tk-notch.a {
+  left: -18px;
+}
+.tk--v .tk-notch.b {
+  right: -18px;
+  border-color: var(--tk-notch-line2);
+}
+
+/* 中身（横向き）*/
+.tk--h .tk-content {
+  position: absolute;
+  left: 26px;
+  top: 22px;
+  right: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tk--h .tk-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.tk--h .tk-crown {
+  width: 70px;
+}
+.tk--h .tk-words {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.tk--h .tk-champion {
+  width: 290px;
+  max-width: 100%;
+}
+.tk--h .tk-premium {
+  width: 220px;
+  max-width: 80%;
+}
+.tk--h .tk-title {
+  font-size: 19px;
+}
+.tk--h .tk-show {
+  position: absolute;
+  left: 26px;
+  bottom: 16px;
+}
+/* 中身（縦向き）*/
+.tk--v .tk-content {
+  position: absolute;
+  inset: 0;
+  padding: 30px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+.tk--v .tk-brand,
+.tk--v .tk-words {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.tk--v .tk-crown {
+  width: 96px;
+}
+.tk--v .tk-champion {
+  width: 232px;
+  max-width: 100%;
+}
+.tk--v .tk-premium {
+  width: 180px;
+}
+.tk--v .tk-title {
+  font-size: 16px;
+  margin-top: 6px;
+}
+.tk--v .tk-show {
+  margin-top: auto;
+}
+.tk-crown,
+.tk-champion,
+.tk-premium {
+  height: auto;
+  display: block;
+}
+.tk-bonus {
+  font-family: var(--f-mono);
+  font-size: 12px;
+  letter-spacing: 0.42em;
+  color: #ffd84a;
+  padding-left: 10px;
+}
+.tk--v .tk-bonus {
+  padding-left: 0.42em;
+}
+.tk.is-premium .tk-bonus {
+  color: #ffb3da;
+}
+.tk-title {
+  font-weight: 600;
+}
+.tk-who {
+  font-size: 13px;
+  color: #cbbb93;
+  overflow-wrap: anywhere;
+}
+.tk-show {
+  font-size: 11px;
+  color: #cbbb93;
+}
+
+/* 半券 */
+.tk-stub {
+  touch-action: pan-y;
+  cursor: grab;
+  z-index: 3;
+  will-change: transform;
+}
+.tk--h .tk-stub {
+  transform-origin: left center;
+}
+.tk--v .tk-stub {
+  transform-origin: left top;
+}
+.tk-stub.is-snap {
+  transition: transform 0.25s ease;
+}
+.tk-stub.is-fly {
+  transition: transform 0.45s ease-in, opacity 0.45s ease-in;
+  opacity: 0;
+}
+.tk-stub .tk-face {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+.tk--h .tk-stub .tk-face {
+  flex-direction: column;
+  gap: 10px;
+}
+.tk-swipe {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: 0.32em;
+  color: #cbbb93;
+}
+.tk-arrows {
+  display: block;
+  stroke: var(--tk-arrow);
+}
+
+/* 使用済み: 本体だけ・ギザギザの切り口・グレー */
+.tk.is-used .tk-main {
+  filter: grayscale(0.85);
+  opacity: 0.6;
+}
+.tk.is-used:not(.is-premium) .tk-main .tk-face {
+  border-color: #8c7a4e;
+  box-shadow: none;
+}
+.tk.is-used.is-premium {
+  filter: none;
+}
+.tk--h.is-used .tk-main {
+  flex: none;
+  width: calc(100% - 156px);
+  clip-path: polygon(
+    0 0, 100% 0,
+    calc(100% - 10px) 2.5%, 100% 5%, calc(100% - 10px) 7.5%, 100% 10%, calc(100% - 10px) 12.5%, 100% 15%,
+    calc(100% - 10px) 17.5%, 100% 20%, calc(100% - 10px) 22.5%, 100% 25%, calc(100% - 10px) 27.5%, 100% 30%,
+    calc(100% - 10px) 32.5%, 100% 35%, calc(100% - 10px) 37.5%, 100% 40%, calc(100% - 10px) 42.5%, 100% 45%,
+    calc(100% - 10px) 47.5%, 100% 50%, calc(100% - 10px) 52.5%, 100% 55%, calc(100% - 10px) 57.5%, 100% 60%,
+    calc(100% - 10px) 62.5%, 100% 65%, calc(100% - 10px) 67.5%, 100% 70%, calc(100% - 10px) 72.5%, 100% 75%,
+    calc(100% - 10px) 77.5%, 100% 80%, calc(100% - 10px) 82.5%, 100% 85%, calc(100% - 10px) 87.5%, 100% 90%,
+    calc(100% - 10px) 92.5%, 100% 95%, calc(100% - 10px) 97.5%, 100% 100%,
+    0 100%
+  );
+}
+.tk--v.is-used .tk-main {
+  flex: none;
+  height: calc(100% - 112px);
+  clip-path: polygon(
+    0 0, 100% 0, 100% 100%,
+    97.5% calc(100% - 10px), 95% 100%, 92.5% calc(100% - 10px), 90% 100%, 87.5% calc(100% - 10px), 85% 100%,
+    82.5% calc(100% - 10px), 80% 100%, 77.5% calc(100% - 10px), 75% 100%, 72.5% calc(100% - 10px), 70% 100%,
+    67.5% calc(100% - 10px), 65% 100%, 62.5% calc(100% - 10px), 60% 100%, 57.5% calc(100% - 10px), 55% 100%,
+    52.5% calc(100% - 10px), 50% 100%, 47.5% calc(100% - 10px), 45% 100%, 42.5% calc(100% - 10px), 40% 100%,
+    37.5% calc(100% - 10px), 35% 100%, 32.5% calc(100% - 10px), 30% 100%, 27.5% calc(100% - 10px), 25% 100%,
+    22.5% calc(100% - 10px), 20% 100%, 17.5% calc(100% - 10px), 15% 100%, 12.5% calc(100% - 10px), 10% 100%,
+    7.5% calc(100% - 10px), 5% 100%, 2.5% calc(100% - 10px), 0 100%
+  );
+}
+.tk-used {
+  position: absolute;
+  z-index: 4;
+  transform: rotate(-10deg);
+  border: 3px solid #ffb38a;
+  border-radius: 10px;
+  color: #ffb38a;
+  padding: 6px 16px;
+  font-family: var(--f-mono);
+  font-size: 22px;
+  letter-spacing: 0.24em;
+  background: rgba(16, 24, 28, 0.55);
+  pointer-events: none;
+}
+.tk--h .tk-used {
+  left: calc(100% - 156px - 180px);
+  top: 92px;
+}
+.tk--v .tk-used {
+  left: 50%;
+  top: 64%;
+  translate: -50% 0;
+}

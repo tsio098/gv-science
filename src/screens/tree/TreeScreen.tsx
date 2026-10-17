@@ -8,7 +8,7 @@
  * 幅 900px 以上（iPad 横）は右 400px に常設の詳細パネル（未選択なら科目サマリー）。それ未満はポップオーバー。
  * 幅 600〜900px（iPad 縦）はスマホのレイアウトを画面幅に合わせて拡大して始める（課題 #23）。
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePanZoom } from './usePanZoom';
 import type { ArenaInfo, QType, TreeManifest, TreeProgress, TreeStage } from '../../lib/treeApi';
 import { TREE_SUBJECT_ICON, TREE_SUBJECT_NAME, type TreeSubject } from '../../lib/treeSubject';
@@ -26,6 +26,8 @@ import {
   QTYPE_ICON,
   T,
   alpha,
+  ARENA_LOGO,
+  CROWN,
   arenaLeft,
   groupColor,
   groupSide,
@@ -316,6 +318,7 @@ export function TreeScreen(props: Props) {
             {showArena && (
               <ArenaNode
                 info={props.arena!}
+                wide={wide}
                 x={canvasW / 2}
                 y={arenaY}
                 onOpen={() => {
@@ -515,28 +518,61 @@ export function TreeScreen(props: Props) {
 }
 
 /**
- * ツリーの一番下のチャンピオンアリーナのノード（設計書 §5.7）。
- * 表示はシーズン終了までの日数だけ（2026-10-17 先生の指示）。未開放 = 消灯 + 鍵 / 開放 = 金色に点灯 + 王冠。詳しいことはアリーナ画面で
+ * ツリーの一番下のチャンピオンアリーナのノード（設計書 §5.7・ボード A01 / A02 / A02s）。
+ * 表示はシーズン終了までの日数だけ（2026-10-17 先生の指示）。中身は ドット王冠 → ドット文字 → 「あと n 日」。
+ * 開放 = 周りと同じ ROUTE の面 + 金の枠・側面・発光。押している間とアリーナ画面へ移る間だけ面が夜になり、周りに紫のにじみ（選択中）。
+ * 未開放 = 破線枠 + 鍵 + ドット文字をグレー
  */
-function ArenaNode({ info, x, y, onOpen }: { info: ArenaInfo; x: number; y: number; onOpen: () => void }) {
+function ArenaNode({ info, x, y, wide, onOpen }: { info: ArenaInfo; x: number; y: number; wide: boolean; onOpen: () => void }) {
   const open = info.open;
+  const [lit, setLit] = useState(false);
+  const going = useRef(false);
+  const w = wide ? 244 : 234;
+  const h = wide ? 106 : 102;
   return (
-    <button
-      type="button"
-      className={`tr-arena-gate${open ? ' is-open' : ''}`}
-      style={{ left: x - 110, top: y - 46 }}
-      aria-label={`チャンピオンアリーナ${open ? '' : '（未開放）'} シーズン終了まで${arenaLeft(info.season.end).replace('あと', '')}`}
-      onClick={(ev) => {
-        ev.stopPropagation();
-        onOpen();
-      }}
-    >
-      <span className="tr-arena-ic">
-        <Ico id={open ? 'i-crown' : 'i-lock'} size={open ? 22 : 18} />
-      </span>
-      <span className="tr-arena-name">CHAMPION ARENA</span>
-      <span className="tr-arena-meta">{arenaLeft(info.season.end)}</span>
-    </button>
+    <>
+      {lit && open && <div className="tr-arena-haze" aria-hidden="true" style={{ left: x - w, top: y - h * 1.5, width: w * 2, height: h * 3 }} />}
+      <button
+        type="button"
+        className={`tr-arena-gate${open ? ' is-open' : ''}${lit && open ? ' is-lit' : ''}`}
+        style={{ left: x - w / 2, top: y - h / 2, width: w, height: h }}
+        aria-label={`チャンピオンアリーナ${open ? '' : '（未開放）'} シーズン終了まで${arenaLeft(info.season.end).replace('あと', '')}`}
+        onPointerDown={() => setLit(true)}
+        onPointerUp={() => !going.current && setLit(false)}
+        onPointerLeave={() => !going.current && setLit(false)}
+        onPointerCancel={() => !going.current && setLit(false)}
+        onClick={(ev) => {
+          ev.stopPropagation();
+          if (going.current) return;
+          // 選択中（夜の面）を一瞬見せてからアリーナ画面へ
+          going.current = true;
+          setLit(true);
+          window.setTimeout(() => {
+            going.current = false;
+            setLit(false);
+            onOpen();
+          }, open ? 160 : 0);
+        }}
+      >
+        {open ? (
+          <>
+            <img className="tr-arena-crown" src={CROWN} alt="" style={{ width: wide ? 42 : 40 }} />
+            <img className="tr-arena-logo" src={ARENA_LOGO} alt="" style={{ width: wide ? 190 : 182 }} />
+            <span className="tr-arena-meta tr-ar-dot">{arenaLeft(info.season.end)}</span>
+          </>
+        ) : (
+          <>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span className="tr-arena-ic">
+                <Ico id="i-lock" size={14} />
+              </span>
+              <img className="tr-arena-logo is-off" src={ARENA_LOGO} alt="" style={{ width: 164 }} />
+            </span>
+            <span className="tr-arena-meta">{arenaLeft(info.season.end)}</span>
+          </>
+        )}
+      </button>
+    </>
   );
 }
 

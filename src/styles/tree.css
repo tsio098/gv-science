@@ -2537,76 +2537,516 @@ button.tr-stat {
  * ツリーの一番下のノード（表示はシーズン終了までの日数だけ）。未開放 = 消灯（文字色の破線枠）/ 開放 = 金のネオン（発光は box-shadow だけ・アニメーションなし）*/
 .tr-arena-gate {
   position: absolute;
-  width: 220px;
-  padding: 12px 14px;
-  border-radius: 18px;
-  border: 1.5px dashed rgba(var(--tr-text-rgb), 0.28);
-  background: rgba(var(--tr-ground-rgb), 0.55);
-  color: rgba(var(--tr-text-rgb), 0.55);
+  box-sizing: border-box;
+  border-radius: 20px;
+  border: 1.5px dashed rgba(var(--tr-text-rgb), 0.3);
+  background: rgba(5, 54, 64, 0.65);
+  color: var(--tr-sub);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  justify-content: center;
+  gap: 8px;
   text-align: center;
   z-index: 3;
+  padding: 0;
   transition: transform 0.12s ease;
 }
-.tr-arena-gate:active {
-  transform: scale(0.97);
-}
+/* 開放 = 周りと同じ ROUTE の面 + 金の枠・側面・発光（2026-10-17 先生決定）*/
 .tr-arena-gate.is-open {
-  border: 1.5px solid #ffd84a;
-  background: var(--tr-card);
-  color: var(--tr-text);
-  box-shadow: 5px 5px 0 0 #a88a14, 0 0 18px rgba(255, 216, 74, 0.55), 0 0 40px rgba(255, 216, 74, 0.22);
+  gap: 6px;
+  border: 2px solid #ffd84a;
+  background: #073e4b;
+  box-shadow: 5px 5px 0 #a88a14, 0 0 16px rgba(255, 216, 74, 0.4);
+}
+/* 選択中（押している間・アリーナ画面へ移る間）だけ面が夜に・1.14 倍・リング・発光強（ボード A02s）*/
+.tr-arena-gate.is-open.is-lit {
+  background: linear-gradient(160deg, #2a1c45 0%, #120b22 100%);
+  box-shadow: 0 0 0 3px rgba(234, 251, 255, 0.35), 5px 5px 0 3px #a88a14, 0 0 34px 8px rgba(255, 216, 74, 0.6);
+  transform: scale(1.14);
+}
+.tr-arena-haze {
+  position: absolute;
+  z-index: 2;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(ellipse, rgba(28, 18, 54, 0.85) 0%, rgba(28, 18, 54, 0.45) 45%, rgba(28, 18, 54, 0) 72%);
+}
+.tr-arena-crown,
+.tr-arena-logo {
+  height: auto;
+  display: block;
+  pointer-events: none;
+}
+.tr-arena-logo.is-off {
+  filter: grayscale(1) brightness(0.9);
+  opacity: 0.42;
 }
 .tr-arena-ic {
   display: flex;
-  color: rgba(var(--tr-text-rgb), 0.45);
-}
-.tr-arena-gate.is-open .tr-arena-ic {
-  color: #ffd84a;
-}
-.tr-arena-name {
-  font-family: 'IBM Plex Sans', system-ui, sans-serif;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-}
-.tr-arena-gate.is-open .tr-arena-name {
-  color: #ffd84a;
-  text-shadow: 0 0 10px rgba(255, 216, 74, 0.6);
-}
-.tr-arena-meta {
-  font-size: 11px;
   color: var(--tr-sub);
 }
-.tr-arena-tile {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
+.tr-arena-meta {
+  font-size: 12px;
+  color: var(--tr-sub);
+}
+.tr-arena-gate.is-open .tr-arena-meta {
+  font-size: 13px;
+  color: #ffe9a8;
+  letter-spacing: 0.06em;
+}
+
+/* ── チャンピオンアリーナ v2（2026-10-17 先生決定・夜の紫 + 金）──────────
+ * アリーナ画面一式（入口・確認・出題・結果・ランキングのアリーナタブ・チケット）は .tr-root.is-arena で CSS 変数を夜の配色にする。
+ * 地 #1C1236 → #0D0820（45%）→ #05030C／カード #1A1130 + 金 40% の枠／主カード = 紫のグラデ + 金 2px + 側面 5px／文字 #FFF6DD・サブ #CBBB93。
+ * 大きい数字は DotGothic16（自前配信・使う字だけの subset）。発光は box-shadow だけ（アニメーションは演出 5 画面だけ）。
+ * 学年の文字はアクア #2DF4C6 のまま（.tr-ar-grade）。 */
+@font-face {
+  font-family: 'DotGothic16';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/DotGothic16-subset.woff2') format('woff2');
+}
+.tr-root.is-arena {
+  --tr-text: #fff6dd;
+  --tr-text-rgb: 255, 246, 221;
+  --tr-sub: #cbbb93;
+  --tr-accent: #ffd84a;
+  --tr-accent-rgb: 255, 216, 74;
+  --tr-on: #1a0e00;
+  --tr-accent-deep: #a88a14;
+  --tr-card: #1a1130;
+  --tr-well: #1a1130;
+  --tr-ground: #05030c;
+  --tr-ground-rgb: 5, 3, 12;
+  --tr-shadow-dark: #05030c;
+  --tr-line: rgba(255, 216, 74, 0.4);
+  --tr-line-soft: rgba(255, 246, 221, 0.2);
+  --tr-glow: 0 0 20px rgba(255, 216, 74, 0.1);
+  --tr-cta-glow: 0 0 14px rgba(255, 216, 74, 0.5);
+  --tr-page: linear-gradient(180deg, #1c1236 0%, #0d0820 45%, #05030c 100%);
+  --tr-caustic: none;
+  --tr-fade-top: #1c1236;
+  --tr-fade-top-0: rgba(28, 18, 54, 0);
+  --tr-fade-bot: #05030c;
+  --tr-fade-bot-0: rgba(5, 3, 12, 0);
+  /* アリーナだけの色 */
+  --ar-gold: #ffd84a;
+  --ar-gold-side: #a88a14;
+  --ar-lilac: #d08bff;
+  --ar-hero: linear-gradient(160deg, #2a1c45 0%, #1a1130 100%);
+  --ar-night: linear-gradient(160deg, #2a1c45 0%, #120b22 100%);
+}
+.tr-ar-dot {
+  font-family: 'DotGothic16', var(--f-jp);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+/* 発光粒子（2〜3px・金とライラック・静止）*/
+.tr-ar-spark {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  pointer-events: none;
+  background: #ffe38a;
+  box-shadow: 0 0 8px #ffe38a;
+}
+.tr-ar-spark.is-gold {
+  width: 3px;
+  height: 3px;
   background: #ffd84a;
-  color: #2a2205;
+  box-shadow: 0 0 8px #ffd84a;
+}
+.tr-ar-spark.is-lilac {
+  background: #d08bff;
+  box-shadow: 0 0 8px #d08bff;
+}
+.tr-ar-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: var(--tr-top) 14px 0 16px;
+  min-height: 44px;
+  flex: none;
+}
+.tr-ar-head .crown {
+  width: 34px;
+  height: auto;
+  display: block;
+  flex: none;
+}
+.tr-ar-head .logo {
+  width: 168px;
+  max-width: 44vw;
+  height: auto;
+  display: block;
+  flex: none;
+}
+.tr-ar-head .sub {
+  font-size: 13px;
+  color: var(--tr-sub);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.tr-ar-close {
+  margin-left: auto;
+  flex: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 246, 221, 0.3);
+  background: transparent;
+  color: var(--tr-text);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 3px 3px 0 0 #a88a14, 0 0 12px rgba(255, 216, 74, 0.5);
+}
+/* 主カード（期間・スコア・ダイアログ・表彰台 1 位）*/
+.tr-ar-hero {
+  border-radius: 22px;
+  border: 2px solid var(--ar-gold);
+  background: var(--ar-hero);
+  box-shadow: 5px 5px 0 var(--ar-gold-side), 0 0 24px rgba(255, 216, 74, 0.22);
+  padding: 18px 20px 20px;
+}
+.tr-ar-card {
+  border-radius: 22px;
+  border: 1.5px solid rgba(255, 216, 74, 0.4);
+  background: #1a1130;
+  box-shadow: 0 0 20px rgba(255, 216, 74, 0.1);
+  padding: 14px 16px;
+}
+.tr-ar-big {
+  font-family: 'DotGothic16', var(--f-jp);
+  font-size: 40px;
+  line-height: 1.15;
+  color: var(--ar-gold);
+  text-shadow: 0 0 14px rgba(255, 216, 74, 0.55);
+  letter-spacing: 0.04em;
+}
+.tr-ar-grade {
+  font-size: 12px;
+  font-weight: 600;
+  color: #2df4c6;
+}
+.tr-ar-staff {
+  border-radius: 22px;
+  border: 1.5px solid rgba(255, 246, 221, 0.2);
+  background: rgba(26, 17, 48, 0.7);
+  padding: 12px 16px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+/* 下のボタン帯 */
+.tr-ar-foot {
+  flex: none;
+  border-top: 1.5px solid rgba(255, 216, 74, 0.22);
+  border-radius: 28px 28px 0 0;
+  background: rgba(13, 8, 32, 0.88);
+  padding: 16px 16px calc(28px + var(--tr-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.tr-ar-btn {
+  height: 54px;
+  border-radius: 999px;
+  border: none;
+  background: var(--ar-gold);
+  color: #1a0e00;
+  box-shadow: 0 0 14px rgba(255, 216, 74, 0.5);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+.tr-ar-btn:disabled {
+  background: rgba(255, 216, 74, 0.16);
+  color: rgba(255, 246, 221, 0.5);
+  box-shadow: none;
+}
+.tr-ar-btn2 {
+  height: 52px;
+  border-radius: 999px;
+  border: 1.5px solid rgba(255, 216, 74, 0.45);
+  background: transparent;
+  color: var(--tr-text);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+.tr-ar-dialog {
+  border-radius: 24px;
+  border: 2px solid var(--ar-gold);
+  background: var(--ar-hero);
+  box-shadow: 5px 5px 0 var(--ar-gold-side), 0 0 30px rgba(255, 216, 74, 0.3);
+  padding: 24px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+  width: min(342px, calc(100vw - 48px));
+  box-sizing: border-box;
+}
+/* ランキングのアリーナタブ（.tr-rank.is-arena）: 選択中のタブ = 金の塗り・表彰台 1 位 = 主カード・数字 = DotGothic16・学年はアクアのまま */
+.tr-ar-chipcrown {
+  width: 14px;
+  height: auto;
+  display: block;
   flex: none;
 }
-.tr-cta.tr-arena-cta:not(:disabled) {
-  background: #ffd84a;
-  color: #2a2205;
-  box-shadow: 0 0 12px rgba(255, 216, 74, 0.55);
-}
-.tr-arena-grade {
-  height: 48px;
-  padding: 0 12px;
-  border-radius: 14px;
-  border: 1px solid rgba(var(--tr-text-rgb), 0.25);
-  color: var(--tr-accent);
-  font-size: 13px;
+.tr-podium-rank {
+  font-size: 12px;
   font-weight: 700;
   display: flex;
   align-items: center;
+  gap: 3px;
+}
+.tr-podium-score {
+  font-size: 13px;
+  font-weight: 700;
+}
+.tr-root.is-arena .tr-seg {
+  border: 1.5px solid rgba(255, 246, 221, 0.18);
+}
+.tr-root.is-arena .tr-seg > button {
+  font-weight: 400;
+}
+.tr-root.is-arena .tr-seg > button.is-on {
+  font-weight: 600;
+}
+.tr-root.is-arena .tr-chips > button.is-on {
+  border-color: var(--ar-gold);
+  background: rgba(255, 216, 74, 0.12);
+  color: var(--ar-gold);
+  font-weight: 600;
+  box-shadow: none;
+}
+.tr-root.is-arena .tr-podium-card {
+  border-width: 2px;
+  background: #1a1130;
+}
+.tr-root.is-arena .tr-podium-card.is-first {
+  background: var(--ar-hero);
+  box-shadow: 4px 4px 0 var(--ar-gold-side), 0 0 18px rgba(255, 216, 74, 0.3) !important;
+}
+.tr-root.is-arena .tr-podium-rank,
+.tr-root.is-arena .tr-podium-score,
+.tr-root.is-arena .tr-rank-row .tr-num,
+.tr-root.is-arena .tr-rank-n {
+  font-family: 'DotGothic16', var(--f-jp);
+  font-weight: 400;
+}
+.tr-root.is-arena .tr-podium-rank {
+  font-size: 15px;
+}
+.tr-root.is-arena .tr-podium-score {
+  font-size: 18px;
+}
+.tr-root.is-arena .tr-rank-list {
+  border: 0;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-radius: 0;
+}
+.tr-root.is-arena .tr-rank-list .tr-rank-row {
+  border-radius: 16px;
+  border: 1.5px solid rgba(255, 246, 221, 0.18);
+}
+.tr-root.is-arena .tr-rank-list .tr-rank-row.is-me {
+  background: var(--ar-gold);
+  color: #1a0e00;
+  border-color: var(--ar-gold);
+}
+.tr-root.is-arena .tr-rank-list .tr-rank-row.is-me .tr-grade,
+.tr-root.is-arena .tr-rank-list .tr-rank-row.is-me .tr-rank-n {
+  color: #1a0e00;
+  border-color: rgba(26, 14, 0, 0.4);
+}
+.tr-root.is-arena .tr-grade {
+  color: #2df4c6;
+  border: 1.5px solid rgba(45, 244, 198, 0.5);
+}
+.tr-root.is-arena .tr-rank-row.is-pinned .tr-grade {
+  color: #1a0e00;
+  border-color: rgba(26, 14, 0, 0.4);
+}
+.tr-root.is-arena .tr-rank-row.is-pinned .tr-rank-n,
+.tr-root.is-arena .tr-rank-row.is-pinned small {
+  color: #1a0e00;
+}
+.tr-root.is-arena .tr-rank-row.is-pinned small {
+  opacity: 0.7;
+}
+.tr-root.is-arena .tr-rank-foot {
+  color: #8f82a8;
+}
+/* アリーナ画面（入口・結果）の骨組み: 見出し → スクロールする中身 → 下のボタン帯 */
+.tr-ar-screen {
+  display: flex;
+  flex-direction: column;
+}
+.tr-ar-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.tr-ar-screen .tr-ar-body,
+.tr-ar-screen .tr-ar-foot {
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+.tr-ar-cond {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  border-radius: 12px;
+  background: rgba(255, 246, 221, 0.06);
+  padding: 11px 12px;
+  font-size: 13px;
+}
+.tr-ar-stat3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.tr-ar-stat {
+  border-radius: 18px;
+  border: 1.5px solid rgba(255, 216, 74, 0.4);
+  background: #1a1130;
+  padding: 12px;
+  color: var(--tr-text);
+  font-family: inherit;
+  text-align: left;
+  min-width: 0;
+}
+.tr-ar-stat .k {
+  font-size: 11px;
+  color: var(--tr-sub);
+}
+.tr-ar-stat .v {
+  font-size: 24px;
+  margin-top: 4px;
+  white-space: nowrap;
+}
+.tr-ar-overlay {
+  background: rgba(5, 3, 12, 0.66);
+}
+/* 結果画面（ボード A09）*/
+.tr-ar-glow {
+  position: absolute;
+  left: -5%;
+  top: 40px;
+  width: 110%;
+  height: 320px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(255, 216, 74, 0.18) 0%, rgba(255, 216, 74, 0) 65%);
+}
+.tr-ar-score {
+  font-size: 72px;
+  line-height: 1.1;
+  color: var(--ar-gold);
+  text-shadow: 0 0 18px rgba(255, 216, 74, 0.6);
+}
+.tr-ar-rankbtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--tr-text);
+  font-family: inherit;
+  text-align: left;
+  width: 100%;
+}
+.tr-ar-gradebox {
   flex: none;
+  width: 52px;
+  height: 50px;
+  border-radius: 14px;
+  border: 1.5px solid rgba(255, 216, 74, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #2df4c6;
+}
+.tr-ar-input {
+  height: 50px;
+  border-color: rgba(255, 216, 74, 0.45);
+  background: #1a1130;
+}
+/* アリーナの出題（ボード A07）: 解答ボタンの番号・進捗は DotGothic16、枠は金 45%、紙面は #FBF8F1 */
+.tr-root.is-arena .tr-ch {
+  height: 54px;
+  border-radius: 14px;
+  border-color: rgba(255, 216, 74, 0.45);
+  background: #1a1130;
+  box-shadow: none;
+  font-family: 'DotGothic16', var(--f-jp);
+  font-size: 22px;
+  font-weight: 400;
+}
+.tr-root.is-arena .tr-ch.is-sel {
+  background: var(--ar-gold);
+  border-color: var(--ar-gold);
+  color: #1a0e00;
+  box-shadow: 0 0 12px rgba(255, 216, 74, 0.5);
+}
+.tr-root.is-arena .tr-progress .tr-num {
+  font-family: 'DotGothic16', var(--f-jp);
+  font-weight: 400 !important;
+}
+.tr-root.is-arena .tr-timer > div {
+  border: 1.5px solid rgba(255, 216, 74, 0.45);
+  color: var(--ar-gold);
+}
+.tr-root.is-arena .tr-timer > small {
+  color: #ffe9a8 !important;
+}
+.tr-root.is-arena .tr-given > span {
+  border: 1.5px solid rgba(255, 216, 74, 0.35);
+}
+.tr-root.is-arena .tr-paper {
+  background: #fbf8f1;
+}
+.tr-root.is-arena .tr-crumb {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.tr-podium-rank {
+  white-space: nowrap;
+}
+.tr-root.is-arena .tr-podium-rank.is-champ {
+  font-size: 12px;
+  letter-spacing: 0;
 }

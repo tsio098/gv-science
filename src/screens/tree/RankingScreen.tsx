@@ -9,7 +9,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { ArenaRankWhich, ArenaSeason, QType, TreeManifest, TreeRanking, TreeStage } from '../../lib/treeApi';
 import { QTYPES, QTYPE_LABEL, fetchArenaRanking, fetchTreeRanking, gradeLabel } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
-import { ARENA_GOLD, T, alpha, arenaPeriod, arenaSeasonName, fmtScore, fmtTime, groupColor, rootClass } from './treeTheme';
+import { ARENA_GOLD, CROWN_MONO, alpha, arenaPeriod, arenaSeasonName, fmtScore, fmtTime, groupColor, rootClass } from './treeTheme';
 
 export type RankScope = 'subject' | 'field' | 'type' | 'arena';
 
@@ -36,6 +36,12 @@ const PODIUM = [
   { top: '#FFD84A', side: '#A88A14', avatar: '#2DF4C6' },
   { top: '#C9D3CC', side: '#6B7869', avatar: '#FF7AB8' },
   { top: '#D9A47A', side: '#8A5A3C', avatar: '#D08BFF' },
+];
+/** アリーナタブの表彰台（夜の配色・2026-10-17）: 1 位 金 / 2 位 銀 / 3 位 銅 */
+const ARENA_PODIUM = [
+  { top: '#FFD84A', side: '#A88A14', avatar: '#2DF4C6', label: '#FFD84A' },
+  { top: '#C9D3E6', side: '#6E7891', avatar: '#FF7AB8', label: '#DDE5F5' },
+  { top: '#E3A26A', side: '#8A5530', avatar: '#D08BFF', label: '#F0B98A' },
 ];
 const QTYPE_SHORT: Record<QType, string> = { tf: '正誤', calc: '計算', reason: '考察' };
 
@@ -112,7 +118,8 @@ export function RankingScreen({ manifest, stage = 'front', initial, arena = fals
   const champion = (r: Row) => isArena && arenaSeason === 'prev' && r.rank === 1;
 
   return (
-    <div className={rootClass('tr-rank')}>
+    // アリーナタブを選んでいる間は画面全体をアリーナ配色（夜の紫 + 金）に
+    <div className={rootClass(isArena ? 'tr-rank is-arena' : 'tr-rank')}>
       <div className="tr-rank-head">
         <button type="button" className="tr-iconbtn" aria-label="戻る" onClick={onBack}>
           <Ico id="i-back" size={20} />
@@ -151,10 +158,9 @@ export function RankingScreen({ manifest, stage = 'front', initial, arena = fals
                 role="option"
                 aria-selected={arenaSeason === s}
                 className={arenaSeason === s ? 'is-on' : ''}
-                style={arenaSeason === s ? { borderColor: ARENA_GOLD, color: ARENA_GOLD, boxShadow: `0 0 10px ${alpha(ARENA_GOLD, 0.4)}` } : undefined}
                 onClick={() => setArenaSeason(s)}
               >
-                <Ico id="i-crown" size={12} />
+                {arenaSeason === s && <img src={CROWN_MONO} alt="" className="tr-ar-chipcrown" />}
                 {s === 'current' ? '今シーズン' : s === 'prev' ? '前シーズン' : '2シーズン合算'}
               </button>
             ))}
@@ -222,7 +228,7 @@ export function RankingScreen({ manifest, stage = 'front', initial, arena = fals
             <div className="tr-spinner" />
           </div>
         ) : data.count === 0 ? (
-          <div className="tr-panel" style={{ textAlign: 'center', color: T.sub, fontSize: 13, padding: '28px 16px' }}>
+          <div className="tr-panel" style={{ textAlign: 'center', color: 'var(--tr-sub)', fontSize: 13, padding: '28px 16px' }}>
             {isArena
               ? arenaSeason === 'prev'
                 ? 'このシーズンの記録はありません。'
@@ -235,27 +241,29 @@ export function RankingScreen({ manifest, stage = 'front', initial, arena = fals
           <>
             <div className="tr-podium">
               {podium.map((p, i) => {
-                const c = PODIUM[Math.min(p.rank, 3) - 1] ?? PODIUM[i]!;
+                const set = isArena ? ARENA_PODIUM : PODIUM;
+                const c = set[Math.min(p.rank, 3) - 1] ?? set[i]!;
+                const label = 'label' in c ? (c as (typeof ARENA_PODIUM)[number]).label : c.top;
                 return (
                   <div
                     key={i}
-                    className={`tr-podium-card${p.me ? ' is-me' : ''}`}
+                    className={`tr-podium-card${p.me ? ' is-me' : ''}${isArena && p.rank === 1 ? ' is-first' : ''}`}
                     style={{ borderColor: c.top, boxShadow: `4px 4px 0 0 ${c.side}` }}
                   >
-                    <div className="tr-num" style={{ fontSize: 12, fontWeight: 700, color: c.top, display: 'flex', alignItems: 'center', gap: 3 }}>
-                      {champion(p) && <Ico id="i-crown" size={12} />}
+                    <div className={`tr-num tr-podium-rank${champion(p) ? ' is-champ' : ''}`} style={{ color: label }}>
+                      {champion(p) && <img src={CROWN_MONO} alt="" className="tr-ar-chipcrown" />}
                       {champion(p) ? 'チャンピオン' : `${p.rank}位`}
                     </div>
                     <div className="tr-avatar" style={{ background: c.avatar }}>
                       {[...p.nickname][0]}
                     </div>
                     <div className="tr-podium-name">{p.nickname}</div>
-                    <div style={{ fontSize: 10, color: T.sub }}>{gradeLabel(p.grade)}</div>
-                    <div className="tr-num" style={{ fontSize: 13, fontWeight: 700 }}>
+                    <div style={{ fontSize: 10, color: 'var(--tr-sub)' }}>{gradeLabel(p.grade)}</div>
+                    <div className="tr-num tr-podium-score" style={isArena && p.rank === 1 ? { color: ARENA_GOLD } : undefined}>
                       {fmtScore(p.score)}
                     </div>
                     {isArena && p.elapsedMs != null && (
-                      <div className="tr-num" style={{ fontSize: 10, color: T.sub }}>
+                      <div className="tr-num" style={{ fontSize: 10, color: 'var(--tr-sub)' }}>
                         {fmtTime(p.elapsedMs)}
                       </div>
                     )}
@@ -271,7 +279,7 @@ export function RankingScreen({ manifest, stage = 'front', initial, arena = fals
                     <span className="tr-grade">{gradeLabel(r.grade)}</span>
                     <span className="tr-rank-name">{r.nickname}</span>
                     {isArena && r.elapsedMs != null && (
-                      <span className="tr-num" style={{ fontSize: 11, color: T.sub, fontWeight: 500 }}>
+                      <span className="tr-num" style={{ fontSize: 11, color: 'var(--tr-sub)', fontWeight: 500 }}>
                         {fmtTime(r.elapsedMs)}
                       </span>
                     )}
@@ -303,7 +311,7 @@ export function RankingScreen({ manifest, stage = 'front', initial, arena = fals
                   : arenaSeason === 'prev'
                     ? 'このシーズンは挑戦していません'
                     : arenaSeason === 'pair'
-                      ? 'この 2 シーズンは未挑戦です'
+                      ? '2 シーズンとも挑戦すると合算に載ります'
                       : '今シーズン未挑戦 · ツリーの一番下のアリーナのノードから挑戦できます'
               : data.me.rank
                 ? 'ニックネームは結果画面で変えられます'

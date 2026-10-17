@@ -1,14 +1,16 @@
 /**
  * Home — C 案（README 採用方針）「今日中心」レイアウト。
  *   safe-top → ロゴ + HOME crumb → 挨拶 → Today カード →
- *   クイック 4 タイル → 成績推移 → ANCHOR TREE → 記事フィード（横スクロール） → その他
+ *   クイック 4 タイル → 成績推移 → 記事フィード（横スクロール） → その他
+ *   （ANCHOR TREE のバナーは挨拶のすぐ下＝ホームの先頭。2026-10-17）
  */
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { fetchArticles, fetchHome, fetchSchedules } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
 import { prefetch } from '../lib/swrCache';
 import { importTreeShareModal, preloadScoresScreen, preloadTreeRoot } from '../lib/lazyImports';
-import { fetchTreeProgress } from '../lib/treeApi';
+import { fetchTreeHome } from '../lib/treeApi';
+import { TreeBanner, treeBannerKind } from '../components/TreeBanner';
 import { TREE_SUBJECT_NAME, pickTreeSubject, treeSubjectsFor } from '../lib/treeSubject';
 import { useScores } from '../lib/scoresStore';
 import type { NavFn, ScheduleSubject } from '../lib/types';
@@ -46,23 +48,17 @@ interface HomeCProps {
 
 const TreeShareModal = lazy(() => importTreeShareModal().then((m) => ({ default: m.TreeShareModal })));
 
-const AnchorIcon = ({ size = 22 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <circle cx="12" cy="5" r="2" />
-    <path d="M12 7v14M8 10h8M4 14a8 8 0 0 0 16 0M4 14l2-2M20 14l-2-2" />
-  </svg>
-);
-
 /**
  * ANCHOR TREE の入口（設計書 §3.5）。タップでツリー、長押しで「別のブラウザで使う」（ログインID / URL）。
- * 下の行は科目（履修科目のうちツリーがあるもの・最後に開いた科目。Phase 6）のマスター度と新着数
- * （/tree/progress。塾生登録の前・その科目の問題がまだ無いときなどで取れなければ説明文）。
+ * 見た目はホーム先頭のバナー（2026-10-17・デザインボード「バナー」: 通常 / ABYSS 解放後 / アリーナ開放済みの開始日・最終日）。
+ * バナーの下の行は科目（履修科目のうちツリーがあるもの・最後に開いた科目。Phase 6）のマスター度と新着数
+ * （/tree/progress?home=1。塾生登録の前・その科目の問題がまだ無いときなどで取れなければ出さない）。
  */
 function AnchorTreeCard({ onOpen, subjects, staff }: { onOpen: () => void; subjects: readonly string[]; staff: boolean }) {
   // 選択科目にツリーが無ければ取りに行かない（Worker も SUBJECT_NOT_ALLOWED で拒否する。2026-10-16）
   const subject = pickTreeSubject(treeSubjectsFor(subjects, staff));
-  const prog = useAsync(() => (subject ? fetchTreeProgress(subject) : Promise.resolve(null)), [subject], {
-    cacheKey: 'tree:progress:' + (subject ?? 'none'),
+  const prog = useAsync(() => (subject ? fetchTreeHome(subject) : Promise.resolve(null)), [subject], {
+    cacheKey: 'tree:home:' + (subject ?? 'none'),
   });
   const [share, setShare] = useState(false);
   const timer = useRef<number | null>(null);
@@ -83,43 +79,39 @@ function AnchorTreeCard({ onOpen, subjects, staff }: { onOpen: () => void; subje
 
   return (
     <>
-      <button
-        type="button"
-        className="at-home-cta"
-        onPointerDown={(e) => {
-          longPressed.current = false;
-          start.current = { x: e.clientX, y: e.clientY };
-          timer.current = window.setTimeout(() => {
-            longPressed.current = true;
-            timer.current = null;
-            setShare(true);
-          }, 550);
-        }}
-        onPointerMove={(e) => {
-          const s = start.current;
-          if (s && Math.hypot(e.clientX - s.x, e.clientY - s.y) > 10) cancel();
-        }}
-        onPointerUp={cancel}
-        onPointerLeave={cancel}
-        onPointerCancel={cancel}
-        onContextMenu={(e) => e.preventDefault()}
-        onClick={() => {
-          if (longPressed.current) {
-            longPressed.current = false;
-            return;
-          }
-          onOpen();
-        }}
-      >
-        <div className="at-home-ic">
-          <AnchorIcon />
-        </div>
-        <div className="at-home-tx">
-          <div className="t1">ANCHOR TREE</div>
-          {sub && <div className="t2">{sub}</div>}
-        </div>
-        <ChevRightIcon size={14} />
-      </button>
+      <div className="at-home-banner">
+        <TreeBanner
+          kind={treeBannerKind(p?.home)}
+          season={p?.home?.season}
+          onOpen={() => {
+            if (longPressed.current) {
+              longPressed.current = false;
+              return;
+            }
+            onOpen();
+          }}
+          buttonProps={{
+            onPointerDown: (e) => {
+              longPressed.current = false;
+              start.current = { x: e.clientX, y: e.clientY };
+              timer.current = window.setTimeout(() => {
+                longPressed.current = true;
+                timer.current = null;
+                setShare(true);
+              }, 550);
+            },
+            onPointerMove: (e) => {
+              const s = start.current;
+              if (s && Math.hypot(e.clientX - s.x, e.clientY - s.y) > 10) cancel();
+            },
+            onPointerUp: cancel,
+            onPointerLeave: cancel,
+            onPointerCancel: cancel,
+            onContextMenu: (e) => e.preventDefault(),
+          }}
+        />
+        {sub && <div className="at-home-sub">{sub}</div>}
+      </div>
       {share && (
         <Suspense fallback={null}>
           <TreeShareModal onClose={() => setShare(false)} />
@@ -219,6 +211,9 @@ export function HomeC({ nav }: HomeCProps) {
       </div>
       <div className="app-scroll">
         <Greeting user={user} nextClass={nextClass} />
+
+        {/* ANCHOR TREE のバナー（ホームの先頭・2026-10-17 デザインボード「バナー」）*/}
+        <AnchorTreeCard onOpen={() => nav('tree')} subjects={user.subjects ?? []} staff={user.grade === '先生'} />
 
         {/* Today カード */}
         <div
@@ -331,8 +326,6 @@ export function HomeC({ nav }: HomeCProps) {
             })()}
           </div>
         </button>
-
-        <AnchorTreeCard onOpen={() => nav('tree')} subjects={user.subjects ?? []} staff={user.grade === '先生'} />
 
         {/* 記事フィード（横スクロール） */}
         <div className="c-feed-head">

@@ -352,8 +352,23 @@ export interface ArenaInfo {
   count: number;
   /** 前シーズンのチャンピオン（1 位。同点なら複数）*/
   champion: null | { season: ArenaSeason; list: { grade: string; nickname: string; score: number }[] };
-  staff: boolean;
+  /**
+   * 先生のスコア（2026-10-17 先生決定・ランキングには入れない）。今シーズン最高・今の組の 2 シーズン合算（同じ先生アカウントで両方そろったときだけ）。
+   * 先生の記録が無ければ null。古い Proxy（v1）は boolean（＝見ている人が先生か）を返していた
+   */
+  staff: null | boolean | { seasonBest: number | null; pairSum: number | null };
+  /** 見ている人が先生用アカウント（v2〜）*/
+  staffSelf?: boolean;
+  /** 今の組（ボーナスチケットの 2 シーズン・v2〜）*/
+  pair?: ArenaSeason[];
 }
+
+/** アリーナを置く科目（2026-10-17 先生決定: 化学・生物だけ）*/
+export const ARENA_SUBJECTS: readonly string[] = ['chemistry', 'biology'];
+/** 見ている人が先生か（v1 の boolean と v2 の staffSelf の両方に対応）*/
+export const arenaIsStaffSelf = (a: ArenaInfo) => a.staffSelf ?? a.staff === true;
+/** 先生のスコア行（v2 のオブジェクトのときだけ）*/
+export const arenaStaffScore = (a: ArenaInfo) => (a.staff && typeof a.staff === 'object' ? a.staff : null);
 
 export interface ArenaSession extends TreeSession {
   arena: true;
@@ -394,6 +409,52 @@ export const submitArena = (sessionId: string, answers: { qid: string; value: Pa
 export type ArenaRankWhich = 'current' | 'prev' | 'pair';
 export const fetchArenaRanking = (subject: string, season: ArenaRankWhich = 'current') =>
   get<ArenaRanking>(`/tree/arena/ranking?subject=${encodeURIComponent(subject)}${season === 'current' ? '' : `&season=${season}`}`);
+
+/* ── ボーナスチケット・演出（2026-10-17 先生決定・実装手順_ロゴ・アリーナ・演出）────────────
+ * チケット = 2 シーズン（組）の総合チャンピオンに 1 枚（先生の合算を超えたらプレミアム）。半券をスワイプで切ると使用済み（サーバで 1 回だけ）。
+ * 演出 = ABYSS 解放 / アリーナ解放 / シーズン優勝 / 総合優勝 / 新シーズン開始。各 1 回だけ（既読はサーバ）。 */
+
+export interface ArenaTicket {
+  id: string;
+  subject: string;
+  /** 組の 2 シーズン [前半, 後半] */
+  pair: ArenaSeason[];
+  premium: boolean;
+  grade: string;
+  nickname: string;
+  score: number;
+  usedAt: number | null;
+  /** id の署名（使用のときに送り返す）*/
+  sig: string;
+}
+
+export type TreeEventType = 'unlock_abyss' | 'unlock_arena' | 'champion' | 'grand' | 'season_start';
+
+export interface TreeEvent {
+  key: string;
+  type: TreeEventType;
+  subject: string;
+  grade: string;
+  nickname: string;
+  season?: ArenaSeason;
+  pair?: ArenaSeason[];
+  score?: number;
+  ticket?: { id: string; premium: boolean };
+}
+
+/** ホームのカード・バナー用（/tree/progress?home=1）*/
+export interface TreeHomeFlags {
+  abyssOpen: boolean;
+  arenaOpen: boolean;
+  season: ArenaSeason;
+}
+
+export const fetchArenaTickets = () => get<{ tickets: ArenaTicket[] }>('/tree/arena/tickets');
+export const redeemArenaTicket = (id: string, sig: string) => post<{ ok: boolean; usedAt: number }>('/tree/arena/ticket/use', { id, sig });
+export const fetchTreeEvents = () => get<{ events: TreeEvent[] }>('/tree/events');
+export const markTreeEventsSeen = (keys: string[]) => post<{ ok: boolean }>('/tree/events/seen', { keys });
+export const fetchTreeHome = (subject: string) =>
+  get<TreeProgress & { home?: TreeHomeFlags }>(`/tree/progress?subject=${encodeURIComponent(subject)}&home=1`);
 
 /* ── 先生用 進捗一覧（2026-10-17）──────────────────────────
  * Proxy は生徒を key（userId のハッシュ）で返し、氏名は持たない。
