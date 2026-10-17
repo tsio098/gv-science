@@ -189,6 +189,10 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
       } else if (e instanceof TreeApiError && e.code === 'ARENA_CLOSED') {
         if (isArena) saveArena(session.sessionId, null);
         setSubmitError('このシーズンは終了しました。この挑戦は提出できません。');
+      } else if (e instanceof TreeApiError && e.code === 'NO_SESSION') {
+        // 別の端末で始め直した（先生）などで、この挑戦がもう無い。何度送っても通らないので再送ボタンは出さない
+        if (isArena) saveArena(session.sessionId, null);
+        setSubmitError('この挑戦は見つかりませんでした（別の端末で始め直した可能性があります）。ツリーに戻ってください。');
       } else {
         setSubmitError('提出できませんでした。通信状況を確かめて、もう一度送ってください。');
       }
@@ -520,7 +524,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
         <div className="tr-overlay" role="alertdialog">
           <div className="tr-card">
             <div>{submitError}</div>
-            {!/すでに提出|終了しました/.test(submitError) && (
+            {!/すでに提出|終了しました|見つかりませんでした/.test(submitError) && (
               <button type="button" className="tr-cta" disabled={submitting} onClick={() => void submit()}>
                 {submitting ? '送信中…' : 'もう一度送る'}
               </button>

@@ -409,7 +409,8 @@ export interface ArenaRanking {
 }
 
 export const fetchArena = (subject: string) => get<ArenaInfo>(`/tree/arena?subject=${encodeURIComponent(subject)}`);
-export const startArena = (subject: string) => post<ArenaSession>('/tree/arena/start', { subject });
+/** season = 画面が読み込んだシーズン（切り替わっていたら 409 SEASON_CHANGED。前シーズンの途中は猶予内なら再開）*/
+export const startArena = (subject: string, season?: string) => post<ArenaSession>('/tree/arena/start', { subject, season });
 export const submitArena = (sessionId: string, answers: { qid: string; value: PartValue[]; timeMs: number }[]) =>
   post<ArenaResult>('/tree/arena/submit', { sessionId, answers });
 export type ArenaRankWhich = 'current' | 'prev' | 'pair';

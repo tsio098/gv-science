@@ -3,7 +3,7 @@
  * LIFF 内（ホームから開く）と外部ブラウザ（/tree）の両方でこれを使う。
  * LIFF 内は「…」から ID / URL のモーダル（別のブラウザで使う）を開ける。
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   ArenaInfo,
   ArenaResult,
@@ -160,15 +160,22 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   const [events, setEvents] = useState<TreeEvent[]>([]);
   setTreeStage(stage);
 
-  // アリーナは化学・生物だけ（2026-10-17 先生決定）。他の科目では取りに行かずノードも出さない
+  // アリーナは化学・生物だけ（2026-10-17 先生決定）。他の科目では取りに行かずノードも出さない。
+  // 科目をすぐ切り替えたとき、遅れて返った前の科目のアリーナで上書きしない（最後に頼んだ科目だけ反映）
+  const arenaFor = useRef<string | null>(null);
   const loadArena = useCallback((s: string) => {
+    arenaFor.current = s;
     if (!ARENA_SUBJECTS.includes(s)) {
       setArena(null);
       return;
     }
     fetchArena(s)
-      .then(setArena)
-      .catch(() => setArena(null));
+      .then((a) => {
+        if (arenaFor.current === s) setArena(a);
+      })
+      .catch(() => {
+        if (arenaFor.current === s) setArena(null);
+      });
   }, []);
 
   const loadTickets = useCallback(() => {
@@ -324,12 +331,16 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
     fetchTreeProgress(subject, stage)
       .then((pg) => {
         setProgress(pg);
-        if (pg.abyss) setAbyssOpen(pg.abyss.open);
+        if (pg.abyss) {
+          // 挑戦の結果で ABYSS が開いた（60% に届いてチケットが出た）ら、ヘッダーのチケット枚数も取り直す
+          if (pg.abyss.open && !abyssOpen) loadTickets();
+          setAbyssOpen(pg.abyss.open);
+        }
         if (manifest && pg.version !== manifest.version) fetchTreeManifest(subject, stage).then(setManifest).catch(() => {});
       })
       .catch(() => {});
     loadArena(subject);
-  }, [manifest, subject, stage, loadArena]);
+  }, [manifest, subject, stage, loadArena, loadTickets, abyssOpen]);
 
   /** アリーナの挑戦を始める（途中なら再開）。開始で今シーズンの 1 回を使う */
   const beginArena = async () => {
@@ -337,14 +348,16 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
     setStarting(true);
     setArenaMessage(null);
     try {
-      const s = await startArena(subject);
+      const s = await startArena(subject, arena && arena.subject === subject ? arena.season.key : undefined);
       setView({ kind: 'arenaPlay', session: s });
     } catch (e) {
       const code = e instanceof TreeApiError ? e.code : '';
       if (code === 'UNAUTHORIZED' && mode === 'external') return onLogout?.();
       setArenaMessage(
-        code === 'ARENA_LOCKED'
-          ? 'まだ開放されていません。全分野のマスター度を 70% 以上にすると挑戦できます。'
+        code === 'SEASON_CHANGED'
+          ? 'シーズンが切り替わりました。最新の状態に更新したので、もう一度確かめてください。'
+          : code === 'ARENA_LOCKED'
+          ? 'まだ開放されていません。全分野の今年度の正答率を 70% 以上にすると挑戦できます。'
           : code === 'ARENA_DONE'
             ? '今シーズンはもう挑戦しました。次のシーズンをお待ちください。'
             : code === 'NO_QUESTIONS'

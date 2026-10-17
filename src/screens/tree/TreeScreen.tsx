@@ -90,7 +90,7 @@ export function TreeScreen(props: Props) {
   const maxLayer = Math.max(0, ...manifest.fields.map((f) => f.pos.layer));
   const canvasW = geom.w;
   // チャンピオンアリーナのノード（ROUTE だけ）は最下層の分野の下
-  const showArena = props.stage === 'front' && !!props.arena;
+  const showArena = props.stage === 'front' && !!props.arena && props.arena.subject === manifest.subject;
   const arenaY = geom.y(maxLayer) + 170;
   const canvasH = Math.max(geom.h, showArena ? arenaY + 130 : geom.y(maxLayer) + 170);
 
