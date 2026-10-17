@@ -2,10 +2,11 @@
  * ANCHOR TREE — チャンピオンアリーナの結果（設計書 §5.7）。
  * スコア（/ 1,000）と今シーズンの順位だけ（2026-10-17 先生の指示）。
  * ニックネームは通常の結果画面と同じく、離れるときに保存する。見た目は夜の紫 + 金（ボード A09）。
+ * 先生用アカウントは「記録として提出」を押した挑戦だけが先生の記録になる（2026-10-18 先生の指示。押さなければテスト扱い）。
  */
 import { useState } from 'react';
 import type { ArenaResult } from '../../lib/treeApi';
-import { gradeLabel } from '../../lib/treeApi';
+import { gradeLabel, recordArena } from '../../lib/treeApi';
 import { ArenaHead, ArenaSparks } from './ArenaScreen';
 import { Ico } from './TreeIcons';
 import { arenaSeasonName, fmtScore, rootClass } from './treeTheme';
@@ -25,6 +26,16 @@ export function ArenaResultScreen({ result, grade, nickname, crab, onSaveNick, o
   const [nick, setNick] = useState(nickname === 'プレイヤー' || nickname === crab ? '' : nickname);
   const [nickError, setNickError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [record, setRecord] = useState<'idle' | 'sending' | 'done' | 'error'>('idle');
+  const sendRecord = async () => {
+    setRecord('sending');
+    try {
+      await recordArena(result.sessionId);
+      setRecord('done');
+    } catch {
+      setRecord('error');
+    }
+  };
   const leave = async (go: () => void) => {
     setSaving(true);
     const err = await onSaveNick(nick);
@@ -47,6 +58,24 @@ export function ArenaResultScreen({ result, grade, nickname, crab, onSaveNick, o
             <span style={{ fontSize: 14, color: 'var(--tr-sub)' }}>/ {fmtScore(result.summary.max)}</span>
           </div>
         </div>
+
+        {result.canRecord && (
+          <div className="tr-ar-card" style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 16 }}>
+            <div style={{ fontSize: 12, color: 'var(--tr-sub)', lineHeight: 1.7 }}>
+              {record === 'done'
+                ? '記録しました。アリーナ画面の先生のスコアに反映されます（今シーズンの最高）。'
+                : '先生用アカウント: このスコアは「記録として提出」を押すまでアリーナ画面に表示されません。押さなければテストとして扱います。'}
+            </div>
+            {record === 'error' && (
+              <div role="alert" style={{ fontSize: 12, color: 'var(--tr-review)' }}>
+                記録できませんでした。通信状況を確かめて、もう一度押してください。
+              </div>
+            )}
+            <button type="button" className="tr-ar-btn" style={{ height: 48, fontSize: 15 }} disabled={record === 'sending' || record === 'done' || saving} onClick={() => void sendRecord()}>
+              {record === 'sending' ? '送信中…' : record === 'done' ? '記録済み' : '記録として提出'}
+            </button>
+          </div>
+        )}
 
         <button type="button" className="tr-ar-card tr-ar-rankbtn" onClick={() => void leave(onRanking)} aria-label="アリーナのランキングを見る">
           <div>

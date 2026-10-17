@@ -13,7 +13,10 @@
  *   時間ボーナスは無いので経過時間だけ表示する
  * - チャンピオンアリーナ（§5.7）: 全員共通の 10 問。タイムボーナスは最大 75（基礎 25）。提出は /tree/arena/submit。
  *   開始で今シーズンの 1 回を使うので、答えた問題・選んだ答え・時間を端末（localStorage）に残し、閉じても続きから再開できる
- * - 右下（パッドのすぐ上）にスクショのボタン（2026-10-17 先生の指示・PlayShot）。画面をそのまま画像にして長押し保存・共有
+ *   出す順番は挑戦ごとに違う（2026-10-18 先生の指示・Proxy の arenaOrder）。再開は「まだ決定していない最初の問題」から
+ * - 右下（パッドのすぐ上）にスクショのボタン（2026-10-17 先生の指示・PlayShot）。画面をそのまま画像にして長押し保存・共有。
+ *   アリーナには出さない（2026-10-18 先生の指示）。アリーナは画面を離れている間（アプリ切替・通知センター等）問題を覆って隠す。
+ *   スマホ本体のボタン操作のスクショは Web からは止められない（隠せるのは画面を離れたときだけ）
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AbyssPart, ArenaResult, FieldGroup, PlayQuestion, SubmitResult, TreeSession } from '../../lib/treeApi';
@@ -82,6 +85,33 @@ const multiPick = (q: PlayQuestion) => {
 };
 const partsOf = (q: PlayQuestion): AbyssPart[] => (q.answer.kind === 'parts' ? q.answer.parts : []);
 
+/**
+ * アリーナ: 画面を離れている間 true（2026-10-18 先生の指示・スクショ対策）。
+ * visibilitychange（アプリ切替・ホーム）と blur（通知センター・コントロールセンターなど）で隠し、戻ったら出す。タイマーは止めない。
+ * 戻ったときに focus が届かない WebView でも出せなくならないよう、hasFocus は見ない＋覆いをタップしても出す（reveal）
+ */
+function useAway(on: boolean): [boolean, () => void] {
+  const [away, setAway] = useState(false);
+  useEffect(() => {
+    if (!on) return;
+    const hide = () => setAway(true);
+    const check = () => setAway(document.hidden);
+    window.addEventListener('blur', hide);
+    window.addEventListener('pagehide', hide);
+    window.addEventListener('focus', check);
+    window.addEventListener('pageshow', check);
+    document.addEventListener('visibilitychange', check);
+    return () => {
+      window.removeEventListener('blur', hide);
+      window.removeEventListener('pagehide', hide);
+      window.removeEventListener('focus', check);
+      window.removeEventListener('pageshow', check);
+      document.removeEventListener('visibilitychange', check);
+    };
+  }, [on]);
+  return [on && away, () => setAway(false)];
+}
+
 export function PlayScreen({ session, subjectName, fieldName, group, onExit, onDone, onArenaDone }: Props) {
   const isArena = (session as { arena?: boolean }).arena === true;
   const col = isArena ? ARENA_GOLD : groupColor(group);
@@ -89,7 +119,12 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
   const units = session.units;
   const totalQ = units.reduce((s, u) => s + u.qids.length, 0);
   const [saved] = useState(() => (isArena ? loadArena(session.sessionId) : null));
-  const [idx, setIdx] = useState(() => (saved ? Math.min(Math.max(0, saved.idx), units.length - 1) : 0));
+  // 再開はまだ決定していない最初の問題から（決定した問題は times に入る。順番が変わっても取りこぼさない）
+  const [idx, setIdx] = useState(() => {
+    if (!saved) return 0;
+    const open = units.findIndex((u) => u.qids.some((id) => saved.times[id] == null));
+    return open < 0 ? units.length - 1 : open;
+  });
   const [picks, setPicks] = useState<Record<string, string[]>>(() => saved?.picks ?? {});
   /** ABYSS: 設問ごとの欄の入力と、キーパッドで入力中の数値欄 */
   const isBack = session.stage === 'back';
@@ -105,6 +140,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
   const times = useRef<Record<string, number>>(saved?.times ?? {});
   const areaRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const [away, reveal] = useAway(isArena);
 
   const unit = units[idx]!;
   const qs = unit.qids.map((id) => session.questions[id]!).filter(Boolean);
@@ -497,7 +533,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
       </div>
 
       <div className="tr-pad">
-        <PlayShot target={rootRef} />
+        {!isArena && <PlayShot target={rootRef} />}
         {isBack ? (
           (() => {
             const fq = numFocus ? session.questions[numFocus.qid] : null;
@@ -580,6 +616,13 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
               中断してツリーへ
             </button>
           </div>
+        </div>
+      )}
+
+      {away && (
+        <div className="tr-ar-away" onPointerDown={reveal} onClick={reveal}>
+          <img src={CROWN_MONO} alt="" style={{ width: 40, height: 'auto', display: 'block' }} />
+          <div>タップすると問題に戻ります</div>
         </div>
       )}
 

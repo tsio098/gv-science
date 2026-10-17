@@ -135,7 +135,7 @@ export function ArenaScreen({ info, manifest, starting, message, tickets = 0, ti
 
         {staffSelf && (
           <div style={{ fontSize: 12, color: 'var(--tr-sub)', lineHeight: 1.7, padding: '0 2px' }}>
-            先生用アカウント: 何度でも挑戦できます。最高スコアがアリーナに表示されます（ランキングには載りません）。
+            先生用アカウント: 何度でも挑戦できます。結果画面で「記録として提出」を押した挑戦の最高スコアがアリーナに表示されます（ランキングには載りません）。
           </div>
         )}
 

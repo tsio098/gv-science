@@ -391,6 +391,8 @@ export interface ArenaResult {
   nickname: string | null;
   results: { qid: string; type: QType; correct: boolean; value: PartValue[]; timeMs: number; bonus: number; gain: number }[];
   summary: { score: number; basePoints: number; bonusPoints: number; correct: number; total: number; elapsedMs: number; max: number };
+  /** 先生用アカウント: 「記録として提出」を押せる（2026-10-18。押すまでアリーナ画面の先生のスコアに出ない）*/
+  canRecord?: boolean;
   rank: RankInfo;
   season: ArenaSeason;
 }
@@ -415,6 +417,8 @@ export const fetchArena = (subject: string) => get<ArenaInfo>(`/tree/arena?subje
 export const startArena = (subject: string, season?: string) => post<ArenaSession>('/tree/arena/start', { subject, season });
 export const submitArena = (sessionId: string, answers: { qid: string; value: PartValue[]; timeMs: number }[]) =>
   post<ArenaResult>('/tree/arena/submit', { sessionId, answers });
+/** 先生: 採点した挑戦を記録にする（何度押しても同じ）*/
+export const recordArena = (sessionId: string) => post<{ ok: true }>('/tree/arena/record', { sessionId });
 export type ArenaRankWhich = 'current' | 'prev' | 'pair';
 export const fetchArenaRanking = (subject: string, season: ArenaRankWhich = 'current') =>
   get<ArenaRanking>(`/tree/arena/ranking?subject=${encodeURIComponent(subject)}${season === 'current' ? '' : `&season=${season}`}`);
