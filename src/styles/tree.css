@@ -58,12 +58,18 @@
  * （.tr-root を fixed にしないのは、LIFF のホームから開いたとき画面遷移の transform が fixed の基準になってずれるため）
  */
 html.tr-noswipe body {
-  height: calc(100% + 100px);
+  /* 高さは useNoSwipeMinimize が px で入れる（画面の高さ + 100px）。% は環境によって効かないことがある */
+  min-height: calc(100% + 100px);
   overflow: hidden;
+  overscroll-behavior: none;
 }
 html.tr-noswipe #root {
   position: fixed;
   inset: 0;
+}
+/* 内側のスクロール領域の端で、スクロールがページ本体へ連鎖して 0 に戻らないように */
+html.tr-noswipe #root * {
+  overscroll-behavior: contain;
 }
 /* ABYSS（深海）— Phase 6 で .tr-root に is-abyss を付ける */
 .tr-root.is-abyss {

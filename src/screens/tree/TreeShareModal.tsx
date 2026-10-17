@@ -7,12 +7,42 @@
 import { useEffect, useState } from 'react';
 import { TreeApiError, fetchTreeMe } from '../../lib/treeApi';
 import { openExternal } from '../../lib/liff';
+import { swipeDiag } from './useNoSwipeMinimize';
 import '../../styles/tree.css';
 
 interface Props {
   /** 分かっていれば渡す（無ければ /tree/me で取る）*/
   loginId?: string | null;
+  /** 先生用アカウントなら、LINE の縮小対策の状態（実機でしか確かめられない）を下に出す */
+  staff?: boolean;
   onClose: () => void;
+}
+
+/** 先生用: LINE の下スワイプ縮小対策がその端末で効いているかを読むための行 */
+function SwipeDiagRows() {
+  const [d, setD] = useState(() => swipeDiag());
+  useEffect(() => {
+    const t = setInterval(() => setD(swipeDiag()), 500);
+    return () => clearInterval(t);
+  }, []);
+  const ua = navigator.userAgent.match(/\bLine\/[\d.]+/i)?.[0] ?? '—';
+  const rows = [
+    ['LINE 判定', d.line ? `はい（${ua}）` : 'いいえ'],
+    ['対策', d.active ? '有効' : `無効${d.undone ? `（${d.undone}）` : ''}`],
+    ['scrollY', `${Math.round(d.scrollY)} / body ${Math.round(d.bodyHeight)} / 画面 ${Math.round(d.innerHeight)}`],
+    ['戻した回数', `${d.resets}　止めた touchmove ${d.blocked}`],
+    ['直前のタッチ', d.lastTouch ? `開始 ${Math.round(d.lastTouch.start)} → 終了 ${Math.round(d.lastTouch.end)}` : '—'],
+  ];
+  return (
+    <div className="tr-share-note" style={{ marginTop: 10, lineHeight: 1.7 }}>
+      <div style={{ fontWeight: 700 }}>LINE の縮小対策（先生用の確認）</div>
+      {rows.map(([k, v]) => (
+        <div key={k}>
+          {k}: <span className="tr-mono">{v}</span>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 /** clipboard API → だめなら textarea + execCommand（LINE 内ブラウザ対策）*/
@@ -78,7 +108,7 @@ function CopyRow({ label, value, big, note }: { label: string; value: string; bi
   );
 }
 
-export function TreeShareModal({ loginId, onClose }: Props) {
+export function TreeShareModal({ loginId, staff = false, onClose }: Props) {
   const [id, setId] = useState<string | null>(loginId ?? null);
   const [error, setError] = useState<string | null>(null);
   const url = `${window.location.origin}/tree`;
@@ -129,6 +159,7 @@ export function TreeShareModal({ loginId, onClose }: Props) {
           </svg>
           {isIOS ? 'Safari で開く' : 'ブラウザで開く'}
         </button>
+        {staff && <SwipeDiagRows />}
       </div>
     </div>
   );

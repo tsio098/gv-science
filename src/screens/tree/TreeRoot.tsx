@@ -648,7 +648,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           onBack={() => setView(view.back)}
         />
       )}
-      {sharing && <TreeShareModal loginId={me.loginId} onClose={() => setSharing(false)} />}
+      {sharing && <TreeShareModal loginId={me.loginId} staff={me.grade === '先生'} onClose={() => setSharing(false)} />}
       {events[0] && (
         <FxScreen
           key={events[0].key}
