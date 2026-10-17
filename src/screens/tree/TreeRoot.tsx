@@ -34,6 +34,7 @@ import {
   startTreeSession,
 } from '../../lib/treeApi';
 import { ArenaScreen } from './ArenaScreen';
+import { useNoSwipeMinimize } from './useNoSwipeMinimize';
 import { ArenaResultScreen } from './ArenaResultScreen';
 import { ArenaTicketScreen } from './ArenaTicketScreen';
 import { FxScreen } from './fx/FxScreen';
@@ -133,6 +134,7 @@ interface Props {
 }
 
 export function TreeRoot({ mode, onClose, onLogout }: Props) {
+  useNoSwipeMinimize();
   const [me, setMe] = useState<TreeMe | null>(null);
   /** 開ける科目（履修科目のうちツリーがあるもの。先生は全部）と、いま開いている科目（Phase 6）*/
   const [subjects, setSubjects] = useState<TreeSubject[]>([]);

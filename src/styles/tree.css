@@ -53,6 +53,18 @@
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }
+/*
+ * LINE のブラウザの下スワイプ縮小を防ぐ（useNoSwipeMinimize）: ページを少しスクロールさせた状態に保ち、アプリ全体（#root）は画面に固定。
+ * （.tr-root を fixed にしないのは、LIFF のホームから開いたとき画面遷移の transform が fixed の基準になってずれるため）
+ */
+html.tr-noswipe body {
+  height: calc(100% + 100px);
+  overflow: hidden;
+}
+html.tr-noswipe #root {
+  position: fixed;
+  inset: 0;
+}
 /* ABYSS（深海）— Phase 6 で .tr-root に is-abyss を付ける */
 .tr-root.is-abyss {
   --tr-text: #e8eeff;
