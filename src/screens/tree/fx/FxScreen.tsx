@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import type { TreeEvent } from '../../../lib/treeApi';
 import { gradeLabel } from '../../../lib/treeApi';
 import { arenaLeft, arenaPeriod, fmtScore } from '../treeTheme';
-import { Col, Confetti, DROP_EASE, Flash, FxButton, FxContext, MiniTicket, Rays, Stage, an, img, useWide } from './fxKit';
+import { Col, Confetti, DROP_EASE, Flash, FxButton, FxContext, MiniTicket, Rays, Reveal, Stage, an, img, preloadFxImages, useWide } from './fxKit';
 import '../../../styles/tree-fx.css';
 
 type FxAction = 'tree' | 'arena' | 'ticket';
@@ -38,12 +38,28 @@ const reducedMotion = () => {
   }
 };
 
+/** 画像の読み込み・デコードを待つ上限（これを過ぎたら待たずに始める）*/
+const PRELOAD_WAIT_MS = 900;
+
 export function FxScreen({ event, subjectName, onClose }: Props) {
   const [done, setDone] = useState(reducedMotion);
+  // 画像のデコードが済んでから動かし始める（途中で初めて描くとカクつく。2026-10-17）
+  const [ready, setReady] = useState(false);
   useEffect(() => {
+    let alive = true;
+    const go = () => alive && setReady(true);
+    const t = window.setTimeout(go, PRELOAD_WAIT_MS);
+    preloadFxImages().then(go);
+    return () => {
+      alive = false;
+      window.clearTimeout(t);
+    };
+  }, []);
+  useEffect(() => {
+    if (!ready) return;
     const t = window.setTimeout(() => setDone(true), SAFETY_MS[event.type] ?? 5000);
     return () => window.clearTimeout(t);
-  }, [event.type]);
+  }, [event.type, ready]);
   const ctl = useMemo(() => ({ done, finish: () => setDone(true), close: onClose }), [done, onClose]);
   const p = { event, subjectName };
   const label =
@@ -64,11 +80,11 @@ export function FxScreen({ event, subjectName, onClose }: Props) {
         aria-label={label}
         onClick={() => setDone(true)}
       >
-        {event.type === 'unlock_abyss' && <FxUnlockAbyss {...p} />}
-        {event.type === 'unlock_arena' && <FxUnlockArena {...p} />}
-        {event.type === 'champion' && <FxChampion {...p} />}
-        {event.type === 'grand' && <FxGrandChampion {...p} />}
-        {event.type === 'season_start' && <FxNewSeason {...p} />}
+        {ready && event.type === 'unlock_abyss' && <FxUnlockAbyss {...p} />}
+        {ready && event.type === 'unlock_arena' && <FxUnlockArena {...p} />}
+        {ready && event.type === 'champion' && <FxChampion {...p} />}
+        {ready && event.type === 'grand' && <FxGrandChampion {...p} />}
+        {ready && event.type === 'season_start' && <FxNewSeason {...p} />}
       </div>
     </FxContext.Provider>
   );
@@ -202,7 +218,7 @@ export function FxUnlockAbyss({ subjectName }: SceneProps) {
               ...an('fxGlow', 0.9, 2.05),
             }}
           />
-          <img src={img('text_abyss-open')} alt="ABYSS OPEN" className="fx-img" style={{ left: 65, top: 340, width: 260, ...an('fxReveal', 0.7, 1.4, 'steps(10)') }} />
+          <Reveal src={img('text_abyss-open')} alt="ABYSS OPEN" style={{ left: 65, top: 340, width: 260 }} dur={0.7} delay={1.4} steps={10} />
           <div className="fx-abs" style={{ left: 0, right: 0, top: 486, textAlign: 'center', fontSize: 16, fontWeight: 600, ...an('fxUp', 0.5, 2.2) }}>
             {subjectName}の ROUTE をすべて解放しました
           </div>
@@ -261,7 +277,7 @@ export function FxUnlockArena({ event }: SceneProps) {
         >
           CHAMPION ARENA
         </div>
-        <img src={img('text_arena-open')} alt="ARENA OPEN" className="fx-img" style={{ left: 65, top: 400, width: 260, ...an('fxReveal', 0.7, 1.55, 'steps(10)') }} />
+        <Reveal src={img('text_arena-open')} alt="ARENA OPEN" style={{ left: 65, top: 400, width: 260 }} dur={0.7} delay={1.55} steps={10} />
         <SeasonCard event={event} top={580} delay={2.35} withName />
         <FxButton label="アリーナへ" action="arena" style={{ bottom: wide ? 56 : 36, ...an('fxUp', 0.5, 2.6) }} />
       </Col>
@@ -297,7 +313,7 @@ export function FxChampion({ event, subjectName }: SceneProps) {
         </div>
         <Flash left={105} top={160} size={180} delay={1.15} />
         <img src={img('icon_crown')} alt="" className="fx-img" style={{ left: 110, top: 178, width: 170, ...an('fxDrop', 0.95, 0.5, DROP_EASE) }} />
-        <img src={img('text_champion')} alt="CHAMPION" className="fx-img" style={{ left: 40, top: 306, width: 310, ...an('fxReveal', 0.8, 1.3, 'steps(12)') }} />
+        <Reveal src={img('text_champion')} alt="CHAMPION" style={{ left: 40, top: 306, width: 310 }} dur={0.8} delay={1.3} steps={12} />
         <WhoRow event={event} subjectName={subjectName} top={396} wide={wide} extend={100} nickSize={22} delay={1.95} />
         {event.score != null && (
           <div className="fx-row" style={{ top: 446, alignItems: 'baseline', gap: 8, ...an('fxPop', 0.6, 2.2) }}>
@@ -335,7 +351,7 @@ export function FxGrandChampion({ event, subjectName }: SceneProps) {
       </div>
       <Flash left={105} top={110} size={180} delay={1.15} />
       <img src={img('icon_crown')} alt="" className="fx-img" style={{ left: 118, top: 124, width: 154, ...an('fxDrop', 0.95, 0.5, DROP_EASE) }} />
-      <img src={img('text_champion')} alt="CHAMPION" className="fx-img" style={{ left: 45, top: 232, width: 300, ...an('fxReveal', 0.8, 1.3, 'steps(12)') }} />
+      <Reveal src={img('text_champion')} alt="CHAMPION" style={{ left: 45, top: 232, width: 300 }} dur={0.8} delay={1.3} steps={12} />
       <WhoRow event={event} subjectName={subjectName} top={308} wide={wide} extend={60} nickSize={20} delay={1.95} />
       {event.score != null && (
         <div
@@ -436,12 +452,7 @@ export function FxNewSeason({ event }: SceneProps) {
           >
             {n >= 1 ? n : ''}
           </div>
-          <img
-            src={img('text_start')}
-            alt="START"
-            className="fx-img"
-            style={{ left: wide ? 70 : 85, top: 430, width: wide ? 250 : 220, ...an('fxReveal', 0.6, 1.75, 'steps(8)') }}
-          />
+          <Reveal src={img('text_start')} alt="START" style={{ left: wide ? 70 : 85, top: 430, width: wide ? 250 : 220 }} dur={0.6} delay={1.75} steps={8} />
           <SeasonCard event={event} top={wide ? 556 : 560} delay={2.35} withName={false} />
           <FxButton label="アリーナへ" action="arena" style={{ bottom: wide ? 56 : 36, ...an('fxUp', 0.5, 2.6) }} />
         </Col>

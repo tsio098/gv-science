@@ -13,7 +13,44 @@ export const img = (name: string) => `${BRAND}${name}.svg`;
  */
 export const an = (name: string, dur: number, delay: number, ease = 'ease'): CSSProperties => ({
   animation: `${name} ${dur}s ${ease} ${delay}s 1 backwards`,
+  // 動く要素は最初から合成レイヤーに載せる（発光フィルタ入りの SVG を毎フレーム描き直さない。2026-10-17 カクつき対策）
+  willChange: 'transform, opacity',
 });
+
+/** 演出で使う画像。ツリーを開いてイベントが来た時点で読み込み・デコードしておく（演出の途中で初めて描くとカクつく）*/
+const FX_IMAGES = [
+  'icon_abyss', 'icon_crown', 'icon_crown_mono', 'text_abyss-open', 'text_arena-open', 'text_champion',
+  'text_premium', 'text_season', 'text_start',
+];
+let preloaded: Promise<void> | null = null;
+export function preloadFxImages(): Promise<void> {
+  if (!preloaded) {
+    const wide = window.innerWidth >= IPAD_MIN_W;
+    const names = [...FX_IMAGES, wide ? 'fx-bg_abyss_ipad' : 'login-bg_abyss'];
+    preloaded = Promise.all(
+      names.map((n) => {
+        const im = new Image();
+        im.src = img(n);
+        return (im.decode ? im.decode() : Promise.resolve()).catch(() => {});
+      })
+    ).then(() => {});
+  }
+  return preloaded;
+}
+
+/**
+ * ドット文字を左から段階的に出す（ボードの clip-path: inset の steps と同じ見た目）。
+ * clip-path のアニメーションは GPU で合成されず毎フレーム描き直しになるので、
+ * overflow: hidden の枠を左から動かし、中の画像を逆に動かして（どちらも transform）同じ見え方にする
+ */
+export function Reveal({ src, alt, style, dur, delay, steps }: { src: string; alt: string; style: CSSProperties; dur: number; delay: number; steps: number }) {
+  const ease = `steps(${steps})`;
+  return (
+    <div className="fx-abs fx-reveal" style={{ ...style, ...an('fxRevealO', dur, delay, ease) }}>
+      <img src={src} alt={alt} style={{ width: '100%', height: 'auto', display: 'block', ...an('fxRevealI', dur, delay, ease) }} />
+    </div>
+  );
+}
 export const DROP_EASE = 'cubic-bezier(0.2,0.8,0.2,1)';
 
 function useViewport() {

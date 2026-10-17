@@ -461,3 +461,17 @@
   top: 64%;
   translate: -50% 0;
 }
+/* 先生用のテスト表示（見本のチケット・記録しない）*/
+.tk-demo-note {
+  align-self: stretch;
+  border-radius: 14px;
+  border: 1.5px dashed rgba(255, 246, 221, 0.3);
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--tr-sub);
+}
+.tk-body > .tr-ar-btn2 {
+  flex: none;
+  max-width: 420px;
+}

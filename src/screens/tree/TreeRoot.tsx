@@ -37,6 +37,7 @@ import { ArenaScreen } from './ArenaScreen';
 import { ArenaResultScreen } from './ArenaResultScreen';
 import { ArenaTicketScreen } from './ArenaTicketScreen';
 import { FxScreen } from './fx/FxScreen';
+import { preloadFxImages } from './fx/fxKit';
 import { RankingScreen, type RankScope } from './RankingScreen';
 import { TreeShareModal } from './TreeShareModal';
 import { TreeSprite } from './TreeIcons';
@@ -94,6 +95,20 @@ function fxDisabled(): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * 先生用のテストのチケット（通常・プレミアム）。先生アカウントには本物が配られないので、
+ * 半券を切る操作だけ試せる見本を出す（サーバには記録しない。2026-10-17 先生の依頼）
+ */
+function demoTickets(me: TreeMe, arena: ArenaInfo | null, subject: string): ArenaTicket[] {
+  const now = Date.now();
+  const pair = arena?.pair ?? (arena ? [arena.season, arena.season] : [{ n: 1, key: '', start: now, end: now }, { n: 2, key: '', start: now, end: now }]);
+  const base = { subject, pair, grade: me.grade, nickname: me.nickname, score: 0, usedAt: null, sig: '' };
+  return [
+    { ...base, id: 'demo-normal', premium: false },
+    { ...base, id: 'demo-premium', premium: true },
+  ];
 }
 
 /** ABYSS をどれか 1 科目でも解放した端末は、以後ログイン画面を深海版にする（解除しない。2026-10-17 先生決定）*/
@@ -220,6 +235,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           fetchTreeEvents()
             .then((r) => {
               const list = r.events ?? [];
+              if (list.length) void preloadFxImages(); // 演出の画像を先にデコード（カクつき対策）
               setEvents(list);
               if (list.some((e) => e.type === 'unlock_abyss')) rememberAbyssStyle();
             })
@@ -545,7 +561,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           manifest={manifest}
           starting={starting}
           message={arenaMessage}
-          tickets={tickets.length}
+          tickets={me.grade === '先生' ? Math.max(1, tickets.length) : tickets.length}
+          ticketLabel={me.grade === '先生' && !tickets.length ? 'チケット（テスト）' : undefined}
           onTickets={() => setView({ kind: 'tickets', back: { kind: 'arena' } })}
           onStart={() => void beginArena()}
           onRanking={() => setView({ kind: 'ranking', scope: 'arena', field: null, qtype: 'tf', back: { kind: 'arena' } })}
@@ -594,7 +611,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       )}
       {view.kind === 'tickets' && (
         <ArenaTicketScreen
-          tickets={tickets}
+          tickets={me.grade === '先生' && !tickets.length ? demoTickets(me, arena, subject) : tickets}
+          demo={me.grade === '先生' && !tickets.length}
           subjectName={(s) => SUBJECT_JA[s as ScheduleSubject] ?? s}
           onUsed={(id, usedAt) => setTickets((list) => list.map((t) => (t.id === id ? { ...t, usedAt } : t)))}
           onBack={() => setView(view.back)}

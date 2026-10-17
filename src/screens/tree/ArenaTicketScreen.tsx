@@ -22,6 +22,11 @@ interface Props {
   subjectName: (subject: string) => string;
   onUsed: (id: string, usedAt: number) => void;
   onBack: () => void;
+  /**
+   * 先生用のテスト（2026-10-17 先生の依頼）: 渡したチケットは見本。半券を切ってもサーバには記録せず、
+   * 「もう一度試す」で元に戻せる（本物のチケットは先生アカウントには配られない）
+   */
+  demo?: boolean;
 }
 
 /** 幅 600px 以上は横向きのチケット（半券は右端）、それより狭いと縦向き（半券は下端）*/
@@ -38,8 +43,10 @@ function useWide() {
   return wide;
 }
 
-export function ArenaTicketScreen({ tickets, subjectName, onUsed, onBack }: Props) {
+export function ArenaTicketScreen({ tickets, subjectName, onUsed, onBack, demo = false }: Props) {
   const wide = useWide();
+  /** テストのやり直し（チケットを作り直して半券を戻す）*/
+  const [round, setRound] = useState(0);
   return (
     <div className={rootClass('tk-screen') + ' is-arena'}>
       <div className="tr-ar-head">
@@ -50,12 +57,18 @@ export function ArenaTicketScreen({ tickets, subjectName, onUsed, onBack }: Prop
         </button>
       </div>
       <div className="tk-body">
+        {demo && <div className="tk-demo-note">先生用のテスト表示です。半券を切っても記録されません。</div>}
         {tickets.map((t) => (
-          <div key={t.id} className="tk-item">
-            {tickets.length > 1 && <div className="tk-cap">{subjectName(t.subject)}</div>}
-            <Ticket ticket={t} wide={wide} onUsed={onUsed} />
+          <div key={`${t.id}:${round}`} className="tk-item">
+            {(tickets.length > 1 || demo) && <div className="tk-cap">{demo ? (t.premium ? 'プレミアム（見本）' : '通常（見本）') : subjectName(t.subject)}</div>}
+            <Ticket ticket={t} wide={wide} onUsed={onUsed} demo={demo} />
           </div>
         ))}
+        {demo && (
+          <button type="button" className="tr-ar-btn2" onClick={() => setRound((n) => n + 1)}>
+            もう一度試す
+          </button>
+        )}
       </div>
     </div>
   );
@@ -71,7 +84,7 @@ function Arrows() {
 
 type Phase = 'idle' | 'drag' | 'snap' | 'sending' | 'fly' | 'used';
 
-function Ticket({ ticket, wide, onUsed }: { ticket: ArenaTicket; wide: boolean; onUsed: (id: string, usedAt: number) => void }) {
+function Ticket({ ticket, wide, onUsed, demo }: { ticket: ArenaTicket; wide: boolean; onUsed: (id: string, usedAt: number) => void; demo: boolean }) {
   const [phase, setPhase] = useState<Phase>(ticket.usedAt ? 'used' : 'idle');
   const [dx, setDx] = useState(0);
   const [err, setErr] = useState<string | null>(null);
@@ -93,7 +106,8 @@ function Ticket({ ticket, wide, onUsed }: { ticket: ArenaTicket; wide: boolean; 
   const cut = async () => {
     setPhase('sending');
     try {
-      const r = await redeemArenaTicket(ticket.id, ticket.sig);
+      // 先生用のテストはサーバに送らない（通信の間を少しだけ再現）
+      const r = demo ? await new Promise<{ usedAt: number }>((ok) => window.setTimeout(() => ok({ usedAt: Date.now() }), 250)) : await redeemArenaTicket(ticket.id, ticket.sig);
       setPhase('fly');
       window.setTimeout(() => {
         setPhase('used');

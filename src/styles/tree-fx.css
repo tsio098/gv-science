@@ -2,7 +2,8 @@
    ANCHOR TREE — 演出（2026-10-17 先生決定・ボード F1〜F5 / F1i〜F5i）
    ABYSS 解放 / アリーナ解放 / シーズン優勝 / 総合優勝 / 新シーズン開始。
    ブリーフ §2.1「アニメーションなし」の例外はこの 5 画面だけ:
-   - CSS keyframes の transform / opacity / clip-path だけ（JS のループなし・1 回だけ・約 3 秒）
+   - CSS keyframes の transform / opacity だけ（JS のループなし・1 回だけ・約 3 秒）。clip-path は GPU で合成されずカクつくので使わない
+   - 動く要素は will-change で合成レイヤーに載せ、画像は先にデコードしておく（2026-10-17 カクつき対策）
    - 基底（animation なし）が最後の状態。keyframes の from で隠し、待ち時間は fill-mode backwards で保つ
      → WebView で animation が止まっても、.is-done（タップ・保険のタイマー）で最後の状態が見える
    - prefers-reduced-motion は最初から最後の状態
@@ -204,9 +205,21 @@
   color: #ffb3da;
 }
 
+/* 文字を段階的に出す枠（Reveal）*/
+.fx-reveal {
+  overflow: hidden;
+}
+/* 全面で動く層（回る光の筋・画面の揺れ）も合成レイヤーに */
+.fx-rays,
+.fx-shake {
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
 /* ── 最後の状態へ（タップ・保険のタイマー・動きを減らす設定）── */
 .fx-root.is-done *:not(.fx-rays) {
   animation: none !important;
+  will-change: auto !important;
 }
 @media (prefers-reduced-motion: reduce) {
   .fx-root * {
@@ -214,7 +227,7 @@
   }
 }
 
-/* ── keyframes（transform / opacity / clip-path だけ）── */
+/* ── keyframes（transform / opacity だけ）── */
 @keyframes fxFade {
   from {
     opacity: 0;
@@ -288,12 +301,21 @@
     opacity: 0;
   }
 }
-@keyframes fxReveal {
+/* ドット文字を左から出す: 枠（overflow: hidden）を左から動かし、中の画像を逆に動かす。どちらも transform（Reveal）*/
+@keyframes fxRevealO {
   from {
-    clip-path: inset(0 100% 0 0);
+    transform: translateX(-100%);
   }
   to {
-    clip-path: inset(0 0 0 0);
+    transform: translateX(0);
+  }
+}
+@keyframes fxRevealI {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
   }
 }
 @keyframes fxGlow {

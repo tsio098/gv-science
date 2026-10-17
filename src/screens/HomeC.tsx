@@ -1,8 +1,7 @@
 /**
  * Home — C 案（README 採用方針）「今日中心」レイアウト。
  *   safe-top → ロゴ + HOME crumb → 挨拶 → Today カード →
- *   クイック 4 タイル → 成績推移 → 記事フィード（横スクロール） → その他
- *   （ANCHOR TREE のバナーは挨拶のすぐ下＝ホームの先頭。2026-10-17）
+ *   クイック 4 タイル → 成績推移 → ANCHOR TREE（バナー）→ 記事フィード（横スクロール） → その他
  */
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { fetchArticles, fetchHome, fetchSchedules } from '../lib/api';
@@ -50,7 +49,7 @@ const TreeShareModal = lazy(() => importTreeShareModal().then((m) => ({ default:
 
 /**
  * ANCHOR TREE の入口（設計書 §3.5）。タップでツリー、長押しで「別のブラウザで使う」（ログインID / URL）。
- * 見た目はホーム先頭のバナー（2026-10-17・デザインボード「バナー」: 通常 / ABYSS 解放後 / アリーナ開放済みの開始日・最終日）。
+ * 見た目は成績推移の下のバナー（2026-10-17・デザインボード「バナー」: 通常 / ABYSS 解放後 / アリーナ開放済みの開始日・最終日）。
  * バナーの下の行は科目（履修科目のうちツリーがあるもの・最後に開いた科目。Phase 6）のマスター度と新着数
  * （/tree/progress?home=1。塾生登録の前・その科目の問題がまだ無いときなどで取れなければ出さない）。
  */
@@ -212,9 +211,6 @@ export function HomeC({ nav }: HomeCProps) {
       <div className="app-scroll">
         <Greeting user={user} nextClass={nextClass} />
 
-        {/* ANCHOR TREE のバナー（ホームの先頭・2026-10-17 デザインボード「バナー」）*/}
-        <AnchorTreeCard onOpen={() => nav('tree')} subjects={user.subjects ?? []} staff={user.grade === '先生'} />
-
         {/* Today カード */}
         <div
           className="c-today"
@@ -326,6 +322,9 @@ export function HomeC({ nav }: HomeCProps) {
             })()}
           </div>
         </button>
+
+        {/* ANCHOR TREE のバナー（成績推移の下。2026-10-17 先生の指示でホームの先頭から元の位置へ戻した）*/}
+        <AnchorTreeCard onOpen={() => nav('tree')} subjects={user.subjects ?? []} staff={user.grade === '先生'} />
 
         {/* 記事フィード（横スクロール） */}
         <div className="c-feed-head">

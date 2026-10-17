@@ -17,6 +17,8 @@ interface Props {
   message: string | null;
   /** 本人のボーナスチケットの枚数（0 なら導線を出さない）*/
   tickets?: number;
+  /** チケットの導線の文言（既定「チケット」。先生のテストは「チケット（テスト）」）*/
+  ticketLabel?: string;
   onStart: () => void;
   onRanking: () => void;
   onTickets?: () => void;
@@ -50,7 +52,7 @@ export function ArenaSparks() {
   );
 }
 
-export function ArenaScreen({ info, manifest, starting, message, tickets = 0, onStart, onRanking, onTickets, onBack }: Props) {
+export function ArenaScreen({ info, manifest, starting, message, tickets = 0, ticketLabel = 'チケット', onStart, onRanking, onTickets, onBack }: Props) {
   const [confirm, setConfirm] = useState(false);
   const e = info.entry;
   const staffSelf = arenaIsStaffSelf(info);
@@ -180,7 +182,7 @@ export function ArenaScreen({ info, manifest, starting, message, tickets = 0, on
         {tickets > 0 && onTickets && (
           <button type="button" className="tr-ar-btn2" onClick={onTickets}>
             <img src={CROWN_MONO} alt="" style={{ width: 18, height: 'auto', display: 'block' }} />
-            チケット
+            {ticketLabel}
           </button>
         )}
       </div>
