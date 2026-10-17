@@ -760,6 +760,85 @@ html.tr-noswipe #root {
 .tr-pad > .tr-cta {
   height: 50px;
 }
+/* 出題画面のスクショ（2026-10-17・PlayShot.tsx）: 問題エリアの右下＝解答パッドのすぐ上に浮かせる */
+.tr-play .tr-pad {
+  position: relative;
+}
+/* .tr-pad > *（幅 100%）より強く */
+.tr-pad > .tr-shot {
+  position: absolute;
+  right: 12px;
+  top: -58px;
+  z-index: 5;
+  width: 46px;
+  max-width: none;
+  height: 46px;
+  margin: 0;
+  flex: none;
+  border-radius: 999px;
+  border: 1.5px solid rgba(var(--tr-accent-rgb), 0.55);
+  background: var(--tr-card);
+  color: var(--tr-accent);
+  box-shadow: var(--tr-glow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s ease;
+}
+.tr-shot:active:not(:disabled) {
+  transform: scale(0.92);
+}
+.tr-shot:disabled {
+  opacity: 0.7;
+}
+.tr-shot-spin {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid rgba(var(--tr-accent-rgb), 0.3);
+  border-top-color: var(--tr-accent);
+  animation: tr-shot-spin 0.8s linear infinite;
+}
+@keyframes tr-shot-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.tr-pad > .tr-shot.is-shooting {
+  opacity: 0;
+  transition: none;
+}
+.tr-shot-overlay {
+  padding: 16px;
+}
+.tr-shot-card {
+  width: min(100%, 480px);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 22px;
+  background: var(--tr-card);
+  border: 1.5px solid var(--tr-line);
+  box-shadow: var(--tr-glow);
+}
+.tr-shot-img {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  object-fit: contain;
+  border-radius: 12px;
+  border: 1px solid var(--tr-line);
+  -webkit-touch-callout: default;
+  user-select: auto;
+}
+.tr-shot-hint {
+  font-size: 12px;
+  color: var(--tr-sub);
+  text-align: center;
+}
 .tr-pad-head {
   display: flex;
   align-items: center;
@@ -1438,6 +1517,17 @@ button.tr-stat {
     margin-top: auto;
     height: 58px;
     font-size: 17px;
+  }
+  /* スクショのボタン: 横長ではパッドが右の縦長パネルになるので、決定ボタンのすぐ上の右端に置く */
+  .tr-play > .tr-pad > .tr-shot {
+    position: static;
+    order: 1;
+    align-self: flex-end;
+    margin: auto 0 0;
+  }
+  .tr-play > .tr-pad > .tr-shot ~ .tr-cta {
+    order: 2;
+    margin-top: 0;
   }
   .tr-play > .tr-pad .tr-ch {
     height: 64px;

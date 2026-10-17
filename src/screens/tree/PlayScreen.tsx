@@ -13,6 +13,7 @@
  *   時間ボーナスは無いので経過時間だけ表示する
  * - チャンピオンアリーナ（§5.7）: 全員共通の 10 問。タイムボーナスは最大 75（基礎 25）。提出は /tree/arena/submit。
  *   開始で今シーズンの 1 回を使うので、答えた問題・選んだ答え・時間を端末（localStorage）に残し、閉じても続きから再開できる
+ * - 右下（パッドのすぐ上）にスクショのボタン（2026-10-17 先生の指示・PlayShot）。画面をそのまま画像にして長押し保存・共有
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AbyssPart, ArenaResult, FieldGroup, PlayQuestion, SubmitResult, TreeSession } from '../../lib/treeApi';
@@ -20,6 +21,7 @@ import { QTYPE_LABEL, TreeApiError, circled, submitArena, submitTreeSession, tre
 import { Ico } from './TreeIcons';
 import { ZoomImage } from './ZoomImage';
 import { PlayZoomScreen, type ZoomTab } from './PlayZoomScreen';
+import { PlayShot } from './PlayShot';
 import { AbyssAnswer, AbyssKeypad, emptyRaw, isFilled, toValue, type RawVal } from './AbyssAnswer';
 import { ARENA_GOLD, CROWN_MONO, T, alpha, fmtTime, groupColor, rootClass } from './treeTheme';
 
@@ -102,6 +104,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
   const unitStart = useRef<number | null>(null);
   const times = useRef<Record<string, number>>(saved?.times ?? {});
   const areaRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   const unit = units[idx]!;
   const qs = unit.qids.map((id) => session.questions[id]!).filter(Boolean);
@@ -358,7 +361,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
   const isLast = idx + 1 >= units.length;
 
   return (
-    <div className={rootClass(isArena ? 'tr-play is-arena' : 'tr-play')}>
+    <div className={rootClass(isArena ? 'tr-play is-arena' : 'tr-play')} ref={rootRef}>
       <div className="tr-bar">
         <button type="button" className="tr-iconbtn" aria-label="中断してツリーへ" onClick={() => setConfirmExit(true)}>
           <Ico id="i-close" size={16} />
@@ -494,6 +497,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
       </div>
 
       <div className="tr-pad">
+        <PlayShot target={rootRef} />
         {isBack ? (
           (() => {
             const fq = numFocus ? session.questions[numFocus.qid] : null;

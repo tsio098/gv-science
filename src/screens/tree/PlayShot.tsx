@@ -1,0 +1,180 @@
+/**
+ * 出題画面のスクショ（2026-10-17 先生の指示。出題画面だけ）。
+ * 右下（解答パッドのすぐ上）のボタンで、いま見えている出題画面をそのまま画像にして全画面で見せる。
+ * LINE 内ブラウザは画像のダウンロードが効かないことが多いので、画像の長押しで保存 + 対応端末は「共有」で写真・LINE へ送る
+ * （共有シートが無い端末は「保存」＝ダウンロード）。撮っている間もタイマーは止めない。
+ * 画像化のライブラリ（modern-screenshot）は押したときだけ読み込む。問題画像は blob URL なのでそのまま写る。
+ * ボタンは撮る瞬間だけ透明にする（消すとパッドの並びが変わる）。プレビューは出題画面のいちばん外側に portal で出す（パッドの中だと閉じ込められる）。
+ * スクロールしている問題はスクロール位置のまま写す（restoreScrollPosition）。アイコンは sprite に頼らずインラインで描く
+ */
+import { useState, type ReactNode, type RefObject } from "react";
+import { createPortal } from "react-dom";
+
+/** このクラスの要素はスクショに写さない */
+export const SHOT_SKIP = "tr-noshot";
+
+/** 背景が透明なら親をたどって最初の色（無ければ白）*/
+function bgOf(el: HTMLElement | null): string {
+  for (let e = el; e; e = e.parentElement) {
+    const c = getComputedStyle(e).backgroundColor;
+    if (c && c !== "transparent" && !/^rgba\(.*,\s*0\)$/.test(c)) return c;
+  }
+  return "#ffffff";
+}
+
+const stamp = () => {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+};
+
+const CameraIcon = () => (
+  <svg width={20} height={20} viewBox="0 0 24 24" aria-hidden="true">
+    <g
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 8h3l1.6-2.4A1.4 1.4 0 0 1 9.8 5h4.4a1.4 1.4 0 0 1 1.2.6L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" />
+      <circle cx="12" cy="13" r="3.6" />
+    </g>
+  </svg>
+);
+
+export function PlayShot({ target }: { target: RefObject<HTMLElement> }) {
+  const [busy, setBusy] = useState(false);
+  const [shot, setShot] = useState<{
+    url: string;
+    file: File;
+    canShare: boolean;
+  } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const take = async () => {
+    const el = target.current;
+    if (!el || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const { domToPng } = await import("modern-screenshot");
+      const url = await domToPng(el, {
+        scale: Math.min(2, window.devicePixelRatio || 1),
+        backgroundColor: bgOf(el),
+        filter: (n) =>
+          !(n instanceof Element && n.classList.contains(SHOT_SKIP)),
+        features: { restoreScrollPosition: true },
+      });
+      const file = new File(
+        [await (await fetch(url)).blob()],
+        `anchor-tree-${stamp()}.png`,
+        { type: "image/png" },
+      );
+      let canShare = false;
+      try {
+        canShare =
+          typeof navigator.share === "function" &&
+          !!navigator.canShare?.({ files: [file] });
+      } catch {
+        canShare = false;
+      }
+      setShot({ url, file, canShare });
+    } catch {
+      setError("スクショを作れませんでした。もう一度お試しください。");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const send = async () => {
+    if (!shot) return;
+    if (shot.canShare) {
+      try {
+        await navigator.share({ files: [shot.file] });
+      } catch {
+        /* キャンセル・失敗は何もしない（長押しで保存できる）*/
+      }
+      return;
+    }
+    const a = document.createElement("a");
+    a.href = shot.url;
+    a.download = shot.file.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const layer = (node: ReactNode) =>
+    target.current ? createPortal(node, target.current) : node;
+
+  return (
+    <>
+      <button
+        type="button"
+        className={`tr-shot${busy ? " is-shooting" : ""}`}
+        aria-label="この画面のスクショを撮る"
+        disabled={busy}
+        onClick={() => void take()}
+      >
+        {busy ? (
+          <span className="tr-shot-spin" aria-hidden="true" />
+        ) : (
+          <CameraIcon />
+        )}
+      </button>
+
+      {error &&
+        layer(
+          <div className={`tr-overlay ${SHOT_SKIP}`} role="alertdialog">
+            <div className="tr-card">
+              <div>{error}</div>
+              <button
+                type="button"
+                className="tr-ghost"
+                onClick={() => setError(null)}
+              >
+                閉じる
+              </button>
+            </div>
+          </div>,
+        )}
+
+      {shot &&
+        layer(
+          <div
+            className={`tr-overlay tr-shot-overlay ${SHOT_SKIP}`}
+            role="dialog"
+            aria-label="スクショ"
+          >
+            <div className="tr-shot-card">
+              <img
+                src={shot.url}
+                alt="この画面のスクショ"
+                className="tr-shot-img"
+              />
+              <div className="tr-shot-hint">画像を長押しすると保存できます</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  type="button"
+                  className="tr-ghost"
+                  style={{ flex: 1 }}
+                  onClick={() => setShot(null)}
+                >
+                  閉じる
+                </button>
+                <button
+                  type="button"
+                  className="tr-cta"
+                  style={{ flex: 1.4 }}
+                  onClick={() => void send()}
+                >
+                  {shot.canShare ? "共有" : "保存"}
+                </button>
+              </div>
+            </div>
+          </div>,
+        )}
+    </>
+  );
+}
