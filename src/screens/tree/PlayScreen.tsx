@@ -63,6 +63,19 @@ type ImgState = Record<string, string | 'error'>;
 /** ROUTE のマーク欄（ABYSS の設問は空）*/
 const boxesOf = (q: PlayQuestion) => (q.answer.kind === 'choice' ? q.answer.boxes : []);
 const boxLabel = (q: PlayQuestion) => boxesOf(q).map((b) => b.n).join('・');
+/**
+ * 「二つ選べ（順不同）」のように、順不同で選択肢がそろった複数欄は 1 行から欄の数だけ選ぶ（2026-10-17 先生の報告:
+ * 欄ごとの行だと 1 行目で 2 つ目を押すと 1 つ目が外れ「1 つしか選べない」ように見える）。選んだ番号は小さい順に欄へ入れる
+ */
+const multiPick = (q: PlayQuestion) => {
+  const bs = boxesOf(q);
+  return (
+    q.answer.kind === 'choice' &&
+    q.answer.group === 'unordered' &&
+    bs.length > 1 &&
+    bs.every((b) => (b.choices || 10) === (bs[0]!.choices || 10) && (b.min ?? 1) === (bs[0]!.min ?? 1))
+  );
+};
 const partsOf = (q: PlayQuestion): AbyssPart[] => (q.answer.kind === 'parts' ? q.answer.parts : []);
 
 export function PlayScreen({ session, subjectName, fieldName, group, onExit, onDone, onArenaDone }: Props) {
@@ -152,6 +165,18 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
       cur[i] = v;
       return { ...s, [qid]: cur };
     });
+
+  /** 1 行から size 個選ぶ（選び済みを押すと外す。size 個選んだ後は一番古いものと入れ替え）*/
+  const pickMulti = (qid: string, n: number, size: number) => {
+    setPicks((s) => {
+      const v = String(n);
+      let cur = (s[qid] ?? []).filter(Boolean);
+      if (cur.includes(v)) cur = cur.filter((x) => x !== v);
+      else cur = [...(cur.length >= size ? cur.slice(1) : cur), v];
+      const sorted = [...cur].sort((a, b) => Number(a) - Number(b));
+      return { ...s, [qid]: [...sorted, ...Array<string>(size - sorted.length).fill('')] };
+    });
+  };
 
   const pick = (qid: string, k: number, n: number, boxes: number) => {
     setPicks((s) => {
@@ -253,8 +278,37 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
     if (q.img.body) zoomTabs.push({ label: isSet ? `小問 ${i + 1}` : '設問', path: q.img.body });
   });
 
-  const renderChoices = (q: PlayQuestion, small: boolean) =>
-    boxesOf(q).map((b, k) => (
+  const renderChoices = (q: PlayQuestion, small: boolean) => {
+    if (multiPick(q)) {
+      const bs = boxesOf(q);
+      const b0 = bs[0]!;
+      const mine = picks[q.id] ?? [];
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className="tr-boxlabel">
+            解答番号 <span className="tr-num">{bs.map((b) => b.n).join('・')}</span>（{bs.length} つ選ぶ・順不同）
+          </div>
+          <div className="tr-choices">
+            {Array.from({ length: b0.choices || 10 }, (_, i) => i + (b0.min ?? 1)).map((n) => {
+              const on = mine.includes(String(n));
+              return (
+                <button
+                  key={n}
+                  type="button"
+                  className={`tr-ch${on ? ' is-sel' : ''}${small ? ' is-sm' : ''}`}
+                  aria-label={`解答番号 ${bs.map((b) => b.n).join('・')} 選択肢 ${n}`}
+                  aria-pressed={on}
+                  onClick={() => pickMulti(q.id, n, bs.length)}
+                >
+                  {n}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+    return boxesOf(q).map((b, k) => (
       <div key={b.n} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {boxesOf(q).length > 1 && (
           <div className="tr-boxlabel">
@@ -281,6 +335,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
         </div>
       </div>
     ));
+  };
 
   const given = (list: string[]) =>
     list.length > 0 && (
