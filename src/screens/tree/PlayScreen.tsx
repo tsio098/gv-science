@@ -61,6 +61,8 @@ function saveArena(sessionId: string, v: ArenaSaved | null) {
 type ImgState = Record<string, string | 'error'>;
 
 /** ROUTE のマーク欄（ABYSS の設問は空）*/
+/** タイムボーナスが減り始めるまでの猶予（Proxy の BONUS_GRACE_SEC）*/
+const BONUS_GRACE_MS = 25_000;
 const boxesOf = (q: PlayQuestion) => (q.answer.kind === 'choice' ? q.answer.boxes : []);
 const boxLabel = (q: PlayQuestion) => boxesOf(q).map((b) => b.n).join('・');
 /**
@@ -151,7 +153,9 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
 
   const elapsed = unitStart.current === null ? 0 : now - unitStart.current;
   const limitMs = unit.limitSec * 1000;
-  const bonus = Math.round(bonusMax * Math.max(0, (limitMs - elapsed) / limitMs));
+  // 開始から 25 秒は満点、その後は制限時間まで直線で 0 へ（Proxy の bonusSpeed と同じ・2026-10-17 先生決定）
+  const graceMs = limitMs > BONUS_GRACE_MS ? BONUS_GRACE_MS : 0;
+  const bonus = Math.round(bonusMax * Math.min(1, Math.max(0, (limitMs - elapsed) / (limitMs - graceMs))));
   const doneQ = units.slice(0, idx).reduce((s, u) => s + u.qids.length, 0);
   const filledQ = (q: PlayQuestion) =>
     q.answer.kind === 'parts'
