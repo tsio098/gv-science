@@ -319,6 +319,79 @@ export const fetchTreeRanking = (subject: string, field = '*', qtype: QType | '*
 export const reportTreeQuestion = (sessionId: string, qid: string) =>
   post<{ ok: boolean; already: boolean }>('/tree/report', { sessionId, qid });
 
+/* ── チャンピオンアリーナ（設計書 §5.7・2026-10-17）────────────
+ * ROUTE の全分野それぞれのマスター度 70% 以上で開放。2 週間 1 シーズン・全員共通の 10 問・1 人 1 回。
+ * スコアは 基礎 25 : タイムボーナス 75（不正解は 0）。自己ベスト・通常のランキングとは別。 */
+
+export interface ArenaSeason {
+  /** 番号（起点 2026-10-19 = 1。それより前は 0 以下）*/
+  n: number;
+  /** 開始日 'YYYY-MM-DD'（JST）*/
+  key: string;
+  start: number;
+  end: number;
+}
+
+export interface ArenaInfo {
+  subject: string;
+  season: ArenaSeason;
+  /** 開放済み（条件を満たした / 今シーズンに挑戦を始めた / 先生）*/
+  open: boolean;
+  /** 開放条件: 全分野それぞれマスター度 need% 以上。fields = まだ届いていない分野 */
+  cond: { need: number; done: number; of: number; fields: { id: string; mastery: number }[] };
+  entry: null | {
+    status: 'started' | 'done';
+    startedAt: number;
+    score: number | null;
+    correct: number | null;
+    total: number | null;
+    elapsedMs: number | null;
+    rank: RankInfo;
+  };
+  /** 今シーズンの掲載人数 */
+  count: number;
+  /** 前シーズンのチャンピオン（1 位。同点なら複数）*/
+  champion: null | { season: ArenaSeason; list: { grade: string; nickname: string; score: number }[] };
+  staff: boolean;
+}
+
+export interface ArenaSession extends TreeSession {
+  arena: true;
+  /** 途中で閉じた挑戦の再開（開始時刻はそのまま＝時間は進み続ける）*/
+  resumed: boolean;
+  season: ArenaSeason;
+}
+
+export interface ArenaResult {
+  sessionId: string;
+  arena: true;
+  nickname: string | null;
+  results: { qid: string; type: QType; correct: boolean; value: PartValue[]; timeMs: number; bonus: number; gain: number }[];
+  summary: { score: number; basePoints: number; bonusPoints: number; correct: number; total: number; elapsedMs: number; max: number };
+  rank: RankInfo;
+  season: ArenaSeason;
+}
+
+export interface ArenaRankRow extends RankRow {
+  correct: number;
+  elapsedMs: number;
+}
+
+export interface ArenaRanking {
+  subject: string;
+  season: ArenaSeason;
+  count: number;
+  top: ArenaRankRow[];
+  me: { rank: number | null; score: number; played: boolean; grade: string; nickname: string };
+}
+
+export const fetchArena = (subject: string) => get<ArenaInfo>(`/tree/arena?subject=${encodeURIComponent(subject)}`);
+export const startArena = (subject: string) => post<ArenaSession>('/tree/arena/start', { subject });
+export const submitArena = (sessionId: string, answers: { qid: string; value: PartValue[]; timeMs: number }[]) =>
+  post<ArenaResult>('/tree/arena/submit', { sessionId, answers });
+export const fetchArenaRanking = (subject: string, season: 'current' | 'prev' = 'current') =>
+  get<ArenaRanking>(`/tree/arena/ranking?subject=${encodeURIComponent(subject)}${season === 'prev' ? '&season=prev' : ''}`);
+
 /* ── 先生用 進捗一覧（2026-10-17）──────────────────────────
  * Proxy は生徒を key（userId のハッシュ）で返し、氏名は持たない。
  * 本名は先生のブラウザが GAS（action=treeNames）から { key: 氏名 } を直接もらう（Proxy を通さない）。 */

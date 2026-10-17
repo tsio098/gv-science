@@ -36,7 +36,7 @@ const REPORT_LABEL: Record<ReportState, string> = {
   error: '送れませんでした（タップでもう一度）',
 };
 
-function WrongItem({
+export function WrongItem({
   label,
   mine,
   body,
@@ -97,7 +97,7 @@ function WrongItem({
 }
 
 /** 自分の答えの表示: ROUTE は ①・③、ABYSS は欄ごと（「共有結合 / イ / 4.00e-2」）*/
-function mineLabel(q: PlayQuestion | undefined, value: PartValue[]) {
+export function mineLabel(q: PlayQuestion | undefined, value: PartValue[]) {
   if (!value.length || value.every((v) => (Array.isArray(v) ? !v.length : !String(v).trim()))) return '未回答';
   if (q && q.answer.kind === 'parts') {
     return value

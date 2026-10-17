@@ -1428,7 +1428,9 @@ button.tr-stat {
   border-radius: 999px;
   border: 1px solid var(--tr-line-soft);
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* タブの数（ランキングは ROUTE で 4 = アリーナ付き）だけ等分 */
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   gap: 2px;
   flex: none;
 }
@@ -2529,4 +2531,133 @@ button.tr-stat {
   .st-fcell {
     align-items: flex-start;
   }
+}
+
+/* ── チャンピオンアリーナ（設計書 §5.7・2026-10-17）──────────
+ * ツリーの一番下の門。未開放 = 消灯（文字色の破線枠）/ 開放 = 金のネオン（発光は box-shadow だけ・アニメーションなし）*/
+.tr-arena-gate {
+  position: absolute;
+  width: 260px;
+  min-height: 112px;
+  padding: 12px 14px 12px;
+  border-radius: 18px;
+  border: 1.5px dashed rgba(var(--tr-text-rgb), 0.28);
+  background: rgba(var(--tr-ground-rgb), 0.55);
+  color: rgba(var(--tr-text-rgb), 0.55);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  text-align: center;
+  z-index: 3;
+  transition: transform 0.12s ease;
+}
+.tr-arena-gate:active {
+  transform: scale(0.97);
+}
+.tr-arena-gate.is-open {
+  border: 1.5px solid #ffd84a;
+  background: var(--tr-card);
+  color: var(--tr-text);
+  box-shadow: 5px 5px 0 0 #a88a14, 0 0 18px rgba(255, 216, 74, 0.55), 0 0 40px rgba(255, 216, 74, 0.22);
+}
+.tr-arena-ic {
+  display: flex;
+  color: rgba(var(--tr-text-rgb), 0.45);
+}
+.tr-arena-gate.is-open .tr-arena-ic {
+  color: #ffd84a;
+}
+.tr-arena-name {
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+.tr-arena-gate.is-open .tr-arena-name {
+  color: #ffd84a;
+  text-shadow: 0 0 10px rgba(255, 216, 74, 0.6);
+}
+.tr-arena-meta {
+  font-size: 11px;
+  color: var(--tr-sub);
+}
+.tr-arena-status {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.tr-arena-champ {
+  margin-top: 2px;
+  font-size: 10px;
+  color: #ffd84a;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.tr-arena-tile {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: #ffd84a;
+  color: #2a2205;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 3px 3px 0 0 #a88a14, 0 0 12px rgba(255, 216, 74, 0.5);
+  flex: none;
+}
+.tr-arena-rules {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--tr-sub);
+}
+.tr-arena-rules b {
+  color: var(--tr-text);
+}
+.tr-cta.tr-arena-cta:not(:disabled) {
+  background: #ffd84a;
+  color: #2a2205;
+  box-shadow: 0 0 12px rgba(255, 216, 74, 0.55);
+}
+.tr-arena-qlist {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+.tr-arena-q {
+  border-radius: 10px;
+  padding: 6px 4px;
+  border: 1px solid rgba(255, 179, 138, 0.45);
+  color: var(--tr-review);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  font-size: 10px;
+}
+.tr-arena-q > .tr-num:first-child {
+  font-size: 10px;
+  opacity: 0.7;
+}
+.tr-arena-q b {
+  font-size: 13px;
+}
+.tr-arena-q.is-ok {
+  border-color: rgba(var(--tr-accent-rgb), 0.5);
+  color: var(--tr-accent);
+}
+.tr-arena-grade {
+  height: 48px;
+  padding: 0 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(var(--tr-text-rgb), 0.25);
+  color: var(--tr-accent);
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  flex: none;
 }

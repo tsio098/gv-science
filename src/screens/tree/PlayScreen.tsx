@@ -11,15 +11,17 @@
  * - 画像はその場でピンチ拡大、タップで全画面ビューア（§4.6）。全画面中もタイマーは止めない
  * - ABYSS（二次問題・§5.6）: 設問ごとに画像の下へ解答欄（AbyssAnswer）を置き、数値はパッドの位置にキーパッドを出す。
  *   時間ボーナスは無いので経過時間だけ表示する
+ * - チャンピオンアリーナ（§5.7）: 全員共通の 10 問。タイムボーナスは最大 75（基礎 25）。提出は /tree/arena/submit。
+ *   開始で今シーズンの 1 回を使うので、答えた問題・選んだ答え・時間を端末（localStorage）に残し、閉じても続きから再開できる
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { AbyssPart, FieldGroup, PlayQuestion, SubmitResult, TreeSession } from '../../lib/treeApi';
-import { QTYPE_LABEL, TreeApiError, circled, submitTreeSession, treeImage } from '../../lib/treeApi';
+import type { AbyssPart, ArenaResult, FieldGroup, PlayQuestion, SubmitResult, TreeSession } from '../../lib/treeApi';
+import { QTYPE_LABEL, TreeApiError, circled, submitArena, submitTreeSession, treeImage } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
 import { ZoomImage } from './ZoomImage';
 import { PlayZoomScreen, type ZoomTab } from './PlayZoomScreen';
 import { AbyssAnswer, AbyssKeypad, emptyRaw, isFilled, toValue, type RawVal } from './AbyssAnswer';
-import { T, alpha, fmtTime, groupColor, rootClass } from './treeTheme';
+import { ARENA_GOLD, T, alpha, fmtTime, groupColor, rootClass } from './treeTheme';
 
 interface Props {
   session: TreeSession;
@@ -28,6 +30,32 @@ interface Props {
   group: FieldGroup;
   onExit: () => void;
   onDone: (result: SubmitResult) => void;
+  /** チャンピオンアリーナの提出結果（session.arena のとき）*/
+  onArenaDone?: (result: ArenaResult) => void;
+}
+
+/** アリーナの途中経過（端末に残す）*/
+interface ArenaSaved {
+  idx: number;
+  picks: Record<string, string[]>;
+  times: Record<string, number>;
+}
+const arenaKey = (sessionId: string) => `tr-arena:${sessionId}`;
+function loadArena(sessionId: string): ArenaSaved | null {
+  try {
+    const v = JSON.parse(localStorage.getItem(arenaKey(sessionId)) || 'null');
+    return v && typeof v.idx === 'number' && v.picks && v.times ? v : null;
+  } catch {
+    return null;
+  }
+}
+function saveArena(sessionId: string, v: ArenaSaved | null) {
+  try {
+    if (v) localStorage.setItem(arenaKey(sessionId), JSON.stringify(v));
+    else localStorage.removeItem(arenaKey(sessionId));
+  } catch {
+    /* 保存できない端末でも挑戦はできる（再開は最初の問題から）*/
+  }
 }
 
 type ImgState = Record<string, string | 'error'>;
@@ -37,12 +65,15 @@ const boxesOf = (q: PlayQuestion) => (q.answer.kind === 'choice' ? q.answer.boxe
 const boxLabel = (q: PlayQuestion) => boxesOf(q).map((b) => b.n).join('・');
 const partsOf = (q: PlayQuestion): AbyssPart[] => (q.answer.kind === 'parts' ? q.answer.parts : []);
 
-export function PlayScreen({ session, subjectName, fieldName, group, onExit, onDone }: Props) {
-  const col = groupColor(group);
+export function PlayScreen({ session, subjectName, fieldName, group, onExit, onDone, onArenaDone }: Props) {
+  const isArena = (session as { arena?: boolean }).arena === true;
+  const col = isArena ? ARENA_GOLD : groupColor(group);
+  const bonusMax = isArena ? 75 : 25;
   const units = session.units;
   const totalQ = units.reduce((s, u) => s + u.qids.length, 0);
-  const [idx, setIdx] = useState(0);
-  const [picks, setPicks] = useState<Record<string, string[]>>({});
+  const [saved] = useState(() => (isArena ? loadArena(session.sessionId) : null));
+  const [idx, setIdx] = useState(() => (saved ? Math.min(Math.max(0, saved.idx), units.length - 1) : 0));
+  const [picks, setPicks] = useState<Record<string, string[]>>(() => saved?.picks ?? {});
   /** ABYSS: 設問ごとの欄の入力と、キーパッドで入力中の数値欄 */
   const isBack = session.stage === 'back';
   const [raws, setRaws] = useState<Record<string, RawVal[]>>({});
@@ -54,7 +85,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [now, setNow] = useState(() => performance.now());
   const unitStart = useRef<number | null>(null);
-  const times = useRef<Record<string, number>>({});
+  const times = useRef<Record<string, number>>(saved?.times ?? {});
   const areaRef = useRef<HTMLDivElement>(null);
 
   const unit = units[idx]!;
@@ -107,7 +138,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
 
   const elapsed = unitStart.current === null ? 0 : now - unitStart.current;
   const limitMs = unit.limitSec * 1000;
-  const bonus = Math.round(25 * Math.max(0, (limitMs - elapsed) / limitMs));
+  const bonus = Math.round(bonusMax * Math.max(0, (limitMs - elapsed) / limitMs));
   const doneQ = units.slice(0, idx).reduce((s, u) => s + u.qids.length, 0);
   const filledQ = (q: PlayQuestion) =>
     q.answer.kind === 'parts'
@@ -144,10 +175,20 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
           return { qid, value, timeMs: Math.round(times.current[qid] ?? 0) };
         })
       );
-      onDone(await submitTreeSession(session.sessionId, answers));
+      if (isArena) {
+        const r = await submitArena(session.sessionId, answers);
+        saveArena(session.sessionId, null);
+        onArenaDone?.(r);
+      } else {
+        onDone(await submitTreeSession(session.sessionId, answers));
+      }
     } catch (e) {
       if (e instanceof TreeApiError && e.code === 'ALREADY_SUBMITTED') {
+        if (isArena) saveArena(session.sessionId, null);
         setSubmitError('この挑戦はすでに提出されています。ツリーに戻って結果を確認してください。');
+      } else if (e instanceof TreeApiError && e.code === 'ARENA_CLOSED') {
+        if (isArena) saveArena(session.sessionId, null);
+        setSubmitError('このシーズンは終了しました。この挑戦は提出できません。');
       } else {
         setSubmitError('提出できませんでした。通信状況を確かめて、もう一度送ってください。');
       }
@@ -160,6 +201,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
     if (!allPicked || submitting) return;
     const spent = unitStart.current === null ? 0 : performance.now() - unitStart.current;
     for (const id of unit.qids) times.current[id] = spent / unit.qids.length;
+    if (isArena) saveArena(session.sessionId, { idx: Math.min(idx + 1, units.length - 1), picks, times: times.current });
     if (idx + 1 >= units.length) {
       void submit();
       return;
@@ -171,7 +213,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
     areaRef.current?.scrollTo({ top: 0 });
   };
 
-  const crumb = useMemo(() => `${subjectName} › ${fieldName} › `, [subjectName, fieldName]);
+  const crumb = useMemo(() => (isArena ? 'CHAMPION ARENA › ' : `${subjectName} › ${fieldName} › `), [isArena, subjectName, fieldName]);
 
   const renderImg = (path: string | null, alt: string, btn = true) => {
     if (!path) return null;
@@ -262,7 +304,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
           <div className="tr-crumb">
             {isBack && <span className="ab-pill">ABYSS</span>}
             {crumb}
-            <span style={{ color: col, fontWeight: 700 }}>{QTYPE_LABEL[session.qtype]}</span>
+            <span style={{ color: col, fontWeight: 700 }}>{QTYPE_LABEL[isArena && first ? first.type : session.qtype]}</span>
           </div>
           <div className="tr-progress">
             <div>
@@ -458,7 +500,11 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
         <div className="tr-overlay" role="dialog" aria-label="中断の確認">
           <div className="tr-card">
             <div style={{ fontWeight: 700, fontSize: 16 }}>中断しますか？</div>
-            <div style={{ color: T.sub }}>この挑戦の解答は記録されません。</div>
+            <div style={{ color: T.sub }}>
+              {isArena
+                ? '今シーズンの挑戦はもう始まっています（やり直しはできません）。中断しても時間は進み続けます。ツリーの一番下の門から、続きの問題を再開できます。'
+                : 'この挑戦の解答は記録されません。'}
+            </div>
             <button type="button" className="tr-cta" onClick={() => setConfirmExit(false)}>
               続ける
             </button>
@@ -473,7 +519,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
         <div className="tr-overlay" role="alertdialog">
           <div className="tr-card">
             <div>{submitError}</div>
-            {!/すでに提出/.test(submitError) && (
+            {!/すでに提出|終了しました/.test(submitError) && (
               <button type="button" className="tr-cta" disabled={submitting} onClick={() => void submit()}>
                 {submitting ? '送信中…' : 'もう一度送る'}
               </button>

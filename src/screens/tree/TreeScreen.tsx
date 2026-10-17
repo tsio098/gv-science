@@ -10,9 +10,9 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { usePanZoom } from './usePanZoom';
-import type { QType, TreeManifest, TreeProgress, TreeStage } from '../../lib/treeApi';
+import type { ArenaInfo, QType, TreeManifest, TreeProgress, TreeStage } from '../../lib/treeApi';
 import { TREE_SUBJECT_ICON, TREE_SUBJECT_NAME, type TreeSubject } from '../../lib/treeSubject';
-import { QTYPES } from '../../lib/treeApi';
+import { QTYPES, gradeLabel } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
 import { NodeSheet } from './NodeSheet';
 import { TreeSummaryPanel } from './TreeSummaryPanel';
@@ -26,6 +26,8 @@ import {
   QTYPE_ICON,
   T,
   alpha,
+  arenaLeft,
+  arenaSeasonName,
   groupColor,
   groupSide,
   rootClass,
@@ -54,6 +56,9 @@ interface Props {
   onRanking: (field: string | null) => void;
   /** 先生用アカウントだけ: 生徒の進捗一覧（2026-10-17）*/
   onStaff?: () => void;
+  /** チャンピオンアリーナ（設計書 §5.7）。ROUTE のツリーの一番下に門を置く。古い Proxy では null */
+  arena?: ArenaInfo | null;
+  onArena?: () => void;
   loginId?: string;
   grade: string;
   nickname: string;
@@ -78,7 +83,10 @@ export function TreeScreen(props: Props) {
   const DOCK_W = 400;
   const maxLayer = Math.max(0, ...manifest.fields.map((f) => f.pos.layer));
   const canvasW = geom.w;
-  const canvasH = Math.max(geom.h, geom.y(maxLayer) + 170);
+  // チャンピオンアリーナの門（ROUTE だけ）は最下層の分野の下
+  const showArena = props.stage === 'front' && !!props.arena;
+  const arenaY = geom.y(maxLayer) + 190;
+  const canvasH = Math.max(geom.h, showArena ? arenaY + 150 : geom.y(maxLayer) + 170);
 
   const pz = usePanZoom({
     contentW: canvasW,
@@ -306,6 +314,18 @@ export function TreeScreen(props: Props) {
                 </div>
               );
             })}
+            {showArena && (
+              <ArenaGate
+                info={props.arena!}
+                x={canvasW / 2}
+                y={arenaY}
+                onOpen={() => {
+                  setMenu(false);
+                  onSelect(null);
+                  props.onArena?.();
+                }}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -492,6 +512,55 @@ export function TreeScreen(props: Props) {
         />
       )}
     </div>
+  );
+}
+
+/**
+ * ツリーの一番下のチャンピオンアリーナの門（設計書 §5.7）。
+ * 未開放 = 消灯（全分野マスター度 70% までの達成分野数）/ 開放 = 金色に点灯（シーズン・残り・自分の状態）
+ */
+function ArenaGate({ info, x, y, onOpen }: { info: ArenaInfo; x: number; y: number; onOpen: () => void }) {
+  const open = info.open;
+  const e = info.entry;
+  const champ = info.champion?.list[0];
+  const status = !open
+    ? `全分野 マスター度 ${info.cond.need}% で開放`
+    : e?.status === 'done'
+      ? `今シーズン ${Math.round(e.score ?? 0)} 点${e.rank.rank ? ` · ${e.rank.rank} 位` : ''}`
+      : e?.status === 'started'
+        ? '挑戦中 · タップで再開'
+        : '今シーズン未挑戦 · 1 回だけ挑戦できます';
+  return (
+    <button
+      type="button"
+      className={`tr-arena-gate${open ? ' is-open' : ''}`}
+      style={{ left: x - 130, top: y - 56 }}
+      aria-label={`チャンピオンアリーナ ${open ? '' : '未開放 '}${status}`}
+      onClick={(ev) => {
+        ev.stopPropagation();
+        onOpen();
+      }}
+    >
+      <span className="tr-arena-ic">
+        <Ico id={open ? 'i-crown' : 'i-lock'} size={open ? 22 : 18} />
+      </span>
+      <span className="tr-arena-name">CHAMPION ARENA</span>
+      <span className="tr-arena-meta">
+        {arenaSeasonName(info.season.n)} · {arenaLeft(info.season.end)}
+      </span>
+      <span className="tr-arena-status">{status}</span>
+      {!open && (
+        <span className="tr-arena-meta">
+          達成 <b className="tr-num">{info.cond.done}</b> / {info.cond.of} 分野
+        </span>
+      )}
+      {champ && (
+        <span className="tr-arena-champ">
+          <Ico id="i-crown" size={11} /> 前シーズン王者 {gradeLabel(champ.grade)} {champ.nickname}
+          {info.champion!.list.length > 1 ? ` ほか ${info.champion!.list.length - 1} 人` : ''}
+        </span>
+      )}
+    </button>
   );
 }
 

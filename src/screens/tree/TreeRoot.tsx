@@ -4,16 +4,31 @@
  * LIFF 内は「…」から ID / URL のモーダル（別のブラウザで使う）を開ける。
  */
 import { useCallback, useEffect, useState } from 'react';
-import type { QType, SubmitResult, TreeManifest, TreeMe, TreeProgress, TreeSession, TreeStage } from '../../lib/treeApi';
+import type {
+  ArenaInfo,
+  ArenaResult,
+  ArenaSession,
+  QType,
+  SubmitResult,
+  TreeManifest,
+  TreeMe,
+  TreeProgress,
+  TreeSession,
+  TreeStage,
+} from '../../lib/treeApi';
 import {
   TreeApiError,
+  fetchArena,
   fetchTreeManifest,
   fetchTreeMe,
   fetchTreeProgress,
   reportTreeQuestion,
   saveTreeNickname,
+  startArena,
   startTreeSession,
 } from '../../lib/treeApi';
+import { ArenaScreen } from './ArenaScreen';
+import { ArenaResultScreen } from './ArenaResultScreen';
 import { RankingScreen, type RankScope } from './RankingScreen';
 import { TreeShareModal } from './TreeShareModal';
 import { TreeSprite } from './TreeIcons';
@@ -50,7 +65,11 @@ type View =
   | { kind: 'result'; session: TreeSession; result: SubmitResult }
   | { kind: 'ranking'; scope: RankScope; field: string | null; qtype: QType; back: View }
   /** 先生用 生徒の進捗一覧（2026-10-17・先生用アカウントだけ）*/
-  | { kind: 'staff' };
+  | { kind: 'staff' }
+  /** チャンピオンアリーナ（設計書 §5.7）: 入口 → 出題 → 結果 */
+  | { kind: 'arena' }
+  | { kind: 'arenaPlay'; session: ArenaSession }
+  | { kind: 'arenaResult'; session: ArenaSession; result: ArenaResult };
 
 interface Props {
   mode: 'liff' | 'external';
@@ -79,7 +98,16 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
    */
   const [stage, setStage] = useState<TreeStage>('front');
   const [abyssOpen, setAbyssOpen] = useState(false);
+  /** チャンピオンアリーナ（ROUTE の科目ごと）。古い Proxy・マイグレーション前は null（門を出さない）*/
+  const [arena, setArena] = useState<ArenaInfo | null>(null);
+  const [arenaMessage, setArenaMessage] = useState<string | null>(null);
   setTreeStage(stage);
+
+  const loadArena = useCallback((s: string) => {
+    fetchArena(s)
+      .then(setArena)
+      .catch(() => setArena(null));
+  }, []);
 
   const fail = useCallback(
     (e: unknown) => {
@@ -110,6 +138,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           setAbyssOpen(!!pg.abyss?.open);
           setManifest(mf);
           setProgress(pg);
+          setArena(null);
+          loadArena(s);
           return;
         } catch (e) {
           // 問題がまだ無い科目・名簿の科目が変わって開けなくなった科目は飛ばす
@@ -119,7 +149,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       }
       throw new TreeApiError('NO_CONTENT', 404);
     },
-    []
+    [loadArena]
   );
 
   const load = useCallback(() => {
@@ -142,6 +172,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       rememberTreeSubject(s);
       setManifest(null);
       setProgress(null);
+      setArena(null);
       setSelected(null);
       setMessage(null);
       setView({ kind: 'tree' });
@@ -182,7 +213,34 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
         if (manifest && pg.version !== manifest.version) fetchTreeManifest(subject, stage).then(setManifest).catch(() => {});
       })
       .catch(() => {});
-  }, [manifest, subject, stage]);
+    loadArena(subject);
+  }, [manifest, subject, stage, loadArena]);
+
+  /** アリーナの挑戦を始める（途中なら再開）。開始で今シーズンの 1 回を使う */
+  const beginArena = async () => {
+    if (!subject) return;
+    setStarting(true);
+    setArenaMessage(null);
+    try {
+      const s = await startArena(subject);
+      setView({ kind: 'arenaPlay', session: s });
+    } catch (e) {
+      const code = e instanceof TreeApiError ? e.code : '';
+      if (code === 'UNAUTHORIZED' && mode === 'external') return onLogout?.();
+      setArenaMessage(
+        code === 'ARENA_LOCKED'
+          ? 'まだ開放されていません。全分野のマスター度を 70% 以上にすると挑戦できます。'
+          : code === 'ARENA_DONE'
+            ? '今シーズンはもう挑戦しました。次のシーズンをお待ちください。'
+            : code === 'NO_QUESTIONS'
+              ? 'アリーナの問題を用意できませんでした。先生に知らせてください。'
+              : '問題を読み込めませんでした。通信状況を確かめてもう一度お試しください。'
+      );
+      loadArena(subject);
+    } finally {
+      setStarting(false);
+    }
+  };
 
   const start = async (field: string, qtype: QType) => {
     setStarting(true);
@@ -326,6 +384,12 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
             setView({ kind: 'ranking', scope: field ? 'field' : 'subject', field, qtype: 'tf', back: { kind: 'tree' } })
           }
           onStaff={me.grade === '先生' ? () => setView({ kind: 'staff' }) : undefined}
+          arena={arena}
+          onArena={() => {
+            setArenaMessage(null);
+            if (subject) loadArena(subject);
+            setView({ kind: 'arena' });
+          }}
           loginId={me.loginId}
           grade={me.grade}
           nickname={me.nickname}
@@ -374,11 +438,65 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
         <RankingScreen
           manifest={manifest}
           stage={stage}
+          arena={!!arena}
           initial={{ scope: view.scope, field: view.field, qtype: view.qtype }}
           onBack={() => setView(view.back)}
         />
       )}
       {view.kind === 'staff' && <StaffScreen onBack={() => setView({ kind: 'tree' })} />}
+      {view.kind === 'arena' && arena && (
+        <ArenaScreen
+          info={arena}
+          manifest={manifest}
+          starting={starting}
+          message={arenaMessage}
+          onStart={() => void beginArena()}
+          onRanking={() => setView({ kind: 'ranking', scope: 'arena', field: null, qtype: 'tf', back: { kind: 'arena' } })}
+          onBack={() => setView({ kind: 'tree' })}
+        />
+      )}
+      {view.kind === 'arena' && !arena && (
+        <div className={rootClass()}>
+          <div className="tr-center">
+            <div>チャンピオンアリーナを読み込めませんでした。</div>
+            <button type="button" className="tr-ghost" style={{ width: 240 }} onClick={() => setView({ kind: 'tree' })}>
+              ツリーへ戻る
+            </button>
+          </div>
+        </div>
+      )}
+      {view.kind === 'arenaPlay' && (
+        <PlayScreen
+          session={view.session}
+          subjectName={manifest.name}
+          fieldName="CHAMPION ARENA"
+          group="basic"
+          onExit={() => {
+            refreshProgress();
+            setView({ kind: 'arena' });
+          }}
+          onDone={() => {}}
+          onArenaDone={(result) => {
+            if (subject) loadArena(subject);
+            setView({ kind: 'arenaResult', session: view.session, result });
+          }}
+        />
+      )}
+      {view.kind === 'arenaResult' && (
+        <ArenaResultScreen
+          result={view.result}
+          session={view.session}
+          grade={me.grade}
+          nickname={me.nickname}
+          onSaveNick={saveNick}
+          onReport={(qid) => report(view.session.sessionId, qid)}
+          onBack={() => {
+            refreshProgress();
+            setView({ kind: 'tree' });
+          }}
+          onRanking={() => setView({ kind: 'ranking', scope: 'arena', field: null, qtype: 'tf', back: { kind: 'tree' } })}
+        />
+      )}
       {sharing && <TreeShareModal loginId={me.loginId} onClose={() => setSharing(false)} />}
     </>
   );

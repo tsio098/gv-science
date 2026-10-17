@@ -217,3 +217,29 @@ export const fmtTime = (ms: number) => {
 };
 
 export const fmtScore = (n: number) => Math.round(n).toLocaleString('ja-JP');
+
+/* チャンピオンアリーナ（設計書 §5.7）*/
+/** アリーナの色（金・ランキングの 1 位と同じ）と側面 */
+export const ARENA_GOLD = '#FFD84A';
+export const ARENA_GOLD_SIDE = '#A88A14';
+
+/** 残り時間の表示（「あと 9 日」「あと 5 時間」）*/
+export function arenaLeft(end: number, now = Date.now()) {
+  const ms = Math.max(0, end - now);
+  const h = Math.floor(ms / 3600_000);
+  return h >= 24 ? `あと ${Math.floor(h / 24)} 日` : h >= 1 ? `あと ${h} 時間` : `あと ${Math.max(1, Math.ceil(ms / 60_000))} 分`;
+}
+
+/** シーズンの呼び名（起点より前は「プレシーズン」）*/
+export const arenaSeasonName = (n: number) => (n >= 1 ? `シーズン ${n}` : 'プレシーズン');
+
+
+const WEEKDAY = ['日', '月', '火', '水', '木', '金', '土'];
+/** シーズンの期間（JST）「10/19（月）〜 11/1（日）」。end は次のシーズンの開始なので 1 ms 戻す */
+export function arenaPeriod(s: { start: number; end: number }, short = false) {
+  const f = (ms: number) => {
+    const d = new Date(ms + 9 * 3600_000);
+    return `${d.getUTCMonth() + 1}/${d.getUTCDate()}${short ? '' : `（${WEEKDAY[d.getUTCDay()]}）`}`;
+  };
+  return short ? `${f(s.start)}〜${f(s.end - 1)}` : `${f(s.start)} 〜 ${f(s.end - 1)}`;
+}
