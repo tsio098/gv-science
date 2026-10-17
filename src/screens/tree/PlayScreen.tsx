@@ -14,6 +14,8 @@
  * - チャンピオンアリーナ（§5.7）: 全員共通の 10 問。タイムボーナスは最大 75（基礎 25）。提出は /tree/arena/submit。
  *   開始で今シーズンの 1 回を使うので、答えた問題・選んだ答え・時間を端末（localStorage）に残し、閉じても続きから再開できる
  *   出す順番は挑戦ごとに違う（2026-10-18 先生の指示・Proxy の arenaOrder）。再開は「まだ決定していない最初の問題」から
+ *   共通テスト後のシーズンは最後の 2 問が ABYSS の設問（2026-10-18 先生決定・1 問 7 分・タイムボーナスあり）。
+ *   ABYSS の画面（解答欄・キーパッド）は問題ごとに切り替える（answer.kind = 'parts'）。欄の入力も端末に残す
  * - 右下（パッドのすぐ上）にスクショのボタン（2026-10-17 先生の指示・PlayShot）。画面をそのまま画像にして長押し保存・共有。
  *   アリーナには出さない（2026-10-18 先生の指示）。アリーナは画面を離れている間（アプリ切替・通知センター等）問題を覆って隠す。
  *   スマホ本体のボタン操作のスクショは Web からは止められない（隠せるのは画面を離れたときだけ）
@@ -44,6 +46,8 @@ interface ArenaSaved {
   idx: number;
   picks: Record<string, string[]>;
   times: Record<string, number>;
+  /** ABYSS の設問の欄の入力（共通テスト後のシーズン）。古い保存には無い */
+  raws?: Record<string, RawVal[]>;
 }
 const arenaKey = (sessionId: string) => `tr-arena:${sessionId}`;
 function loadArena(sessionId: string): ArenaSaved | null {
@@ -127,8 +131,8 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
   });
   const [picks, setPicks] = useState<Record<string, string[]>>(() => saved?.picks ?? {});
   /** ABYSS: 設問ごとの欄の入力と、キーパッドで入力中の数値欄 */
-  const isBack = session.stage === 'back';
-  const [raws, setRaws] = useState<Record<string, RawVal[]>>({});
+  const isBackStage = session.stage === 'back';
+  const [raws, setRaws] = useState<Record<string, RawVal[]>>(() => saved?.raws ?? {});
   const [numFocus, setNumFocus] = useState<{ qid: string; i: number } | null>(null);
   const [imgs, setImgs] = useState<ImgState>({});
   const [confirmExit, setConfirmExit] = useState(false);
@@ -146,6 +150,8 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
   const qs = unit.qids.map((id) => session.questions[id]!).filter(Boolean);
   const isSet = !!unit.set;
   const first = qs[0];
+  // ABYSS の画面にするか: ABYSS の挑戦、またはアリーナの ABYSS の設問（共通テスト後）
+  const isBack = isBackStage || (!!first && first.answer.kind === 'parts');
 
   const unitPaths = (i: number) => {
     const u = units[i];
@@ -273,7 +279,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
     if (!allPicked || submitting) return;
     const spent = unitStart.current === null ? 0 : performance.now() - unitStart.current;
     for (const id of unit.qids) times.current[id] = spent / unit.qids.length;
-    if (isArena) saveArena(session.sessionId, { idx: Math.min(idx + 1, units.length - 1), picks, times: times.current });
+    if (isArena) saveArena(session.sessionId, { idx: Math.min(idx + 1, units.length - 1), picks, times: times.current, raws });
     if (idx + 1 >= units.length) {
       void submit();
       return;
@@ -424,9 +430,9 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
           <div className="tr-num">
             <Ico id="i-clock" size={13} />
             {fmtTime(elapsed)}
-            {!isBack && <span> / {fmtTime(limitMs)}</span>}
+            {!isBackStage && <span> / {fmtTime(limitMs)}</span>}
           </div>
-          {isBack ? (
+          {isBackStage ? (
             <small style={{ color: alpha(T.text, 0.45) }}>時間ボーナスなし</small>
           ) : (
             <small className="tr-num" style={{ color: bonus > 0 ? T.accent : alpha(T.text, 0.45) }}>

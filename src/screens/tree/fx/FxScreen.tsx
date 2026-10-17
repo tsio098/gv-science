@@ -142,7 +142,7 @@ const BUBBLES = [
   [350, 7, '#00E5FF', 3.3, 0.5],
 ] as const;
 
-export function FxUnlockAbyss({ subjectName }: SceneProps) {
+export function FxUnlockAbyss(_props: SceneProps) {
   const wide = useWide();
   // iPad は泡を左右に足す（全幅）
   const bubbles: (readonly [number, number, string, number, number])[] = wide
@@ -219,9 +219,7 @@ export function FxUnlockAbyss({ subjectName }: SceneProps) {
             }}
           />
           <Reveal src={img('text_abyss-open')} alt="ABYSS OPEN" style={{ left: 65, top: 340, width: 260 }} dur={0.7} delay={1.4} steps={10} />
-          <div className="fx-abs" style={{ left: 0, right: 0, top: 486, textAlign: 'center', fontSize: 16, fontWeight: 600, ...an('fxUp', 0.5, 2.2) }}>
-            {subjectName}の全分野でマスター度 60% を達成しました
-          </div>
+          {/* 「{科目}の全分野でマスター度 60% を達成しました」は出さない（2026-10-18 先生の指示・共通テスト後は全員に開くため）*/}
           <FxButton label="深海へ" action="tree" style={{ bottom: wide ? 56 : 36, ...an('fxUp', 0.5, 2.6) }} />
         </Col>
       </Stage>
