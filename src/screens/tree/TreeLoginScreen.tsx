@@ -55,7 +55,6 @@ export function TreeLoginScreen({ onLoggedIn }: { onLoggedIn: () => void }) {
       <img className="tl-bg" src={`/tree/brand/login-bg_${abyss ? 'abyss' : 'route'}.svg`} alt="" aria-hidden="true" draggable={false} />
       <div className="tl-inner">
         <img className="tl-logo" src={`/tree/brand/lockup-stacked_${abyss ? 'abyss' : 'route'}.svg`} alt="ANCHOR TREE" draggable={false} />
-        <div className="tl-tagline">理科の進捗ツリー</div>
         {abyss && <div className="tl-stage">STAGE · ABYSS</div>}
 
         <form className="tl-form" onSubmit={submit}>

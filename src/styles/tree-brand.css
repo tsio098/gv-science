@@ -70,14 +70,6 @@
   height: auto;
   display: block;
 }
-.tl-tagline {
-  font-size: 13px;
-  letter-spacing: 0.14em;
-  color: #bdeff5;
-}
-.tr-root.is-abyss .tl-tagline {
-  color: #c2ccf0;
-}
 .tl-stage {
   font-family: var(--f-mono);
   font-size: 11px;
