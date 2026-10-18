@@ -8,7 +8,6 @@ import type {
   ArenaInfo,
   ArenaResult,
   ArenaSession,
-  TreeEvent,
   TreeTicket,
   QType,
   SubmitResult,
@@ -41,6 +40,7 @@ import { useNoSwipeMinimize } from './useNoSwipeMinimize';
 import { ArenaResultScreen } from './ArenaResultScreen';
 import { ArenaTicketScreen } from './ArenaTicketScreen';
 import { FxScreen } from './fx/FxScreen';
+import { mergeTreeEvents, type MergedTreeEvent } from './fx/mergeEvents';
 import { preloadFxImages } from './fx/fxKit';
 import { FxLabScreen } from './fx/FxLabScreen';
 import { RankingScreen, type RankScope } from './RankingScreen';
@@ -175,7 +175,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   /** 本人のチケット（ABYSS・総合優勝。古い Proxy・0006 前は空）*/
   const [tickets, setTickets] = useState<TreeTicket[]>([]);
   /** まだ見ていない演出（順に 1 つずつ全画面で出す）*/
-  const [events, setEvents] = useState<TreeEvent[]>([]);
+  const [events, setEvents] = useState<MergedTreeEvent[]>([]);
   setTreeStage(stage);
 
   /* ── トロフィー・通知（2026-10-19・実装手順_トロフィー §6）──
@@ -311,7 +311,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
             .then((r) => {
               const list = r.events ?? [];
               if (list.length) void preloadFxImages(); // 演出の画像を先にデコード（カクつき対策）
-              setEvents(list);
+              setEvents(mergeTreeEvents(list)); // 同じシーズンの新シーズン開始（化学・生物）は 1 回にまとめる
               if (list.some((e) => e.type === 'unlock_abyss')) rememberAbyssStyle();
             })
             .catch(() => {});
@@ -363,8 +363,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
 
   /** 演出を閉じた → 既読にして次へ。ボタンに応じてツリー（ABYSS 解放は深海へ）/ アリーナ / チケットへ */
   const closeFx = useCallback(
-    (ev: TreeEvent, action: 'tree' | 'arena' | 'ticket') => {
-      markTreeEventsSeen([ev.key]).catch(() => {});
+    (ev: MergedTreeEvent, action: 'tree' | 'arena' | 'ticket') => {
+      markTreeEventsSeen(ev.seenKeys).catch(() => {});
       setEvents((list) => list.filter((e) => e.key !== ev.key));
       if (action === 'tree') {
         setView({ kind: 'tree' });
@@ -372,14 +372,16 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       } else if (action === 'ticket') {
         loadTickets();
         setView({ kind: 'tickets', back: { kind: 'tree' } });
-      } else if (action === 'arena' && ARENA_SUBJECTS.includes(ev.subject)) {
-        if (ev.subject !== subject && subjects.includes(ev.subject as TreeSubject)) {
-          rememberTreeSubject(ev.subject as TreeSubject);
+      } else if (action === 'arena' && ev.subjects.some((s) => ARENA_SUBJECTS.includes(s))) {
+        // まとめた新シーズン開始は、いま開いている科目がその中にあればその科目のアリーナへ
+        const to = subject && ev.subjects.includes(subject) ? subject : ev.subject;
+        if (to !== subject && subjects.includes(to as TreeSubject)) {
+          rememberTreeSubject(to as TreeSubject);
           setManifest(null);
           setProgress(null);
           setArena(null);
           setSelected(null);
-          openSubject(subjects, ev.subject as TreeSubject)
+          openSubject(subjects, to as TreeSubject)
             .then(() => setView({ kind: 'arena' }))
             .catch(fail);
         } else {
