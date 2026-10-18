@@ -82,17 +82,25 @@ export function useToasts({
     playSfx(sfxFor(pick.item), toastSpeed());
   }, [cur, paused, queue]);
 
-  // 出題・演出が始まったら今の通知は消す（もう既読）
+  // 出題・演出・読み込みが始まったら今の通知を下げ、キューの先頭に戻す（見せないまま消さない・2026-10-19 レビューで修正）
   useEffect(() => {
     if (paused && cur) {
+      for (const t of cur.consumed) shown.current.delete(t.key);
+      setQueue((q) => mergeToasts(cur.consumed, q, shown.current));
       setCur(null);
       setOut(false);
+      if (closing.current) window.clearTimeout(closing.current);
+      closing.current = 0;
     }
   }, [paused, cur]);
 
+  // 閉じる処理は 1 回だけ（畳んでいる最中のスワイプで 2 回目のタイマーが次の通知を消さないように）
+  const closing = useRef(0);
   const close = useCallback(() => {
+    if (closing.current) return;
     setOut(true);
-    window.setTimeout(() => {
+    closing.current = window.setTimeout(() => {
+      closing.current = 0;
       setCur(null);
       setOut(false);
     }, OUT_MS / toastSpeed());

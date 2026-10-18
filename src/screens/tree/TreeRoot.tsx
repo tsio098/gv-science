@@ -187,11 +187,15 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   const [toastDetail, setToastDetail] = useState<{ subject: string; item: TrophyItem } | null>(null);
   /** トロフィー一覧の分野チップ用（今の科目以外の manifest）*/
   const [otherManifests, setOtherManifests] = useState<Record<string, TreeManifest>>({});
-  const toastPaused = view.kind === 'play' || view.kind === 'arenaPlay' || !!events[0];
+  // 読み込み中（manifest / progress が無い間）は通知の層を描かないので止める（2026-10-19 レビューで修正）
+  const toastPaused = view.kind === 'play' || view.kind === 'arenaPlay' || !!events[0] || !manifest || !progress;
   const onToastShown = useCallback((items: ToastItem[]) => {
     const trophies = items.filter((t) => t.trophy).map((t) => t.trophy!);
     const keys = items.filter((t) => t.noticeKey).map((t) => t.noticeKey!);
-    if (trophies.length || keys.length) markTrophiesSeen(trophies, keys).catch(() => {});
+    // 一度に送るのは 50 件ずつ（公開前の到達者は何十件もまとめて届く。Proxy は 1 回 100 件まで）
+    for (let i = 0; i < Math.max(trophies.length, keys.length); i += 50) {
+      markTrophiesSeen(trophies.slice(i, i + 50), keys.slice(i, i + 50)).catch(() => {});
+    }
     const best = items.find((t) => t.trophy && t.grade);
     if (best?.grade) {
       setTrophyDot(GRADE_COLOR[best.grade].c);
@@ -304,8 +308,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
         if (!want) throw new TreeApiError('NO_CONTENT', 404); // 選択科目にツリーが無い（2026-10-16 先生決定: 他の科目は開けない）
         await openSubject(list, want);
         loadTickets();
-        loadPending();
-        // 演出（ABYSS 解放・アリーナ解放・優勝・新シーズン）は開いたときに 1 回だけ取る
+        // 演出（ABYSS 解放・アリーナ解放・優勝・新シーズン）は開いたときに 1 回だけ取る。
+        // 通知（pending）は演出が決まってから取る（先に通知が出て、演出が始まった瞬間に消えるのを防ぐ・2026-10-19 レビューで修正）
         if (!fxDisabled()) {
           fetchTreeEvents()
             .then((r) => {
@@ -314,7 +318,10 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
               setEvents(mergeTreeEvents(list)); // 同じシーズンの新シーズン開始（化学・生物）は 1 回にまとめる
               if (list.some((e) => e.type === 'unlock_abyss')) rememberAbyssStyle();
             })
-            .catch(() => {});
+            .catch(() => {})
+            .finally(loadPending);
+        } else {
+          loadPending();
         }
       })
       .catch(fail);

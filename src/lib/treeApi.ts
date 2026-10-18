@@ -581,7 +581,8 @@ export interface TrophyList {
   level: { lv: number; max?: number; pt: number; into: number; need: number };
   /** all / earned は件数、B〜F は獲得数 */
   counts: { all: number; earned: number; B: number; S: number; G: number; P: number; F: number };
-  platinum: { now: number; max: number; earned: boolean; name: string; id: string };
+  /** プラチナは隠し要素（2026-10-19）: 獲得するまで null。ファーストも獲得するまで items に入らない */
+  platinum: { now: number; max: number; earned: boolean; name: string; id: string } | null;
   items: TrophyItem[];
 }
 

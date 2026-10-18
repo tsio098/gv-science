@@ -294,9 +294,11 @@
 .tt-toast.is-fo .tt-flash { animation: ttFlash 0.5s steps(1) 0.5s both; }
 .tt-toast.is-fo .tt-name { animation: ttFade 0.2s steps(2) 0.7s backwards; }
 
-/* 閉じる = 左へ畳む */
+/* 閉じる = 左へ畳む（.is-done.is-out も書く: .tt-slot.is-done .tt-in と詳細度が同じで後ろの is-done が勝ち、畳まずに消えていた）*/
 .tt-slot.is-out .tt-toast,
-.tt-slot.is-out .tt-peekcard {
+.tt-slot.is-out .tt-peekcard,
+.tt-slot.is-done.is-out .tt-toast,
+.tt-slot.is-done.is-out .tt-peekcard {
   animation: ttOut 0.3s steps(6) forwards !important;
 }
 .tt-slot.is-out .tt-toast * {

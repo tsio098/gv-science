@@ -129,8 +129,9 @@ export function TrophyScreen({ subject: initial, subjects, fieldInfo, onBack, on
                           </div>
                         </div>
                       </div>
-                      <div className="tt-tiles">
-                        {(['P', 'G', 'S', 'B'] as const).map((k) => (
+                      {/* プラチナは隠し要素（2026-10-19 先生決定）: 獲得するまでタイルも出さない */}
+                      <div className="tt-tiles" style={{ gridTemplateColumns: `repeat(${data.counts.P > 0 ? 4 : 3}, minmax(0, 1fr))` }}>
+                        {(data.counts.P > 0 ? (['P', 'G', 'S', 'B'] as const) : (['G', 'S', 'B'] as const)).map((k) => (
                           <div key={k} className="tt-tile tt-px2">
                             <TrophyIcon grade={k} size={20} stroke={0.8} scan={false} />
                             <span className="tt-arc" style={{ fontSize: 11, color: '#FFFFFF' }}>{data.counts[k]}</span>

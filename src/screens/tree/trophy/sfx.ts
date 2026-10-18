@@ -35,25 +35,36 @@ export const reducedMotion = () =>
 let ac: AudioContext | null = null;
 let unlocked = false;
 
+/**
+ * 音の解錠（2026-10-19 レビューで修正）: 指を離した・クリックしたとき（iOS はタッチの開始では解錠できないことがある）に
+ * AudioContext を作って resume し、本当に running になってから解錠済みにする（失敗したら次のタップでもう一度）。
+ * iOS はアプリを切り替えると 'interrupted' になるので、running 以外はすべて resume し直す
+ */
+const UNLOCK_EVENTS = ['pointerdown', 'pointerup', 'touchend', 'click'] as const;
 function unlock() {
   if (unlocked) return;
   try {
     const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AC) return;
     ac = ac ?? new AC();
-    if (ac.state === 'suspended') void ac.resume();
-    unlocked = true;
-    document.removeEventListener('pointerdown', unlock, true);
+    const ok = () => {
+      if (!ac || ac.state !== 'running' || unlocked) return;
+      unlocked = true;
+      for (const ev of UNLOCK_EVENTS) document.removeEventListener(ev, unlock, true);
+    };
+    if (ac.state !== 'running') void ac.resume().then(ok, () => {});
+    ok();
   } catch {
     /* 音の出せない端末は無音 */
   }
 }
-if (typeof document !== 'undefined') document.addEventListener('pointerdown', unlock, true);
+if (typeof document !== 'undefined') for (const ev of UNLOCK_EVENTS) document.addEventListener(ev, unlock, true);
 
 export function sfx(seq: Note[], delay = 0) {
   if (!unlocked || !ac || !soundOn() || reducedMotion()) return;
   try {
-    if (ac.state === 'suspended') void ac.resume();
+    // アプリを切り替えた後など（suspended / interrupted）は鳴らし直す。戻らなければ今回は無音
+    if (ac.state !== 'running') void ac.resume().catch(() => {});
     const t0 = ac.currentTime + delay;
     const out = ac.createGain();
     out.gain.value = 0.12;
