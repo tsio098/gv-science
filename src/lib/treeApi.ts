@@ -542,7 +542,9 @@ export type TreeNotice =
       leaderChanged: boolean;
     }
   | { key: string; type: 'teacher_record'; subject: string; season: ArenaSeason; score: number }
-  | { key: string; type: 'arena_last_day'; subject: string; season: ArenaSeason };
+  | { key: string; type: 'arena_last_day'; subject: string; season: ArenaSeason }
+  /** 科目ランキングの順位ダウン（2026-10-19・ほかの人に抜かれた。ツリーを開いたとき 1 回）*/
+  | { key: string; type: 'rank_down'; subject: string; rank: number; prevRank: number; of: number };
 
 export interface TrophyPending {
   trophies: TrophyGet[];

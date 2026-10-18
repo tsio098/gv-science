@@ -27,6 +27,7 @@ const NOTE_LOOK: Record<Exclude<ToastKind, 'trophy'>, Look> = {
   node: { c: '#4FC3FF', d: '#1C6FA3', rgb: '79,195,255', chrome: CHROME.sky, bg: ROUTE_BG, subc: '#8ED4E0', icon: PX_ICON.unlock },
   master: { c: '#FF7AB8', d: '#A8336E', rgb: '255,122,184', chrome: CHROME.pink, bg: ROUTE_BG, subc: '#8ED4E0', icon: PX_ICON.star },
   rank: { c: '#2DF4C6', d: '#0E9C9A', rgb: '45,244,198', chrome: CHROME.aqua, bg: ROUTE_BG, subc: '#8ED4E0', icon: PX_ICON.up },
+  rankDown: { c: '#FF7A45', d: '#A8461F', rgb: '255,122,69', chrome: CHROME.orange, bg: ROUTE_BG, subc: '#8ED4E0', icon: PX_ICON.down },
   news: { c: '#FF7A45', d: '#A8461F', rgb: '255,122,69', chrome: CHROME.orange, bg: ROUTE_BG, subc: '#8ED4E0', icon: PX_ICON.bang },
   progress: { c: '#C9D3E6', d: '#4A5470', rgb: '201,211,230', chrome: CHROME.S, bg: ROUTE_BG, subc: '#8ED4E0', icon: PX_ICON.flag },
   lastday: { c: '#FFD84A', d: '#A35A00', rgb: '255,216,74', chrome: CHROME.G, bg: ARENA_BG, subc: '#CBBB93', icon: PX_ICON.crown },

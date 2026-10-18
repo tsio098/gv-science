@@ -54,6 +54,11 @@ export function noticeToast(n: TreeNotice, subjectName: string): ToastItem | nul
         key: n.key, noticeKey: n.key, kind: 'teacher', head: 'TEACHER RECORD',
         main: `先生の記録 ${fmtScore(n.score)} 点`, sub: `今シーズン · ${subjectName}アリーナ`,
       };
+    case 'rank_down':
+      return {
+        key: n.key, noticeKey: n.key, kind: 'rankDown', head: 'RANK DOWN',
+        main: `${subjectName} ${n.prevRank} 位 → ${n.rank} 位`, sub: `${n.of} 人中 · 抜き返そう`,
+      };
     case 'arena_last_day':
       return {
         key: n.key, noticeKey: n.key, kind: 'lastday', head: 'LAST DAY!',

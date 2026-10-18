@@ -20,6 +20,8 @@ export function sfxFor(t: ToastItem): SfxName {
       return 'node';
     case 'rank':
       return 'rank';
+    case 'rankDown':
+      return 'rankDown';
     case 'news':
       return 'news';
     case 'progress':

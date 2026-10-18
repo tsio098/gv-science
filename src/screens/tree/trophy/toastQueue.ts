@@ -12,6 +12,7 @@ export type ToastKind =
   | 'node'
   | 'master'
   | 'rank'
+  | 'rankDown'
   | 'news'
   | 'progress'
   | 'lastday'
