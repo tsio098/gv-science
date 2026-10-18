@@ -3,7 +3,8 @@
  * 左上だけ。スマホ: 左 12px・上 32px（セーフエリアの下）・幅 248px（プラチナ 272・ファースト 260）。幅 900px 以上（iPad 横）: 24 / 36 / 264。
  * 入場はコマ送り（光の線 → ブロックで描く → 白く光る + 音 → 落ちて弾ける → 見出しを打つ）。タップで次 / 詳細・左へスワイプで閉じる。
  */
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { toastSpeed } from './labSpeed';
 import { CHROME, GRADE_COLOR, PRISM, PX_ICON, PxIcon, TrophyIcon } from './TrophyIcon';
 import { toastNameSize, toastWidth, type ToastItem, type ToastKind } from './toastQueue';
 
@@ -64,15 +65,27 @@ export function ToastCard({ item, more, peek, wide, out = false, onTap }: { item
   const isTrophy = item.kind === 'trophy';
   const box = isP ? 50 : isFo ? 36 : 40;
   const ref = useRef<HTMLButtonElement>(null);
+  const slotRef = useRef<HTMLDivElement>(null);
   const [done, setDone] = useState(false);
+  // 先生用のゆっくり再生: この通知の CSS アニメーションをまとめて遅くする（生徒の画面では speed = 1 で何もしない）
+  useLayoutEffect(() => {
+    const sp = toastSpeed();
+    if (sp === 1) return;
+    try {
+      for (const a of slotRef.current?.getAnimations({ subtree: true }) ?? []) a.playbackRate = sp;
+    } catch {
+      /* getAnimations の無い古い端末は通常の速さ */
+    }
+  }, [out]); // 畳むアニメーション（is-out）も遅くする
   useEffect(() => {
+    const sp = toastSpeed();
     const check = window.setTimeout(() => {
       const el = ref.current;
       if (!el) return;
       const cp = getComputedStyle(el).clipPath || '';
       if (/100%/.test(cp)) setDone(true); // まだ「描く前」（inset(0 100% 0 0)）のまま
-    }, 1500);
-    const t = window.setTimeout(() => setDone(true), DONE_MS[isTrophy ? item.grade ?? '' : ''] ?? 3200);
+    }, 1500 / sp);
+    const t = window.setTimeout(() => setDone(true), (DONE_MS[isTrophy ? item.grade ?? '' : ''] ?? 3200) / sp);
     return () => {
       window.clearTimeout(check);
       window.clearTimeout(t);
@@ -133,7 +146,7 @@ export function ToastCard({ item, more, peek, wide, out = false, onTap }: { item
 
   const beamTop = isP ? 37 : isFo ? 0 : 30;
   return (
-    <div className={`tt-slot${done ? ' is-done' : ''}${out ? ' is-out' : ''}`} style={{ width: w + 14, height: isP ? 86 : 80 }}>
+    <div ref={slotRef} className={`tt-slot${done ? ' is-done' : ''}${out ? ' is-out' : ''}`} style={{ width: w + 14, height: isP ? 86 : 80 }}>
       {isP && (
         <>
           <span className="tt-aura" aria-hidden="true" />

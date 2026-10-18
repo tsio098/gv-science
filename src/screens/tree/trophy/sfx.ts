@@ -106,4 +106,7 @@ export type SfxName = keyof typeof SEQ;
 
 /** 通知を出してから鳴らすまで（白く光るコマと同時。ファースト（自分）はドラムロールが入場に重なる）*/
 export const SFX_DELAY: Partial<Record<SfxName, number>> = { firstSelf: 0.32, firstOther: 0.5 };
-export const playSfx = (name: SfxName) => sfx(SEQ[name] as Note[], SFX_DELAY[name] ?? 0.62);
+/** speed = 再生速度（ゆっくり再生では鳴らす時刻だけ遅らせる。音そのものの速さは変えない）*/
+export const playSfx = (name: SfxName, speed = 1) => sfx(SEQ[name] as Note[], (SFX_DELAY[name] ?? 0.62) / speed);
+/** 音の状態（先生用「演出の確認」に出す）: 鳴らせるか・まだ最初のタップ前か */
+export const soundState = () => ({ unlocked, running: !!ac && ac.state === 'running' });

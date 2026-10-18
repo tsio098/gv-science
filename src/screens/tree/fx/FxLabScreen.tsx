@@ -1,8 +1,13 @@
 /**
  * ANCHOR TREE — 演出の確認（先生用アカウントだけ・2026-10-17 夕方 先生の依頼）。
  * 5 つの演出（＋総合優勝のプレミアム）を見本のデータで何度でも再生する。既読（/tree/events/seen）にはしない。
+ * 通知（トロフィー・お知らせ）の確認（2026-10-19 先生の依頼）: 見本 16 種・効果音 ON/OFF・ゆっくり再生（1/4）・音だけ鳴らす。
+ * 実機（LINE 内ブラウザ・iPhone）でコマ送りと音を確かめるための画面。
  */
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { SEQ, reducedMotion, setSoundOn, sfx, soundOn, type SfxName } from '../trophy/sfx';
+import { setToastSpeed } from '../trophy/labSpeed';
+import { sfxFor } from '../trophy/useToasts';
 import type { ArenaSeason, TreeEvent, TrophyGet } from '../../../lib/treeApi';
 import type { ToastItem } from '../trophy/toastQueue';
 import { noticeToast, trophyToast } from '../trophy/toastItems';
@@ -35,8 +40,30 @@ function seasonAt(base: ArenaSeason | null, offset: number): ArenaSeason {
   return { n, key: new Date(start + 9 * 3600_000).toISOString().slice(0, 10), start, end: start + len };
 }
 
+/** 音だけ鳴らすボタン（どの通知で鳴る音か）*/
+const SOUNDS: { name: SfxName; label: string }[] = [
+  { name: 'bronze', label: 'ブロンズ' },
+  { name: 'silver', label: 'シルバー' },
+  { name: 'gold', label: 'ゴールド' },
+  { name: 'platinum', label: 'プラチナ' },
+  { name: 'firstSelf', label: 'ファースト（自分）' },
+  { name: 'firstOther', label: 'ファースト（ほかの人）' },
+  { name: 'node', label: '解放・マスター' },
+  { name: 'rank', label: '順位アップ' },
+  { name: 'news', label: '新着' },
+  { name: 'progress', label: '80% に届いた' },
+  { name: 'arena', label: 'アリーナ（最終日・順位）' },
+  { name: 'teacher', label: '先生の記録' },
+];
+const SOUND_LABEL = Object.fromEntries(SOUNDS.map((x) => [x.name, x.label])) as Record<SfxName, string>;
+
 export function FxLabScreen({ grade, nickname, subject, subjectName, season, onTickets, onToasts, onBack }: Props) {
   const demoN = useRef(0);
+  const [sound, setSound] = useState(soundOn);
+  const [slow, setSlow] = useState(false);
+  const reduced = reducedMotion();
+  // この画面を閉じたら速さを戻す（生徒と同じ通常の速さ）
+  useEffect(() => () => setToastSpeed(1), []);
   // n: 同じ演出をもう一度押したときも最初から再生し直す
   const [playing, setPlaying] = useState<{ ev: TreeEvent; n: number } | null>(null);
   const who = { subject, grade, nickname };
@@ -95,6 +122,63 @@ export function FxLabScreen({ grade, nickname, subject, subjectName, season, onT
         </div>
       </div>
       <div className="tr-rank-body">
+        {onToasts && (
+          <div className="tr-fxlab">
+            <div className="tr-note" style={{ color: 'inherit', fontWeight: 700 }}>通知（トロフィー・お知らせ）</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className={sound ? 'tr-cta' : 'tr-ghost'}
+                style={{ flex: 1, minWidth: 140 }}
+                aria-pressed={sound}
+                onClick={() => {
+                  setSoundOn(!sound);
+                  setSound(!sound);
+                }}
+              >
+                効果音 {sound ? 'ON' : 'OFF'}
+              </button>
+              <button
+                type="button"
+                className={slow ? 'tr-cta' : 'tr-ghost'}
+                style={{ flex: 1, minWidth: 140 }}
+                aria-pressed={slow}
+                onClick={() => {
+                  setToastSpeed(slow ? 1 : 0.25);
+                  setSlow(!slow);
+                }}
+              >
+                {slow ? 'ゆっくり（1/4）' : '通常の速さ'}
+              </button>
+            </div>
+            <div className="tr-note">
+              ボタンを押すと左上に出ます（生徒の画面と同じ部品・既読にはしません）。ゆっくり（1/4）は動きと表示時間を 4 倍にします（音は鳴る時刻だけ遅らせ、音そのものは通常の速さ）。効果音の ON / OFF はツリーの「…」と同じ設定です。
+            </div>
+            <div className="tr-note">
+              音が鳴らないとき: iPhone・iPad は本体の消音モード（マナーモード）だと鳴りません。音量ボタンで音量も確かめてください。LINE を開いて最初の 1 回は画面のどこかをタップしてから鳴ります（生徒もツリーを開いた直後の通知は無音のことがあります）。
+            </div>
+            {reduced && (
+              <div className="tr-note" style={{ color: '#FFB38A' }}>
+                この端末は「視差効果を減らす」が ON なので、通知は動かさず最後の形だけ出し、音も鳴らしません（生徒の端末でも同じ扱い）。動きと音を確かめるときは 設定 → アクセシビリティ → 動作 → 視差効果を減らす を OFF にしてください。
+              </div>
+            )}
+            {notes.map((n) => (
+              <button key={n.label} type="button" className="tr-ghost" onClick={() => demo(n.items())}>
+                {n.label}
+                <span style={{ fontSize: 11, opacity: 0.6, marginLeft: 6 }}>♪ {SOUND_LABEL[sfxFor(n.items()[0]!)]}</span>
+              </button>
+            ))}
+            <div className="tr-note" style={{ marginTop: 6 }}>音だけ鳴らす</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+              {SOUNDS.map((x) => (
+                <button key={x.name} type="button" className="tr-ghost" onClick={() => sfx(SEQ[x.name] as Parameters<typeof sfx>[0], 0.05)}>
+                  ♪ {x.label}
+                </button>
+              ))}
+            </div>
+            <div className="tr-note" style={{ marginTop: 10, color: 'inherit', fontWeight: 700 }}>演出（全画面）</div>
+          </div>
+        )}
         <div className="tr-note">見本のデータで再生します。生徒の既読には影響しません。画面をタップすると最後の状態へ飛びます。</div>
         <div className="tr-fxlab">
           {items.map((it) => (
@@ -108,16 +192,6 @@ export function FxLabScreen({ grade, nickname, subject, subjectName, season, onT
               {it.label}
             </button>
           ))}
-          {onToasts && (
-            <>
-              <div className="tr-note" style={{ marginTop: 6 }}>通知（トロフィー・お知らせ）の見本。左上に出ます（効果音は「…」→ 効果音 で ON / OFF）。</div>
-              {notes.map((n) => (
-                <button key={n.label} type="button" className="tr-ghost" onClick={() => demo(n.items())}>
-                  {n.label}
-                </button>
-              ))}
-            </>
-          )}
           {onTickets && (
             <button type="button" className="tr-ghost" onClick={onTickets}>
               <Ico id="i-ticket" size={16} />

@@ -584,13 +584,16 @@ export interface TrophyList {
   items: TrophyItem[];
 }
 
-/** 未通知の獲得とお知らせ。古い Proxy（404）は空 */
-export async function fetchTrophyPending(): Promise<TrophyPending> {
+/**
+ * 未通知の獲得とお知らせ。古い Proxy（404）・D1 0010 の前は空で available: false
+ * （トロフィーのボタンを出さない → LIFF を Proxy より先に出しても生徒の画面は今までどおり）
+ */
+export async function fetchTrophyPending(): Promise<TrophyPending & { available: boolean }> {
   try {
-    const r = await get<Partial<TrophyPending>>('/tree/trophies/pending');
-    return { trophies: r.trophies ?? [], notices: r.notices ?? [] };
+    const r = await get<Partial<TrophyPending> & { ready?: boolean }>('/tree/trophies/pending');
+    return { trophies: r.trophies ?? [], notices: r.notices ?? [], available: r.ready !== false };
   } catch (e) {
-    if (e instanceof TreeApiError && e.status === 404) return { trophies: [], notices: [] };
+    if (e instanceof TreeApiError && (e.status === 404 || e.status === 503)) return { trophies: [], notices: [], available: false };
     throw e;
   }
 }

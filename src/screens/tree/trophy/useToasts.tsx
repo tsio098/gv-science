@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { IPAD_MIN_W } from '../treeTheme';
 import { playSfx, type SfxName } from './sfx';
+import { toastSpeed } from './labSpeed';
 import { ToastLayer } from './TrophyToast';
 import { mergeToasts, pickToast, toastMs, type ToastItem, type ToastPick } from './toastQueue';
 
@@ -78,7 +79,7 @@ export function useToasts({
     setOut(false);
     setCur({ ...pick, n: ++seq.current });
     cb.current.onShown?.(pick.consumed);
-    playSfx(sfxFor(pick.item));
+    playSfx(sfxFor(pick.item), toastSpeed());
   }, [cur, paused, queue]);
 
   // 出題・演出が始まったら今の通知は消す（もう既読）
@@ -94,13 +95,13 @@ export function useToasts({
     window.setTimeout(() => {
       setCur(null);
       setOut(false);
-    }, OUT_MS);
+    }, OUT_MS / toastSpeed());
   }, []);
 
   // 表示時間が過ぎたら畳む
   useEffect(() => {
     if (!cur || out) return;
-    const t = window.setTimeout(close, toastMs(cur.item));
+    const t = window.setTimeout(close, toastMs(cur.item) / toastSpeed());
     return () => window.clearTimeout(t);
   }, [cur, out, close]);
 

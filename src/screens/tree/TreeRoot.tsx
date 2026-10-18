@@ -182,6 +182,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
    * キューは 1 つ。出題中（play / arenaPlay）と演出中（events）は出さず、終わったら続きを出す。
    * 表示を始めたら既読（/tree/trophies/seen）。この画面で通知したトロフィーはヘッダーのボタンに点（一覧を開くまで）*/
   const [trophyDot, setTrophyDot] = useState<string | null>(null);
+  /** Proxy がトロフィーに対応しているか（pending が返ったら true。古い Proxy ではトロフィーのボタンを出さない）*/
+  const [trophyReady, setTrophyReady] = useState(false);
   const [toastDetail, setToastDetail] = useState<{ subject: string; item: TrophyItem } | null>(null);
   /** トロフィー一覧の分野チップ用（今の科目以外の manifest）*/
   const [otherManifests, setOtherManifests] = useState<Record<string, TreeManifest>>({});
@@ -210,6 +212,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   const loadPending = useCallback(() => {
     fetchTrophyPending()
       .then((p) => {
+        setTrophyReady(p.available);
         pushToasts([
           ...p.trophies.map((t) => trophyToast(t, subjectJa(t.subject))),
           ...p.notices.map((n) => noticeToast(n, subjectJa(n.subject))).filter((x): x is ToastItem => !!x),
@@ -622,7 +625,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           onFxLab={me.grade === '先生' ? () => setView({ kind: 'fxlab' }) : undefined}
           tickets={tickets.filter((t) => !t.usedAt).length}
           onTickets={() => setView({ kind: 'tickets', back: { kind: 'tree' } })}
-          onTrophies={() => {
+          onTrophies={!trophyReady ? undefined : () => {
             setTrophyDot(null);
             setView({ kind: 'trophies', back: { kind: 'tree' } });
           }}
