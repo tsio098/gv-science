@@ -2,8 +2,10 @@
  * ANCHOR TREE — 演出の確認（先生用アカウントだけ・2026-10-17 夕方 先生の依頼）。
  * 5 つの演出（＋総合優勝のプレミアム）を見本のデータで何度でも再生する。既読（/tree/events/seen）にはしない。
  */
-import { useState } from 'react';
-import type { ArenaSeason, TreeEvent } from '../../../lib/treeApi';
+import { useRef, useState } from 'react';
+import type { ArenaSeason, TreeEvent, TrophyGet } from '../../../lib/treeApi';
+import type { ToastItem } from '../trophy/toastQueue';
+import { noticeToast, trophyToast } from '../trophy/toastItems';
 import { Ico } from '../TreeIcons';
 import { rootClass } from '../treeTheme';
 import { FxScreen } from './FxScreen';
@@ -18,6 +20,8 @@ interface Props {
   season: ArenaSeason | null;
   /** チケットの見本（半券を切るテスト）へ */
   onTickets?: () => void;
+  /** 通知（トロフィー・お知らせ）の見本をキューに入れる（既読にしない・2026-10-19）*/
+  onToasts?: (items: ToastItem[]) => void;
   onBack: () => void;
 }
 
@@ -31,7 +35,8 @@ function seasonAt(base: ArenaSeason | null, offset: number): ArenaSeason {
   return { n, key: new Date(start + 9 * 3600_000).toISOString().slice(0, 10), start, end: start + len };
 }
 
-export function FxLabScreen({ grade, nickname, subject, subjectName, season, onTickets, onBack }: Props) {
+export function FxLabScreen({ grade, nickname, subject, subjectName, season, onTickets, onToasts, onBack }: Props) {
+  const demoN = useRef(0);
   // n: 同じ演出をもう一度押したときも最初から再生し直す
   const [playing, setPlaying] = useState<{ ev: TreeEvent; n: number } | null>(null);
   const who = { subject, grade, nickname };
@@ -44,6 +49,38 @@ export function FxLabScreen({ grade, nickname, subject, subjectName, season, onT
     { label: '総合優勝（通常）', ev: { ...who, key: 'lab:grand', type: 'grand', pair: [seasonAt(season, -2), prev], score: 1540, ticket: { id: 'lab', premium: false } } },
     { label: '総合優勝（プレミアム）', ev: { ...who, key: 'lab:grand-p', type: 'grand', pair: [seasonAt(season, -2), prev], score: 1880, ticket: { id: 'lab', premium: true } } },
     { label: '新シーズン開始', ev: { ...who, key: 'lab:season', type: 'season_start', season: cur } },
+  ];
+
+  // 通知の見本（キーを毎回変えて何度でも出す。trophy / noticeKey を外して既読・詳細に行かない）
+  const demo = (list: ToastItem[]) => {
+    const n = ++demoN.current;
+    onToasts?.(list.map((t) => ({ ...t, key: `demo:${n}:${t.key}`, trophy: undefined, noticeKey: undefined })));
+  };
+  const tg = (grade: TrophyGet['grade'], name: string, pt: number): ToastItem =>
+    trophyToast({ subject, id: name, grade, name, pt, first: grade === 'F', desc: '' }, subjectName);
+  const notes: { label: string; items: () => ToastItem[] }[] = [
+    { label: 'ブロンズ', items: () => [tg('B', 'すべては最善', 15)] },
+    { label: 'シルバー（13 字は 13px）', items: () => [tg('S', '明日も、明日も、また明日も', 30)] },
+    { label: 'ゴールド', items: () => [tg('G', '大地もそのすべても君のもの', 90)] },
+    { label: 'プラチナ', items: () => [tg('P', '時よ止まれ、お前は美しい', 300)] },
+    { label: 'ファースト（自分）', items: () => [tg('F', 'われ発見せり', 180)] },
+    {
+      label: 'ファースト（ほかの人）',
+      items: () => [noticeToast({ key: 'first', type: 'first_broadcast', subject, holder: { grade: 'H3', nickname: 'たまき' }, trophy: { id: 'f', name: 'われ発見せり', desc: 'ROUTE の全分野をマスター' } }, subjectName)!],
+    },
+    { label: 'NODE OPEN（分野の解放）', items: () => [{ key: 'node', kind: 'node', head: 'NODE OPEN!', main: '気体の性質', sub: `${subjectName} · ROUTE` }] },
+    { label: 'MASTER（種別のマスター）', items: () => [{ key: 'master', kind: 'master', head: 'MASTER!', main: '非金属 · 正誤', sub: 'マスター度 80%' }] },
+    { label: 'RANK UP（順位アップ）', items: () => [{ key: 'rank', kind: 'rank', head: 'RANK UP!', main: '非金属 7 位 → 5 位', sub: '38 人中' }] },
+    { label: 'NEW（新着）', items: () => [{ key: 'news', kind: 'news', head: 'NEW +3', main: '非金属に新着 3 問', sub: `${subjectName} · ROUTE` }] },
+    { label: 'PROGRESS（80% に届いた）', items: () => [{ key: 'near', kind: 'progress', head: 'PROGRESS 40/50', main: '待て、そして希望せよ', prog: { now: 40, max: 50 } }] },
+    { label: 'LAST DAY（アリーナ最終日）', items: () => [noticeToast({ key: 'ld', type: 'arena_last_day', subject, season: cur }, subjectName)!] },
+    {
+      label: 'RANKING UPDATE（アリーナの順位）',
+      items: () => [noticeToast({ key: 'ar', type: 'arena_rank', subject, season: cur, rank: 4, prevRank: 3, of: 21, leader: { grade: 'H3', nickname: 'たまき' }, leaderChanged: true }, subjectName)!],
+    },
+    { label: 'TEACHER RECORD（先生の記録）', items: () => [noticeToast({ key: 'tr', type: 'teacher_record', subject, season: cur, score: 912 }, subjectName)!] },
+    { label: '2 件（次がのぞく）', items: () => [tg('S', 'その倍の速さで走れ', 30), tg('B', 'すべては最善', 15)] },
+    { label: '3 件まとめて（ほか n 件）', items: () => [tg('B', 'すべては最善', 15), tg('S', 'その倍の速さで走れ', 30), tg('G', '時は金なり', 90)] },
   ];
 
   return (
@@ -71,6 +108,16 @@ export function FxLabScreen({ grade, nickname, subject, subjectName, season, onT
               {it.label}
             </button>
           ))}
+          {onToasts && (
+            <>
+              <div className="tr-note" style={{ marginTop: 6 }}>通知（トロフィー・お知らせ）の見本。左上に出ます（効果音は「…」→ 効果音 で ON / OFF）。</div>
+              {notes.map((n) => (
+                <button key={n.label} type="button" className="tr-ghost" onClick={() => demo(n.items())}>
+                  {n.label}
+                </button>
+              ))}
+            </>
+          )}
           {onTickets && (
             <button type="button" className="tr-ghost" onClick={onTickets}>
               <Ico id="i-ticket" size={16} />

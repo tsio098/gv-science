@@ -231,6 +231,10 @@ export interface SubmitResult {
   newlyUnlocked: string[];
   /** 分野の順位の前後（Phase 4）*/
   rank?: { before: RankInfo; after: RankInfo };
+  /** この提出で獲得したトロフィー（2026-10-19〜。古い Proxy では無い）*/
+  trophies?: TrophyGet[];
+  /** 数えるトロフィーが 80% に届いた（PROGRESS の通知。サーバが 1 回だけ返す）*/
+  near?: TrophyNear[];
 }
 
 export interface RankRow {
@@ -395,6 +399,8 @@ export interface ArenaResult {
   canRecord?: boolean;
   rank: RankInfo;
   season: ArenaSeason;
+  /** この挑戦で獲得したトロフィー（2026-10-19〜）*/
+  trophies?: TrophyGet[];
 }
 
 export interface ArenaRankRow extends RankRow {
@@ -493,6 +499,105 @@ export const fetchTreeEvents = () => get<{ events: TreeEvent[] }>('/tree/events'
 export const markTreeEventsSeen = (keys: string[]) => post<{ ok: boolean }>('/tree/events/seen', { keys });
 export const fetchTreeHome = (subject: string) =>
   get<TreeProgress & { home?: TreeHomeFlags }>(`/tree/progress?subject=${encodeURIComponent(subject)}&home=1`);
+
+/* ── トロフィー・通知（2026-10-19・実装手順_トロフィー）────────────
+ * 科目ごとに別に獲得。グレード B / S / G / P（プラチナ）/ F（ファースト = 塾内で最初の 1 人だけ）。
+ * 通知は左上のトースト（trophy/TrophyToast）。未通知の獲得と、アリーナ・ファーストのお知らせは /tree/trophies/pending。 */
+
+export type TrophyGrade = 'B' | 'S' | 'G' | 'P' | 'F';
+
+/** 獲得した 1 件（通知用）*/
+export interface TrophyGet {
+  subject: string;
+  id: string;
+  grade: TrophyGrade;
+  name: string;
+  pt: number;
+  first: boolean;
+  /** 条件の文 */
+  desc: string;
+}
+
+/** 数えるトロフィーが 80% に届いた（PROGRESS）*/
+export interface TrophyNear {
+  subject: string;
+  id: string;
+  grade: TrophyGrade;
+  name: string;
+  now: number;
+  max: number;
+}
+
+export type TreeNotice =
+  | { key: string; type: 'first_broadcast'; subject: string; holder: { grade: string; nickname: string }; trophy: { id: string; name: string; desc: string } }
+  | {
+      key: string;
+      type: 'arena_rank';
+      subject: string;
+      season: ArenaSeason;
+      rank: number;
+      prevRank: number | null;
+      of: number;
+      leader: { grade: string; nickname: string } | null;
+      leaderChanged: boolean;
+    }
+  | { key: string; type: 'teacher_record'; subject: string; season: ArenaSeason; score: number }
+  | { key: string; type: 'arena_last_day'; subject: string; season: ArenaSeason };
+
+export interface TrophyPending {
+  trophies: TrophyGet[];
+  notices: TreeNotice[];
+}
+
+export interface TrophyItem {
+  id: string;
+  grade: TrophyGrade;
+  /** 隠し・未獲得は '???' */
+  name: string;
+  desc: string;
+  source: string;
+  original: string;
+  /** 隠しトロフィーで未獲得（??? で出す）*/
+  hidden: boolean;
+  /** 隠しトロフィーか（獲得後も）*/
+  secret: boolean;
+  first: boolean;
+  earnedAt: number | null;
+  progress: { now: number; max: number } | null;
+  /** 取得率 = n / of（of = その科目を開ける在籍生徒・先生除く）*/
+  rarity: { n: number; of: number };
+  firstHolder: { grade: string; nickname: string; at: number; me: boolean } | null;
+  /** 試験が入るたびに 1 人（f_new_exam）→ 「受付終了」と出さない */
+  repeat?: boolean;
+  /** 関係する分野 ID（詳細のチップ）*/
+  fields: string[];
+  order: number;
+}
+
+export interface TrophyList {
+  subject: string;
+  /** 全科目合計の pt。into = 今のレベルに入ってからの pt・need = そのレベルの幅 */
+  level: { lv: number; pt: number; into: number; need: number };
+  /** all / earned は件数、B〜F は獲得数 */
+  counts: { all: number; earned: number; B: number; S: number; G: number; P: number; F: number };
+  platinum: { now: number; max: number; earned: boolean; name: string; id: string };
+  items: TrophyItem[];
+}
+
+/** 未通知の獲得とお知らせ。古い Proxy（404）は空 */
+export async function fetchTrophyPending(): Promise<TrophyPending> {
+  try {
+    const r = await get<Partial<TrophyPending>>('/tree/trophies/pending');
+    return { trophies: r.trophies ?? [], notices: r.notices ?? [] };
+  } catch (e) {
+    if (e instanceof TreeApiError && e.status === 404) return { trophies: [], notices: [] };
+    throw e;
+  }
+}
+/** 通知を出した（表示を始めた）ものを既読に */
+export const markTrophiesSeen = (trophies: { subject: string; id: string }[], keys: string[]) =>
+  post<{ ok: boolean }>('/tree/trophies/seen', { trophies, keys });
+export const fetchTrophies = (subject: string) => get<TrophyList>(`/tree/trophies?subject=${encodeURIComponent(subject)}`);
 
 /* ── 先生用 進捗一覧（2026-10-17）──────────────────────────
  * Proxy は生徒を key（userId のハッシュ）で返し、氏名は持たない。

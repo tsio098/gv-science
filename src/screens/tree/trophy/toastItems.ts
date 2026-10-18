@@ -1,0 +1,117 @@
+/**
+ * API の応答 → 通知（ToastItem）。文言はボード「通知のバリエーション」（実装手順_トロフィー §5.4・§5.5）。
+ */
+import type { ArenaSeason, QType, SubmitResult, TreeManifest, TreeNotice, TreeProgress, TreeStage, TrophyGet, TrophyNear } from '../../../lib/treeApi';
+import { gradeLabel } from '../../../lib/treeApi';
+import { MASTER_AT, fmtScore } from '../treeTheme';
+import type { ToastItem } from './toastQueue';
+
+const SHORT_TYPE: Record<QType, string> = { tf: '正誤', calc: '計算', reason: '考察' };
+const seasonLabel = (s: ArenaSeason) => (s.n >= 1 ? `SEASON ${s.n}` : 'PRE SEASON');
+const who = (h: { grade: string; nickname: string }) => `${gradeLabel(h.grade)} ${h.nickname}`.trim();
+
+/** 獲得したトロフィー */
+export function trophyToast(t: TrophyGet, subjectName: string, stage: TreeStage = 'front'): ToastItem {
+  const head = t.grade === 'P' ? 'PLATINUM GET!!' : t.grade === 'F' ? 'FIRST CLEAR!!' : 'TROPHY GET!';
+  const sub = t.grade === 'P' ? `${subjectName}のトロフィー全獲得` : t.grade === 'F' ? '塾内で最初の 1 人' : undefined;
+  return {
+    key: `trophy:${t.subject}:${t.id}`,
+    kind: 'trophy',
+    grade: t.grade,
+    head,
+    main: t.name,
+    sub,
+    pt: t.pt,
+    abyss: stage === 'back',
+    trophy: { subject: t.subject, id: t.id },
+  };
+}
+
+/** 数えるトロフィーが 80% に届いた */
+export function nearToast(n: TrophyNear): ToastItem {
+  return { key: `near:${n.subject}:${n.id}`, kind: 'progress', head: `PROGRESS ${n.now}/${n.max}`, main: n.name, prog: { now: n.now, max: n.max } };
+}
+
+/** サーバのお知らせ（ファースト・アリーナ・先生の記録）*/
+export function noticeToast(n: TreeNotice, subjectName: string): ToastItem | null {
+  switch (n.type) {
+    case 'first_broadcast':
+      return {
+        key: n.key, noticeKey: n.key, kind: 'firstOther',
+        head: `FIRST! ${who(n.holder)}`, main: n.trophy.name, sub: `${subjectName} · ${n.trophy.desc}`,
+      };
+    case 'arena_rank': {
+      const d = n.prevRank == null ? 0 : n.rank - n.prevRank;
+      const arrow = d > 0 ? ` ▼${d}` : d < 0 ? ` ▲${-d}` : '';
+      return {
+        key: n.key, noticeKey: n.key, kind: 'arenaRank', head: 'RANKING UPDATE',
+        main: `${subjectName}アリーナ ${n.rank} 位${arrow}`,
+        sub: n.leaderChanged && n.leader ? `${seasonLabel(n.season)} · ${who(n.leader)} が 1 位に` : `${seasonLabel(n.season)} · ${n.of} 人中`,
+      };
+    }
+    case 'teacher_record':
+      return {
+        key: n.key, noticeKey: n.key, kind: 'teacher', head: 'TEACHER RECORD',
+        main: `先生の記録 ${fmtScore(n.score)} 点`, sub: `今シーズン · ${subjectName}アリーナ`,
+      };
+    case 'arena_last_day':
+      return {
+        key: n.key, noticeKey: n.key, kind: 'lastday', head: 'LAST DAY!',
+        main: `${seasonLabel(n.season)} あと 1 日`, sub: `CHAMPION ARENA · ${subjectName}`,
+      };
+    default:
+      return null;
+  }
+}
+
+/** 結果画面に入ったとき: トロフィー・PROGRESS・分野の解放・種別のマスター・順位アップ */
+export function submitToasts(r: SubmitResult, manifest: TreeManifest, subjectName: string, stage: TreeStage): ToastItem[] {
+  const out: ToastItem[] = [];
+  const name = (id: string) => manifest.fields.find((f) => f.id === id)?.name ?? id;
+  const stageName = stage === 'back' ? 'ABYSS' : 'ROUTE';
+  for (const t of r.trophies ?? []) out.push(trophyToast(t, subjectName, stage));
+  for (const n of r.near ?? []) out.push(nearToast(n));
+  for (const f of r.newlyUnlocked ?? []) {
+    out.push({ key: `node:${manifest.subject}:${stage}:${f}`, kind: 'node', head: 'NODE OPEN!', main: name(f), sub: `${subjectName} · ${stageName}` });
+  }
+  const b = r.node?.before?.mastery ?? 0;
+  const a = r.node?.after?.mastery ?? 0;
+  if (r.node && b < MASTER_AT && a >= MASTER_AT) {
+    out.push({
+      key: `master:${manifest.subject}:${stage}:${r.node.field}:${r.node.qtype}`, kind: 'master', head: 'MASTER!',
+      main: `${name(r.node.field)} · ${SHORT_TYPE[r.node.qtype]}`, sub: `マスター度 ${Math.round(MASTER_AT * 100)}%`,
+    });
+  }
+  const rb = r.rank?.before?.rank ?? null;
+  const ra = r.rank?.after?.rank ?? null;
+  if (r.rank && ra != null && (rb == null || ra < rb)) {
+    out.push({
+      key: `rank:${r.sessionId}`, kind: 'rank', head: 'RANK UP!',
+      main: rb == null ? `${name(r.node.field)} ${ra} 位に` : `${name(r.node.field)} ${rb} 位 → ${ra} 位`,
+      sub: `${r.rank.after.of} 人中`,
+    });
+  }
+  return out;
+}
+
+/** ツリーを開いたとき: 新着（その版で 1 回だけ。localStorage['gvTree.newNotified.{科目}'] = 版）*/
+export function newsToast(manifest: TreeManifest, progress: TreeProgress, subjectName: string): ToastItem | null {
+  const key = `gvTree.newNotified.${manifest.subject}`;
+  try {
+    if (localStorage.getItem(key) === String(manifest.version)) return null;
+  } catch {
+    /* 覚えられない端末は毎回出しうる */
+  }
+  const list = manifest.fields.map((f) => ({ name: f.name, n: progress.fields[f.id]?.unlocked ? progress.fields[f.id]?.newCount ?? 0 : 0 })).filter((x) => x.n > 0);
+  const n = list.reduce((s, x) => s + x.n, 0);
+  try {
+    localStorage.setItem(key, String(manifest.version));
+  } catch {
+    /* noop */
+  }
+  if (!n) return null;
+  return {
+    key: `news:${manifest.subject}:${manifest.version}`, kind: 'news', head: `NEW +${n}`,
+    main: list.length === 1 ? `${list[0]!.name}に新着 ${n} 問` : `新着 ${n} 問`, sub: `${subjectName} · ROUTE`,
+  };
+}

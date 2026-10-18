@@ -1,0 +1,586 @@
+/* ============================================================
+   ANCHOR TREE — トロフィー・通知（2026-10-19・実装手順_トロフィー §6・デザインボード「ANCHOR TREE トロフィー」）
+   通知は左上だけ・ロゴと同じレトロアーケード風（ドットの角・走査線・クロームの見出し・Press Start 2P / DotGothic16）。
+   ブリーフ §2.1「アニメーションなし」の例外（通知の入場だけ）:
+   - 全部 steps() のコマ送り・transform / opacity / clip-path / filter だけ・1 回だけ
+   - 基底（animation なし）が最後の状態。待ち時間は fill-mode backwards で隠す
+     → WebView で animation が止まっても .is-done（止まりの検知 1.5 秒・保険のタイマー）で最後の状態が見える
+   - prefers-reduced-motion は最初から最後の状態（音も鳴らさない＝sfx.ts）
+   ============================================================ */
+
+@font-face {
+  font-family: 'Press Start 2P';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/PressStart2P-subset.woff2') format('woff2');
+}
+
+.tt-arc {
+  font-family: 'Press Start 2P', var(--f-mono, monospace);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.tt-dot {
+  font-family: 'DotGothic16', var(--f-jp);
+  font-weight: 400;
+}
+/* クロームの文字（グラデは style の background で渡す）*/
+.tt-chrome {
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(1px 1px 0 #021014);
+}
+/* ドットの角（8px の 2 段 / 4px）*/
+.tt-px {
+  clip-path: polygon(8px 0, calc(100% - 8px) 0, calc(100% - 8px) 4px, calc(100% - 4px) 4px, calc(100% - 4px) 8px, 100% 8px, 100% calc(100% - 8px), calc(100% - 4px) calc(100% - 8px), calc(100% - 4px) calc(100% - 4px), calc(100% - 8px) calc(100% - 4px), calc(100% - 8px) 100%, 8px 100%, 8px calc(100% - 4px), 4px calc(100% - 4px), 4px calc(100% - 8px), 0 calc(100% - 8px), 0 8px, 4px 8px, 4px 4px, 8px 4px);
+}
+.tt-px2 {
+  clip-path: polygon(4px 0, calc(100% - 4px) 0, calc(100% - 4px) 2px, calc(100% - 2px) 2px, calc(100% - 2px) 4px, 100% 4px, 100% calc(100% - 4px), calc(100% - 2px) calc(100% - 4px), calc(100% - 2px) calc(100% - 2px), calc(100% - 4px) calc(100% - 2px), calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 2px), 2px calc(100% - 2px), 2px calc(100% - 4px), 0 calc(100% - 4px), 0 4px, 2px 4px, 2px 2px, 4px 2px);
+}
+.tt-pxtop {
+  clip-path: polygon(12px 0, calc(100% - 12px) 0, calc(100% - 12px) 4px, calc(100% - 8px) 4px, calc(100% - 8px) 8px, calc(100% - 4px) 8px, calc(100% - 4px) 12px, 100% 12px, 100% 100%, 0 100%, 0 12px, 4px 12px, 4px 8px, 8px 8px, 8px 4px, 12px 4px);
+}
+.tt-scan {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(180deg, rgba(0, 8, 12, 0.3) 0 1px, rgba(0, 0, 0, 0) 1px 3px);
+}
+
+/* ── 通知の置き場所（左上だけ）── */
+.tt-layer {
+  position: fixed;
+  left: 12px;
+  top: calc(env(safe-area-inset-top, 0px) + 32px);
+  z-index: 260;
+  pointer-events: none;
+}
+.tt-layer.is-wide {
+  left: 24px;
+  top: calc(env(safe-area-inset-top, 0px) + 36px);
+}
+.tt-slot {
+  position: relative;
+  pointer-events: auto;
+  touch-action: pan-y;
+}
+.tt-toast {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.tt-frame {
+  display: block;
+  padding: 3px;
+}
+.tt-body {
+  position: relative;
+  box-sizing: border-box;
+  padding: 7px 10px 10px 7px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  overflow: hidden;
+}
+.tt-well {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tt-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tt-head {
+  font-size: 7px;
+  line-height: 1.2;
+  align-self: flex-start;
+  white-space: nowrap;
+}
+.tt-main {
+  line-height: 1.15;
+  color: #fff;
+  text-shadow: 2px 2px 0 #021014;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+}
+.tt-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+}
+.tt-sub {
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tt-en {
+  font-size: 7px;
+}
+.tt-pt {
+  font-size: 7px;
+  color: #fff;
+}
+.tt-more {
+  flex: none;
+  font-size: 10px;
+  color: #04161b;
+  background: #fff;
+  padding: 1px 6px;
+}
+.tt-bar {
+  height: 6px;
+  background: rgba(234, 251, 255, 0.12);
+}
+.tt-bar > span {
+  display: block;
+  height: 100%;
+}
+.tt-flashbox {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+}
+.tt-timerbox {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 3px;
+  height: 2px;
+}
+.tt-timerbox > span {
+  display: block;
+  height: 100%;
+}
+.tt-beamline {
+  position: absolute;
+  left: 0;
+  height: 3px;
+  background: #fff;
+  transform-origin: left;
+  opacity: 0;
+  pointer-events: none;
+}
+.tt-burstdot {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+}
+.tt-sparkle {
+  position: absolute;
+  pointer-events: none;
+}
+.tt-peekcard {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  height: 62px;
+  opacity: 0.6;
+  pointer-events: none;
+}
+.tt-stamp1 {
+  position: absolute;
+  right: -10px;
+  top: -14px;
+  padding: 5px 6px;
+  background: #ffd84a;
+  color: #5a0a1c;
+  font-size: 10px;
+  transform: rotate(-10deg);
+  box-shadow: 3px 3px 0 #7a0c24, 0 0 12px rgba(255, 216, 74, 0.75);
+  pointer-events: none;
+}
+.tt-aura {
+  position: absolute;
+  left: -120px;
+  top: -120px;
+  width: 560px;
+  height: 340px;
+  background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(208, 139, 255, 0.38), rgba(79, 195, 255, 0.16) 45%, rgba(4, 48, 57, 0) 72%);
+  pointer-events: none;
+  opacity: 0.6;
+}
+.tt-fallbit {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+}
+
+/* ── 入場（ボード ResultToast / TreeToast の CSS）── */
+@keyframes ttBeam { 0% { transform: scaleX(0); opacity: 1 } 70% { transform: scaleX(1); opacity: 1 } 100% { transform: scaleX(1); opacity: 0 } }
+@keyframes ttDraw { from { clip-path: inset(0 100% 0 0); transform: translateX(-16px) } to { clip-path: inset(-40px -40px -40px -40px); transform: none } }
+@keyframes ttFlash { 0% { opacity: 0 } 15% { opacity: 0.9 } 30% { opacity: 0 } 45% { opacity: 0.55 } 60% { opacity: 0 } 100% { opacity: 0 } }
+@keyframes ttFlashL { 0% { opacity: 0 } 12% { opacity: 0.95 } 24% { opacity: 0 } 36% { opacity: 0.7 } 48% { opacity: 0 } 60% { opacity: 0.4 } 72% { opacity: 0 } 100% { opacity: 0 } }
+@keyframes ttDrop { 0% { transform: translateY(-28px) scale(0.7) } 50% { transform: translateY(0) scale(1.25, 0.8) } 75% { transform: translateY(-4px) scale(0.95, 1.05) } 100% { transform: none } }
+@keyframes ttBurst { 0% { transform: scale(0.2); opacity: 1 } 80% { transform: scale(1.5); opacity: 1 } 100% { transform: scale(1.7); opacity: 0 } }
+@keyframes ttType { from { clip-path: inset(0 100% 0 0) } to { clip-path: inset(-4px -4px -4px -4px) } }
+@keyframes ttBlink { 0% { opacity: 1 } 50% { opacity: 0.15 } 100% { opacity: 1 } }
+@keyframes ttFade { from { opacity: 0 } to { opacity: 1 } }
+@keyframes ttTimer { from { clip-path: inset(0 0 0 0) } to { clip-path: inset(0 100% 0 0) } }
+@keyframes ttSpark { 0% { opacity: 0 } 50% { opacity: 1 } 100% { opacity: 1 } }
+@keyframes ttPeek { from { transform: translateX(-130%) } to { transform: translateX(0) } }
+@keyframes ttPrism { 0% { filter: hue-rotate(0deg) } 100% { filter: hue-rotate(360deg) } }
+@keyframes ttAura { 0% { opacity: 0 } 30% { opacity: 1 } 100% { opacity: 0.6 } }
+@keyframes ttFall { 0% { transform: translateY(0); opacity: 1 } 99% { transform: translateY(240px); opacity: 1 } 100% { transform: translateY(240px); opacity: 0 } }
+@keyframes ttStamp { 0% { transform: scale(3.2) rotate(-30deg); opacity: 0 } 30% { opacity: 1 } 60% { transform: scale(0.85) rotate(-6deg) } 80% { transform: scale(1.12) rotate(-12deg) } 100% { transform: scale(1) rotate(-10deg) } }
+@keyframes ttShake { 0% { transform: translate(0, 0) } 20% { transform: translate(-4px, 1px) } 40% { transform: translate(4px, -1px) } 60% { transform: translate(-3px, 0) } 80% { transform: translate(2px, 1px) } 100% { transform: translate(0, 0) } }
+@keyframes ttOut { from { clip-path: inset(-40px -40px -40px -40px); transform: none } to { clip-path: inset(0 100% 0 0); transform: translateX(-14px) } }
+@keyframes ttPing { 0% { transform: scale(0) } 50% { transform: scale(1.4) } 100% { transform: scale(1) } }
+
+/* 残り時間のバーは幅でなく clip-path で右から削る（ドットの間隔を保つ）*/
+
+.tt-beam { animation: ttBeam 0.2s steps(5) 0.2s both; }
+.tt-in { animation: ttDraw 0.3s steps(8) 0.32s backwards; }
+.tt-flash { animation: ttFlash 0.5s steps(1) 0.62s both; }
+.tt-pop { animation: ttDrop 0.4s steps(5) 0.68s backwards; }
+.tt-burst { animation: ttBurst 0.4s steps(5) 0.72s both; }
+.tt-blink { animation: ttType 0.4s steps(11) 1s backwards, ttBlink 0.4s steps(1) 1.4s 4; }
+.tt-name { animation: ttFade 0.2s steps(2) 1.1s backwards; }
+.tt-timer { animation: ttTimer 4.5s steps(9) 0.7s both; }
+.tt-spark { animation: ttSpark 0.5s steps(1) 1.1s 4 both; }
+.tt-peek { animation: ttPeek 0.36s steps(6) 0.5s backwards; }
+
+/* プラチナ（ボード PlatinumToast）*/
+.tt-toast.is-p .tt-beam { animation: ttBeam 0.24s steps(6) 0.2s both; }
+.tt-toast.is-p .tt-in { animation: ttDraw 0.4s steps(10) 0.36s backwards; }
+.tt-toast.is-p .tt-flash { animation: ttFlashL 0.7s steps(1) 0.72s both; }
+.tt-toast.is-p .tt-pop { animation: ttDrop 0.44s steps(6) 0.78s backwards; }
+.tt-toast.is-p .tt-burst { animation: ttBurst 0.44s steps(6) 0.82s both; }
+.tt-toast.is-p .tt-name { animation: ttFade 0.2s steps(2) 1.2s backwards; }
+.tt-toast.is-p .tt-blink { animation: ttBlink 0.4s steps(1) 1.6s 6; }
+.tt-toast.is-p .tt-timer { animation: ttTimer 6s steps(12) 0.86s both; }
+.tt-toast.is-p .tt-spark { animation: ttSpark 0.5s steps(1) 1.2s 6 both; }
+.tt-prism { animation: ttPrism 1.2s steps(10) 0.8s 3; }
+.tt-aura { animation: ttAura 1.2s steps(4) 0.2s both; }
+.tt-fall { animation: ttFall 2.4s steps(12) 1s both; }
+
+/* ファースト（自分・ボード FirstTrophy）*/
+.tt-toast.is-f .tt-beam { animation: ttBeam 0.24s steps(6) 0.2s both; }
+.tt-toast.is-f .tt-flash { animation: ttFlashL 0.6s steps(1) 0.62s both; }
+.tt-toast.is-f .tt-burst { animation: ttBurst 0.42s steps(6) 0.72s both; }
+.tt-toast.is-f .tt-blink { animation: ttType 0.4s steps(13) 1.25s backwards, ttBlink 0.4s steps(1) 1.65s 5; }
+.tt-toast.is-f .tt-name { animation: ttFade 0.2s steps(2) 1.35s backwards; }
+.tt-toast.is-f .tt-timer { animation: ttTimer 7s steps(14) 0.9s both; }
+.tt-toast.is-f .tt-spark { animation: ttSpark 0.5s steps(1) 1.3s 6 both; }
+.tt-stamp { animation: ttStamp 0.4s steps(6) 0.9s backwards; }
+.tt-shake { animation: ttShake 0.3s steps(5) 1.12s; }
+.tt-confetti { animation: ttBurst 0.5s steps(6) 1.12s both; }
+
+/* ファースト（ほかの人）: 小さく・スタンプ・紙吹雪なし */
+.tt-toast.is-fo .tt-in { animation: ttDraw 0.3s steps(8) 0.2s backwards; }
+.tt-toast.is-fo .tt-flash { animation: ttFlash 0.5s steps(1) 0.5s both; }
+.tt-toast.is-fo .tt-name { animation: ttFade 0.2s steps(2) 0.7s backwards; }
+
+/* 閉じる = 左へ畳む */
+.tt-slot.is-out .tt-toast,
+.tt-slot.is-out .tt-peekcard {
+  animation: ttOut 0.3s steps(6) forwards !important;
+}
+.tt-slot.is-out .tt-toast * {
+  animation: none !important;
+}
+
+/* WebView で animation が止まったとき・保険のタイマー: 入場を最後の状態に（残り時間のバーは動かしたまま）*/
+.tt-slot.is-done .tt-beam,
+.tt-slot.is-done .tt-in,
+.tt-slot.is-done .tt-flash,
+.tt-slot.is-done .tt-pop,
+.tt-slot.is-done .tt-burst,
+.tt-slot.is-done .tt-blink,
+.tt-slot.is-done .tt-name,
+.tt-slot.is-done .tt-spark,
+.tt-slot.is-done .tt-peek,
+.tt-slot.is-done .tt-prism,
+.tt-slot.is-done .tt-aura,
+.tt-slot.is-done .tt-fall,
+.tt-slot.is-done .tt-stamp,
+.tt-slot.is-done .tt-shake,
+.tt-slot.is-done .tt-confetti {
+  animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tt-layer *,
+  .tt-dotping {
+    animation: none !important;
+  }
+}
+
+/* ── ヘッダー: スマホ幅でボタンが多いとき（ABYSS の切替 + 丸ボタン 4 つ以上）。375px でもはみ出さないように ── */
+.tr-chrome.is-crowded .tr-stagelabel {
+  display: none;
+}
+.tr-root:not(.is-wide) .tr-chrome.is-packed .tr-chrome-r {
+  gap: 4px;
+}
+.tr-root:not(.is-wide) .tr-chrome.is-packed .tr-iconbtn {
+  width: 32px;
+  height: 32px;
+}
+
+/* ── ヘッダーのトロフィーボタン（点の基準）── */
+.tt-headbtn {
+  position: relative;
+}
+
+/* ── ヘッダーのトロフィーボタンの点（未確認の獲得・グレード色）── */
+.tt-dotping {
+  position: absolute;
+  right: -3px;
+  top: -3px;
+  width: 10px;
+  height: 10px;
+  outline: 2px solid var(--tr-ground);
+  animation: ttPing 0.3s steps(3) 0.2s backwards;
+}
+
+/* ── トロフィー一覧（ボード「トロフィー一覧」）── */
+.tt-list {
+  display: flex;
+  flex-direction: column;
+}
+.tt-list-head {
+  flex: none;
+  padding: var(--tr-top) 12px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.tt-list-title {
+  margin: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.tt-seg {
+  display: flex;
+  padding: 3px;
+  background: rgba(4, 48, 57, 0.85);
+  gap: 2px;
+}
+.tt-list-head {
+  flex-wrap: wrap;
+}
+/* 3 科目以上（先生など）はスマホ幅で見出しの下の段に・横にスクロール */
+@media (max-width: 600px) {
+  .tt-seg.is-many {
+    flex: 1 0 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    box-sizing: border-box;
+  }
+}
+.tt-btn {
+  font-family: 'DotGothic16', var(--f-jp);
+  font-size: 13px;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  cursor: pointer;
+  background: transparent;
+  color: var(--tr-sub);
+  white-space: nowrap;
+}
+.tt-btn.is-on {
+  background: var(--tr-accent);
+  color: var(--tr-on);
+}
+.tt-btn.is-tab {
+  background: rgba(4, 48, 57, 0.85);
+  color: var(--tr-text);
+}
+.tt-btn.is-tab.is-on {
+  background: var(--tr-accent);
+  color: var(--tr-on);
+}
+.tt-list-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 14px 18px calc(24px + var(--tr-bottom)) 14px;
+}
+.tt-list-body > div {
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.tt-levelcard {
+  filter: drop-shadow(4px 4px 0 #0e9c9a) drop-shadow(0 0 10px rgba(45, 244, 198, 0.3));
+}
+.tt-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+.tt-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 36px;
+  background: rgba(2, 16, 22, 0.75);
+}
+.tt-meter {
+  height: 8px;
+  background: rgba(234, 251, 255, 0.1);
+}
+.tt-meter > span {
+  display: block;
+  height: 100%;
+  background: repeating-linear-gradient(90deg, #2df4c6 0 6px, rgba(0, 0, 0, 0) 6px 8px);
+}
+.tt-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tt-rowbtn {
+  display: block;
+  width: 100%;
+  padding: 2px;
+  border: 0;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.tt-rowin {
+  position: relative;
+  padding: 8px 10px 8px 8px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  overflow: hidden;
+}
+.tt-rowwell {
+  width: 42px;
+  height: 42px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.tt-rowtext {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tt-rowname {
+  font-size: 14px;
+  text-shadow: 1px 1px 0 #021014;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tt-rowdesc {
+  font-size: 11px;
+  color: var(--tr-sub);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tt-rowmeta {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+  max-width: 40%;
+  text-align: right;
+}
+.tt-mini1 {
+  position: absolute;
+  right: -6px;
+  top: -6px;
+  padding: 2px 3px;
+  background: #ffd84a;
+  color: #5a0a1c;
+  font-size: 6px;
+  transform: rotate(-10deg);
+  box-shadow: 1px 1px 0 #7a0c24;
+}
+.tt-empty {
+  padding: 24px 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--tr-sub);
+}
+
+/* ── 詳細シート（ボード「トロフィーの詳細」）── */
+.tt-sheet-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  background: rgba(2, 12, 16, 0.68);
+}
+.tt-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 251;
+  display: flex;
+  justify-content: center;
+}
+.tt-sheet > div {
+  width: 100%;
+  max-width: 520px;
+}
+.tt-sheet-in {
+  position: relative;
+  padding: 14px 20px calc(28px + var(--tr-bottom, env(safe-area-inset-bottom, 0px)));
+  background: linear-gradient(180deg, #0c4250, #062530 60%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  overflow: hidden;
+  max-height: 86vh;
+  overflow-y: auto;
+  color: #eafbff;
+}
+.tt-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  color: #fff;
+  font-size: 12px;
+}
+.tt-stat {
+  padding: 12px 14px;
+  background: rgba(2, 16, 22, 0.8);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

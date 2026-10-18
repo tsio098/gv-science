@@ -17,6 +17,7 @@ import type {
   TreeProgress,
   TreeSession,
   TreeStage,
+  TrophyItem,
 } from '../../lib/treeApi';
 import {
   ARENA_SUBJECTS,
@@ -28,6 +29,8 @@ import {
   fetchTreeManifest,
   fetchTreeMe,
   fetchTreeProgress,
+  fetchTrophyPending,
+  markTrophiesSeen,
   reportTreeQuestion,
   saveTreeNickname,
   startArena,
@@ -45,13 +48,24 @@ import { TreeShareModal } from './TreeShareModal';
 import { TreeSprite } from './TreeIcons';
 import { T, alpha, rootClass, setTreeStage } from './treeTheme';
 import { getLiffStatus } from '../../lib/liff';
-import { type TreeSubject, pickTreeSubject, rememberTreeSubject, treeSubjectsFor } from '../../lib/treeSubject';
+import { TREE_SUBJECT_NAME, type TreeSubject, pickTreeSubject, rememberTreeSubject, treeSubjectsFor } from '../../lib/treeSubject';
 import { TreeScreen } from './TreeScreen';
 import { PlayScreen } from './PlayScreen';
 import { ResultScreen } from './ResultScreen';
 import { StaffScreen } from './StaffScreen';
 import { SUBJECT_JA, type ScheduleSubject } from '../../lib/types';
+import { TrophyScreen } from './trophy/TrophyScreen';
+import { TrophyDetailSheet, fieldInfoFrom } from './trophy/TrophyDetailSheet';
+import { TrophySprite, GRADE_COLOR } from './trophy/TrophyIcon';
+import { useToasts } from './trophy/useToasts';
+import { newsToast, noticeToast, submitToasts, trophyToast } from './trophy/toastItems';
+import { dropTrophyMemo, loadTrophies } from './trophy/trophyData';
+import type { ToastItem } from './trophy/toastQueue';
 import '../../styles/tree.css';
+import '../../styles/tree-trophy.css';
+
+/** 科目キー → 表示名（トロフィーの通知は今開いていない科目のこともある）*/
+const subjectJa = (s: string) => TREE_SUBJECT_NAME[s as TreeSubject] ?? SUBJECT_JA[s as ScheduleSubject] ?? s;
 
 /**
  * LINE 内で開いたときの自分の LINE の ID（userId）。「塾生専用です」画面に出し、
@@ -84,7 +98,9 @@ type View =
   /** ボーナスチケット（本人のぶん。2026-10-17）*/
   | { kind: 'tickets'; back: View }
   /** 先生用: 演出の確認（2026-10-17 夕方）*/
-  | { kind: 'fxlab' };
+  | { kind: 'fxlab' }
+  /** トロフィー一覧（2026-10-19）*/
+  | { kind: 'trophies'; back: View };
 
 /**
  * 演出を止めるフラグ（LIFF WebView でアニメーションが固まったとき用）。
@@ -162,6 +178,46 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   const [events, setEvents] = useState<TreeEvent[]>([]);
   setTreeStage(stage);
 
+  /* ── トロフィー・通知（2026-10-19・実装手順_トロフィー §6）──
+   * キューは 1 つ。出題中（play / arenaPlay）と演出中（events）は出さず、終わったら続きを出す。
+   * 表示を始めたら既読（/tree/trophies/seen）。この画面で通知したトロフィーはヘッダーのボタンに点（一覧を開くまで）*/
+  const [trophyDot, setTrophyDot] = useState<string | null>(null);
+  const [toastDetail, setToastDetail] = useState<{ subject: string; item: TrophyItem } | null>(null);
+  /** トロフィー一覧の分野チップ用（今の科目以外の manifest）*/
+  const [otherManifests, setOtherManifests] = useState<Record<string, TreeManifest>>({});
+  const toastPaused = view.kind === 'play' || view.kind === 'arenaPlay' || !!events[0];
+  const onToastShown = useCallback((items: ToastItem[]) => {
+    const trophies = items.filter((t) => t.trophy).map((t) => t.trophy!);
+    const keys = items.filter((t) => t.noticeKey).map((t) => t.noticeKey!);
+    if (trophies.length || keys.length) markTrophiesSeen(trophies, keys).catch(() => {});
+    const best = items.find((t) => t.trophy && t.grade);
+    if (best?.grade) {
+      setTrophyDot(GRADE_COLOR[best.grade].c);
+      dropTrophyMemo();
+    }
+  }, []);
+  const onToastOpen = useCallback((t: { subject: string; id: string }) => {
+    loadTrophies(t.subject, true)
+      .then((list) => {
+        const item = list.items.find((x) => x.id === t.id);
+        if (item) setToastDetail({ subject: t.subject, item });
+      })
+      .catch(() => {});
+  }, []);
+  const toasts = useToasts({ paused: toastPaused, onShown: onToastShown, onOpenTrophy: onToastOpen });
+  const pushToasts = toasts.push;
+  /** 未通知の獲得とお知らせ（ツリーを開いた・科目を切り替えたとき）。古い Proxy は空 */
+  const loadPending = useCallback(() => {
+    fetchTrophyPending()
+      .then((p) => {
+        pushToasts([
+          ...p.trophies.map((t) => trophyToast(t, subjectJa(t.subject))),
+          ...p.notices.map((n) => noticeToast(n, subjectJa(n.subject))).filter((x): x is ToastItem => !!x),
+        ]);
+      })
+      .catch(() => {});
+  }, [pushToasts]);
+
   // アリーナは化学・生物だけ（2026-10-17 先生決定）。他の科目では取りに行かずノードも出さない。
   // 科目をすぐ切り替えたとき、遅れて返った前の科目のアリーナで上書きしない（最後に頼んだ科目だけ反映）
   const arenaFor = useRef<string | null>(null);
@@ -221,6 +277,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           setProgress(pg);
           setArena(null);
           loadArena(s);
+          const news = newsToast(mf, pg, subjectJa(s));
+          if (news) pushToasts([news]);
           return;
         } catch (e) {
           // 問題がまだ無い科目・名簿の科目が変わって開けなくなった科目は飛ばす
@@ -230,7 +288,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       }
       throw new TreeApiError('NO_CONTENT', 404);
     },
-    [loadArena]
+    [loadArena, pushToasts]
   );
 
   const load = useCallback(() => {
@@ -243,6 +301,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
         if (!want) throw new TreeApiError('NO_CONTENT', 404); // 選択科目にツリーが無い（2026-10-16 先生決定: 他の科目は開けない）
         await openSubject(list, want);
         loadTickets();
+        loadPending();
         // 演出（ABYSS 解放・アリーナ解放・優勝・新シーズン）は開いたときに 1 回だけ取る
         if (!fxDisabled()) {
           fetchTreeEvents()
@@ -256,7 +315,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
         }
       })
       .catch(fail);
-  }, [fail, openSubject, loadTickets]);
+  }, [fail, openSubject, loadTickets, loadPending]);
 
 
   /** 科目チップから科目を切り替える（ツリーに戻し、選択を外す）*/
@@ -270,9 +329,11 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       setSelected(null);
       setMessage(null);
       setView({ kind: 'tree' });
-      openSubject(subjects, s).catch(fail);
+      openSubject(subjects, s)
+        .then(loadPending)
+        .catch(fail);
     },
-    [subject, subjects, openSubject, fail]
+    [subject, subjects, openSubject, fail, loadPending]
   );
 
   useEffect(load, [load]);
@@ -427,6 +488,46 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
     }
   };
 
+  /** トロフィー一覧・詳細を開いたら、分野チップ用に各科目の ROUTE の manifest を読んでおく */
+  const wantManifests = view.kind === 'trophies' || !!toastDetail;
+  useEffect(() => {
+    if (!wantManifests) return;
+    for (const s of subjects) {
+      if (otherManifests[s] || (s === subject && stage === 'front')) continue;
+      fetchTreeManifest(s)
+        .then((mf) => setOtherManifests((m) => ({ ...m, [s]: mf })))
+        .catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wantManifests, subjects, subject, stage]);
+
+  /** トロフィーの「ツリーで見る」: その科目の ROUTE のツリーへ戻り、分野を選ぶ */
+  const showTreeField = (s: TreeSubject, field: string | null) => {
+    setToastDetail(null);
+    setMessage(null);
+    if (s !== subject) {
+      rememberTreeSubject(s);
+      setManifest(null);
+      setProgress(null);
+      setArena(null);
+      setSelected(null);
+      setView({ kind: 'tree' });
+      openSubject(subjects, s)
+        .then(() => setSelected(field))
+        .catch(fail);
+      return;
+    }
+    setView({ kind: 'tree' });
+    if (stage !== 'front') void switchStage('front').then(() => setSelected(field));
+    else setSelected(field);
+  };
+
+  /** 分野チップの名前・系統（今の科目は進捗も見て★）*/
+  const trophyFieldInfo = (s: string, id: string) => {
+    const here = s === subject && stage === 'front';
+    return fieldInfoFrom(here ? manifest : otherManifests[s] ?? null, here ? progress : null)(id);
+  };
+
   if (error) {
     const notRegistered = error === 'NOT_REGISTERED';
     const noTree = error === 'NO_CONTENT' || error === 'SUBJECT_NOT_ALLOWED';
@@ -497,6 +598,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   return (
     <>
       <TreeSprite />
+      <TrophySprite />
       {view.kind === 'tree' && (
         <TreeScreen
           manifest={manifest}
@@ -520,6 +622,11 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           onFxLab={me.grade === '先生' ? () => setView({ kind: 'fxlab' }) : undefined}
           tickets={tickets.filter((t) => !t.usedAt).length}
           onTickets={() => setView({ kind: 'tickets', back: { kind: 'tree' } })}
+          onTrophies={() => {
+            setTrophyDot(null);
+            setView({ kind: 'trophies', back: { kind: 'tree' } });
+          }}
+          trophyDot={trophyDot}
           arena={arena}
           onArena={() => {
             setArenaMessage(null);
@@ -543,7 +650,11 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
             refreshProgress();
             setView({ kind: 'tree' });
           }}
-          onDone={(result) => setView({ kind: 'result', session: view.session, result })}
+          onDone={(result) => {
+            // トロフィー・分野の解放・マスター・順位アップは結果画面に入ってから出す
+            pushToasts(submitToasts(result, manifest, manifest.name, stage));
+            setView({ kind: 'result', session: view.session, result });
+          }}
         />
       )}
       {view.kind === 'result' && (
@@ -582,7 +693,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       )}
       {view.kind === 'staff' && <StaffScreen onBack={() => setView({ kind: 'tree' })} />}
       {view.kind === 'fxlab' && (
-        <FxLabScreen grade={me.grade} nickname={me.nickname} subject={subject} subjectName={manifest.name} season={arena?.season ?? null} onTickets={() => setView({ kind: 'tickets', back: { kind: 'fxlab' } })} onBack={() => setView({ kind: 'tree' })} />
+        <FxLabScreen grade={me.grade} nickname={me.nickname} subject={subject} subjectName={manifest.name} season={arena?.season ?? null} onTickets={() => setView({ kind: 'tickets', back: { kind: 'fxlab' } })} onToasts={pushToasts} onBack={() => setView({ kind: 'tree' })} />
       )}
       {view.kind === 'arena' && arena && (
         <ArenaScreen
@@ -620,6 +731,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           }}
           onDone={() => {}}
           onArenaDone={(result) => {
+            pushToasts((result.trophies ?? []).map((t) => trophyToast(t, subjectJa(t.subject))));
             if (subject) loadArena(subject);
             setView({ kind: 'arenaResult', session: view.session, result });
           }}
@@ -648,6 +760,24 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           onBack={() => setView(view.back)}
         />
       )}
+      {view.kind === 'trophies' && (
+        <TrophyScreen
+          subject={subject}
+          subjects={subjects}
+          fieldInfo={trophyFieldInfo}
+          onBack={() => setView(view.back)}
+          onShowTree={showTreeField}
+        />
+      )}
+      {toastDetail && (
+        <TrophyDetailSheet
+          item={toastDetail.item}
+          fieldInfo={(id) => trophyFieldInfo(toastDetail.subject, id)}
+          onClose={() => setToastDetail(null)}
+          onShowTree={(field) => showTreeField(toastDetail.subject as TreeSubject, field)}
+        />
+      )}
+      {toasts.layer}
       {sharing && <TreeShareModal loginId={me.loginId} staff={me.grade === '先生'} onClose={() => setSharing(false)} />}
       {events[0] && (
         <FxScreen

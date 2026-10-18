@@ -16,6 +16,8 @@ import { QTYPES } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
 import { NodeSheet } from './NodeSheet';
 import { TreeSummaryPanel } from './TreeSummaryPanel';
+import { HeadPodium, HeadTrophy } from './trophy/TrophyIcon';
+import { setSoundOn, soundOn } from './trophy/sfx';
 import {
   IPAD_GEOM,
   IPAD_MIN_W,
@@ -62,6 +64,9 @@ interface Props {
   /** 未使用のチケットの枚数（ABYSS・総合優勝）。1 枚以上のときだけヘッダーにボタン */
   tickets?: number;
   onTickets?: () => void;
+  /** トロフィー一覧（2026-10-19）。trophyDot = この画面で通知したトロフィーのグレード色（一覧を開くまで点を出す）*/
+  onTrophies?: () => void;
+  trophyDot?: string | null;
   /** チャンピオンアリーナ（設計書 §5.7）。ROUTE のツリーの一番下にノードを置く。古い Proxy では null */
   arena?: ArenaInfo | null;
   onArena?: () => void;
@@ -77,6 +82,7 @@ export function TreeScreen(props: Props) {
   const [wide, setWide] = useState(() => typeof window !== 'undefined' && window.innerWidth >= IPAD_MIN_W);
   const [menu, setMenu] = useState(false);
   const [subjMenu, setSubjMenu] = useState(false);
+  const [sound, setSound] = useState(soundOn);
   const canSwitch = props.subjects.length > 1;
 
   useEffect(() => {
@@ -158,6 +164,8 @@ export function TreeScreen(props: Props) {
   const pct = Math.round(progress.total.mastery * 100);
 
   const share = props.onShare;
+  const rightCount = (props.tickets && props.onTickets ? 1 : 0) + (props.onTrophies ? 1 : 0) + 2 + (props.onClose ? 1 : 0);
+  const chromeCrowd = wide || !props.abyssOpen || rightCount < 4 ? '' : rightCount >= 5 ? ' is-crowded is-packed' : ' is-crowded';
   return (
     <div className={rootClass(wide ? 'is-wide' : '')}>
       <div className="tr-caustic" />
@@ -341,7 +349,8 @@ export function TreeScreen(props: Props) {
       <div className="tr-fade-bottom" />
       <div className="tr-stagemark">{T.name}</div>
 
-      <div className="tr-chrome">
+      {/* スマホ幅でボタンが多いとき（トロフィーのボタンを足した 2026-10-19）: 4 つ以上ならステージの切替をアイコンだけに、5 つなら丸ボタンを 32px に */}
+      <div className={`tr-chrome${chromeCrowd}`}>
         <button
           type="button"
           className="tr-subject"
@@ -374,7 +383,7 @@ export function TreeScreen(props: Props) {
                   onClick={() => !on && props.onStage(st)}
                 >
                   <Ico id={st === 'front' ? 'i-route' : 'i-depth'} size={15} />
-                  {on && <span>{st === 'front' ? 'ROUTE' : 'ABYSS'}</span>}
+                  {on && <span className="tr-stagelabel">{st === 'front' ? 'ROUTE' : 'ABYSS'}</span>}
                 </button>
               );
             })}
@@ -387,8 +396,15 @@ export function TreeScreen(props: Props) {
               <span className="tr-ticketbtn-n">{props.tickets}</span>
             </button>
           )}
+          {props.onTrophies && (
+            // トロフィー一覧（ドットのトロフィー）。通知したトロフィーがあって一覧をまだ開いていなければ右上に点（2026-10-19）
+            <button type="button" className="tr-iconbtn tt-headbtn" aria-label={`トロフィー${props.trophyDot ? '（新しい獲得あり）' : ''}`} onClick={props.onTrophies}>
+              <HeadTrophy size={20} />
+              {props.trophyDot && <span className="tt-dotping" style={{ background: props.trophyDot, boxShadow: `0 0 8px ${props.trophyDot}` }} />}
+            </button>
+          )}
           <button type="button" className="tr-iconbtn" aria-label="ランキング" onClick={() => props.onRanking(selected)}>
-            <Ico id="i-trophy" size={18} />
+            {props.onTrophies ? <HeadPodium size={19} /> : <Ico id="i-trophy" size={18} />}
           </button>
           <button type="button" className="tr-iconbtn" aria-label="その他" aria-expanded={menu} onClick={() => {
             setSubjMenu(false);
@@ -453,6 +469,18 @@ export function TreeScreen(props: Props) {
               演出の確認（先生用）
             </button>
           )}
+          <button
+            type="button"
+            role="menuitemcheckbox"
+            aria-checked={sound}
+            onClick={() => {
+              setSoundOn(!sound);
+              setSound(!sound);
+            }}
+          >
+            <Ico id={sound ? 'i-sound' : 'i-sound-off'} size={15} />
+            効果音 {sound ? 'ON' : 'OFF'}
+          </button>
           {props.loginId && !share && (
             <div>
               ログインID <span className="tr-mono" style={{ color: T.text }}>{props.loginId}</span>
