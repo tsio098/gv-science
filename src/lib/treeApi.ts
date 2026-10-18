@@ -577,7 +577,8 @@ export interface TrophyItem {
 export interface TrophyList {
   subject: string;
   /** 全科目合計の pt。into = 今のレベルに入ってからの pt・need = そのレベルの幅 */
-  level: { lv: number; pt: number; into: number; need: number };
+  /** 科目ごとのトロフィーレベル Lv1〜max（30）。into = 今のレベルに入ってからの pt、need = 次のレベルまでの幅（max では 0）*/
+  level: { lv: number; max?: number; pt: number; into: number; need: number };
   /** all / earned は件数、B〜F は獲得数 */
   counts: { all: number; earned: number; B: number; S: number; G: number; P: number; F: number };
   platinum: { now: number; max: number; earned: boolean; name: string; id: string };

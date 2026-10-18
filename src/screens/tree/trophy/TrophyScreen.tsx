@@ -120,11 +120,12 @@ export function TrophyScreen({ subject: initial, subjects, fieldInfo, onBack, on
                         </div>
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 2 }}>
                           <div className="tt-dot" style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#8ED4E0' }}>
-                            <span>NEXT LV.{lv.lv + 1}</span>
-                            <span>あと {Math.max(0, lv.need - lv.into)} pt</span>
+                            {/* 科目ごとに Lv1〜30（2026-10-19 先生決定）。30 は全部取った印 */}
+                            <span>{lv.lv >= (lv.max ?? 30) ? 'MAX LV.' : `NEXT LV.${lv.lv + 1}`}</span>
+                            <span>{lv.lv >= (lv.max ?? 30) ? `${lv.pt} pt` : `あと ${Math.max(0, lv.need - lv.into)} pt`}</span>
                           </div>
                           <div className="tt-meter">
-                            <span style={{ width: `${lv.need ? Math.min(100, (lv.into / lv.need) * 100) : 0}%` }} />
+                            <span style={{ width: `${lv.lv >= (lv.max ?? 30) ? 100 : lv.need ? Math.min(100, (lv.into / lv.need) * 100) : 0}%` }} />
                           </div>
                         </div>
                       </div>

@@ -26,11 +26,11 @@ const SIDE: Record<ToastGrade, [string, string]> = {
 
 /** グレードの色（枠・文字）・暗い側（影）・rgb */
 export const GRADE_COLOR: Record<ToastGrade, { c: string; d: string; rgb: string; en: string; pt: number }> = {
-  B: { c: '#E3A26A', d: '#6B3514', rgb: '227,162,106', en: 'BRONZE', pt: 15 },
-  S: { c: '#C9D3E6', d: '#4A5470', rgb: '201,211,230', en: 'SILVER', pt: 30 },
-  G: { c: '#FFD84A', d: '#A35A00', rgb: '255,216,74', en: 'GOLD', pt: 90 },
-  P: { c: '#D08BFF', d: '#1C1236', rgb: '208,139,255', en: 'PLATINUM', pt: 300 },
-  F: { c: '#FF5A6E', d: '#7A0C24', rgb: '255,90,110', en: 'FIRST', pt: 180 },
+  B: { c: '#E3A26A', d: '#6B3514', rgb: '227,162,106', en: 'BRONZE', pt: 1 },
+  S: { c: '#C9D3E6', d: '#4A5470', rgb: '201,211,230', en: 'SILVER', pt: 2 },
+  G: { c: '#FFD84A', d: '#A35A00', rgb: '255,216,74', en: 'GOLD', pt: 6 },
+  P: { c: '#D08BFF', d: '#1C1236', rgb: '208,139,255', en: 'PLATINUM', pt: 20 },
+  F: { c: '#FF5A6E', d: '#7A0C24', rgb: '255,90,110', en: 'FIRST', pt: 12 },
 };
 
 /** クロームの文字（見出し）: 52% で切れる縦グラデ */

@@ -86,11 +86,11 @@ export function FxLabScreen({ grade, nickname, subject, subjectName, season, onT
   const tg = (grade: TrophyGet['grade'], name: string, pt: number): ToastItem =>
     trophyToast({ subject, id: name, grade, name, pt, first: grade === 'F', desc: '' }, subjectName);
   const notes: { label: string; items: () => ToastItem[] }[] = [
-    { label: 'ブロンズ', items: () => [tg('B', 'すべては最善', 15)] },
-    { label: 'シルバー（13 字は 13px）', items: () => [tg('S', '明日も、明日も、また明日も', 30)] },
-    { label: 'ゴールド', items: () => [tg('G', '大地もそのすべても君のもの', 90)] },
-    { label: 'プラチナ', items: () => [tg('P', '時よ止まれ、お前は美しい', 300)] },
-    { label: 'ファースト（自分）', items: () => [tg('F', 'われ発見せり', 180)] },
+    { label: 'ブロンズ', items: () => [tg('B', 'すべては最善', 1)] },
+    { label: 'シルバー（13 字は 13px）', items: () => [tg('S', '明日も、明日も、また明日も', 2)] },
+    { label: 'ゴールド', items: () => [tg('G', '大地もそのすべても君のもの', 6)] },
+    { label: 'プラチナ', items: () => [tg('P', '時よ止まれ、お前は美しい', 20)] },
+    { label: 'ファースト（自分）', items: () => [tg('F', 'われ発見せり', 12)] },
     {
       label: 'ファースト（ほかの人）',
       items: () => [noticeToast({ key: 'first', type: 'first_broadcast', subject, holder: { grade: 'H3', nickname: 'たまき' }, trophy: { id: 'f', name: 'われ発見せり', desc: 'ROUTE の全分野をマスター' } }, subjectName)!],
@@ -106,8 +106,8 @@ export function FxLabScreen({ grade, nickname, subject, subjectName, season, onT
       items: () => [noticeToast({ key: 'ar', type: 'arena_rank', subject, season: cur, rank: 4, prevRank: 3, of: 21, leader: { grade: 'H3', nickname: 'たまき' }, leaderChanged: true }, subjectName)!],
     },
     { label: 'TEACHER RECORD（先生の記録）', items: () => [noticeToast({ key: 'tr', type: 'teacher_record', subject, season: cur, score: 912 }, subjectName)!] },
-    { label: '2 件（次がのぞく）', items: () => [tg('S', 'その倍の速さで走れ', 30), tg('B', 'すべては最善', 15)] },
-    { label: '3 件まとめて（ほか n 件）', items: () => [tg('B', 'すべては最善', 15), tg('S', 'その倍の速さで走れ', 30), tg('G', '時は金なり', 90)] },
+    { label: '2 件（次がのぞく）', items: () => [tg('S', 'その倍の速さで走れ', 2), tg('B', 'すべては最善', 1)] },
+    { label: '3 件まとめて（ほか n 件）', items: () => [tg('B', 'すべては最善', 1), tg('S', 'その倍の速さで走れ', 2), tg('G', '時は金なり', 6)] },
   ];
 
   return (
