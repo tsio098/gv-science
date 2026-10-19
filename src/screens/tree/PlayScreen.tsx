@@ -16,8 +16,8 @@
  *   出す順番は挑戦ごとに違う（2026-10-18 先生の指示・Proxy の arenaOrder）。再開は「まだ決定していない最初の問題」から
  *   共通テスト後のシーズンは最後の 2 問が ABYSS の設問（2026-10-18 先生決定・1 問 7 分・タイムボーナスあり）。
  *   ABYSS の画面（解答欄・キーパッド）は問題ごとに切り替える（answer.kind = 'parts'）。欄の入力も端末に残す
- * - 右下（パッドのすぐ上）にスクショのボタン（2026-10-17 先生の指示・PlayShot）。画面をそのまま画像にして長押し保存・共有。
- *   アリーナには出さない（2026-10-18 先生の指示）。アリーナは画面を離れている間（アプリ切替・通知センター等）問題を覆って隠す。
+ * - 出題画面のスクショボタンは廃止（2026-10-17 追加→アリーナは 2026-10-18・通常も 2026-10-19 先生の指示で削除）。
+ *   スクショは結果画面の間違えた問題のカード（PlayShot）だけ。アリーナは画面を離れている間（アプリ切替・通知センター等）問題を覆って隠す。
  *   スマホ本体のボタン操作のスクショは Web からは止められない（隠せるのは画面を離れたときだけ）
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -26,7 +26,6 @@ import { QTYPE_LABEL, TreeApiError, circled, submitArena, submitTreeSession, tre
 import { Ico } from './TreeIcons';
 import { ZoomImage } from './ZoomImage';
 import { PlayZoomScreen, type ZoomTab } from './PlayZoomScreen';
-import { PlayShot } from './PlayShot';
 import { AbyssAnswer, AbyssKeypad, emptyRaw, isFilled, toValue, type RawVal } from './AbyssAnswer';
 import { ARENA_GOLD, CROWN_MONO, T, alpha, fmtTime, groupColor, rootClass } from './treeTheme';
 
@@ -143,7 +142,6 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
   const unitStart = useRef<number | null>(null);
   const times = useRef<Record<string, number>>(saved?.times ?? {});
   const areaRef = useRef<HTMLDivElement>(null);
-  const rootRef = useRef<HTMLDivElement>(null);
   const [away, reveal] = useAway(isArena);
 
   const unit = units[idx]!;
@@ -403,7 +401,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
   const isLast = idx + 1 >= units.length;
 
   return (
-    <div className={rootClass(isArena ? 'tr-play is-arena' : 'tr-play')} ref={rootRef}>
+    <div className={rootClass(isArena ? 'tr-play is-arena' : 'tr-play')}>
       <div className="tr-bar">
         <button type="button" className="tr-iconbtn" aria-label="中断してツリーへ" onClick={() => setConfirmExit(true)}>
           <Ico id="i-close" size={16} />
@@ -539,7 +537,6 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
       </div>
 
       <div className="tr-pad">
-        {!isArena && <PlayShot target={rootRef} />}
         {isBack ? (
           (() => {
             const fq = numFocus ? session.questions[numFocus.qid] : null;
