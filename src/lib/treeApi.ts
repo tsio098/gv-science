@@ -30,6 +30,8 @@ export type FieldGroup =
   | 'composition' | 'bonding' | 'mole' | 'acidbase' | 'redox'
   // 生物基礎（2026-10-16 Phase 6・教科書の章）: 生物の特徴 / 遺伝子とその働き / ヒトのからだの調節 / 植生と遷移 / 生態系とその保全
   | 'feature' | 'genefunc' | 'body' | 'vegetation' | 'ecosystem'
+  // 生物のツリーに合流した「生態系（基礎）」だけの系統（2026-10-19 先生の指示: 生態と同じ黄色。名前は生物基礎の章のまま）
+  | 'kecosystem'
   // 地学基礎（2026-10-16 Phase 6・教科書の編）: 固体地球 / 地球の歴史 / 大気と海洋 / 宇宙 / 自然との共生
   | 'solid' | 'history' | 'atmos' | 'space' | 'coexist';
 type RawFieldGroup = FieldGroup | 'theory';

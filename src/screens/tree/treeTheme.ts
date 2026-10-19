@@ -29,6 +29,8 @@ export const GROUP_COLOR: Record<FieldGroup, string> = {
   body: '#FF7AB8',
   vegetation: '#FFD84A',
   ecosystem: '#D08BFF',
+  // 生物のツリーに合流した「生態系（基礎）」は生態と同じ黄色（2026-10-19 先生の指示。生物基礎だけのツリーは紫のまま）
+  kecosystem: '#FFD84A',
   // 地学基礎も同じ 5 色を使い回す（2026-10-16）
   solid: '#2DF4C6',
   history: '#4FC3FF',
@@ -58,6 +60,7 @@ export const GROUP_SIDE: Record<FieldGroup, string> = {
   body: '#A8336E',
   vegetation: '#A88A14',
   ecosystem: '#7A47B0',
+  kecosystem: '#A88A14',
   solid: '#0F8F77',
   history: '#1C6FA3',
   atmos: '#A8336E',
@@ -85,6 +88,7 @@ export const GROUP_NAME: Record<FieldGroup, string> = {
   body: 'ヒトのからだの調節',
   vegetation: '植生と遷移',
   ecosystem: '生態系とその保全',
+  kecosystem: '生態系とその保全',
   solid: '固体地球',
   history: '地球の歴史',
   atmos: '大気と海洋',
