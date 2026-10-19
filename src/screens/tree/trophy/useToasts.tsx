@@ -14,7 +14,9 @@ const OUT_MS = 320;
 export function sfxFor(t: ToastItem): SfxName {
   switch (t.kind) {
     case 'trophy':
-      return t.grade === 'F' ? 'firstSelf' : t.grade === 'P' ? 'platinum' : t.grade === 'G' ? 'gold' : t.grade === 'S' ? 'silver' : 'bronze';
+      return t.grade === 'F' ? 'firstSelf' : t.grade === 'P' ? 'platinum' : t.grade === 'G' ? 'gold' : t.grade === 'S' ? 'silver' : t.grade === 'Z' ? 'oops' : 'bronze';
+    case 'level30':
+      return 'level30';
     case 'node':
     case 'master':
       return 'node';
@@ -50,12 +52,15 @@ export function useToasts({
   paused,
   onShown,
   onOpenTrophy,
+  onOpenTickets,
 }: {
   paused: boolean;
   /** 表示を始めた（畳んで出さない分も含む）*/
   onShown?: (items: ToastItem[]) => void;
   /** トロフィーの通知をタップ（次が無いとき）→ 詳細 */
   onOpenTrophy?: (t: { subject: string; id: string }) => void;
+  /** LEVEL 30 の通知をタップ → チケット画面 */
+  onOpenTickets?: () => void;
 }) {
   const [queue, setQueue] = useState<ToastItem[]>([]);
   const [cur, setCur] = useState<(ToastPick & { n: number }) | null>(null);
@@ -63,8 +68,8 @@ export function useToasts({
   const shown = useRef(new Set<string>());
   const seq = useRef(0);
   const wide = useWideToast();
-  const cb = useRef({ onShown, onOpenTrophy });
-  cb.current = { onShown, onOpenTrophy };
+  const cb = useRef({ onShown, onOpenTrophy, onOpenTickets });
+  cb.current = { onShown, onOpenTrophy, onOpenTickets };
 
   const push = useCallback((items: ToastItem[]) => {
     if (!items.length) return;
@@ -118,6 +123,7 @@ export function useToasts({
   const tap = useCallback(() => {
     if (!cur || out) return;
     if (!cur.peek && cur.item.trophy) cb.current.onOpenTrophy?.(cur.item.trophy);
+    else if (cur.item.ticket) cb.current.onOpenTickets?.();
     close();
   }, [cur, out, close]);
 

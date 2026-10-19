@@ -1,7 +1,7 @@
 /**
  * ANCHOR TREE — 演出の確認（先生用アカウントだけ・2026-10-17 夕方 先生の依頼）。
  * 5 つの演出（＋総合優勝のプレミアム）を見本のデータで何度でも再生する。既読（/tree/events/seen）にはしない。
- * 通知（トロフィー・お知らせ）の確認（2026-10-19 先生の依頼）: 見本 16 種・効果音 ON/OFF・ゆっくり再生（1/4）・音だけ鳴らす。
+ * 通知（トロフィー・お知らせ）の確認（2026-10-19 先生の依頼）: 見本 21 種（2026-10-19 残念トロフィー 3・LEVEL 30 2 を追加）・効果音 ON/OFF・ゆっくり再生（1/4）・音だけ鳴らす。
  * 実機（LINE 内ブラウザ・iPhone）でコマ送りと音を確かめるための画面。
  */
 import { useEffect, useRef, useState } from 'react';
@@ -10,7 +10,7 @@ import { setToastSpeed } from '../trophy/labSpeed';
 import { sfxFor } from '../trophy/useToasts';
 import type { ArenaSeason, TreeEvent, TrophyGet } from '../../../lib/treeApi';
 import type { ToastItem } from '../trophy/toastQueue';
-import { noticeToast, trophyToast } from '../trophy/toastItems';
+import { level30Toast, noticeToast, trophyToast } from '../trophy/toastItems';
 import { Ico } from '../TreeIcons';
 import { rootClass } from '../treeTheme';
 import { FxScreen } from './FxScreen';
@@ -84,8 +84,8 @@ export function FxLabScreen({ grade, nickname, subject, subjectName, season, onT
     const n = ++demoN.current;
     onToasts?.(list.map((t) => ({ ...t, key: `demo:${n}:${t.key}`, trophy: undefined, noticeKey: undefined })));
   };
-  const tg = (grade: TrophyGet['grade'], name: string, pt: number): ToastItem =>
-    trophyToast({ subject, id: name, grade, name, pt, first: grade === 'F', desc: '' }, subjectName);
+  const tg = (grade: TrophyGet['grade'], name: string, pt: number, note: string | null = null): ToastItem =>
+    trophyToast({ subject, id: name, grade, name, pt, first: grade === 'F', desc: '', ...(grade === 'Z' ? { oops: true, note } : {}) }, subjectName);
   const notes: { label: string; items: () => ToastItem[] }[] = [
     { label: 'ブロンズ', items: () => [tg('B', 'すべては最善', 1)] },
     { label: 'シルバー（13 字は 13px）', items: () => [tg('S', '明日も、明日も、また明日も', 2)] },
@@ -110,6 +110,12 @@ export function FxLabScreen({ grade, nickname, subject, subjectName, season, onT
     { label: 'TEACHER RECORD（先生の記録）', items: () => [noticeToast({ key: 'tr', type: 'teacher_record', subject, season: cur, score: 912 }, subjectName)!] },
     { label: '2 件（次がのぞく）', items: () => [tg('S', 'その倍の速さで走れ', 2), tg('B', 'すべては最善', 1)] },
     { label: '3 件まとめて（ほか n 件）', items: () => [tg('B', 'すべては最善', 1), tg('S', 'その倍の速さで走れ', 2), tg('G', '時は金なり', 6)] },
+    // 2026-10-19 残念トロフィー・LV.30 チケット
+    { label: '残念トロフィー（セット）', items: () => [tg('Z', 'すべて失われたわけではない', 0)] },
+    { label: '残念トロフィー（ランキング）', items: () => [tg('Z', '高ぶりは滅びに先立つ', 0, `${subjectName} 1 位 → 6 位`)] },
+    { label: '残念トロフィー（正答率）', items: () => [tg('Z', '二度あることは三度ある', 0, '直近 3 セットの平均 27%')] },
+    { label: 'LEVEL 30（タップでチケット）', items: () => [level30Toast({ subject }, subjectName)] },
+    { label: 'トロフィー + 残念 + LEVEL 30（並び）', items: () => [level30Toast({ subject }, subjectName), tg('Z', 'ホメロスも居眠りする', 0), tg('G', '時は金なり', 6)] },
   ];
 
   return (

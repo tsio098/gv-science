@@ -58,7 +58,7 @@ import { TrophyScreen } from './trophy/TrophyScreen';
 import { TrophyDetailSheet, fieldInfoFrom } from './trophy/TrophyDetailSheet';
 import { TrophySprite, GRADE_COLOR } from './trophy/TrophyIcon';
 import { useToasts } from './trophy/useToasts';
-import { newsToast, noticeToast, submitToasts, trophyToast } from './trophy/toastItems';
+import { level30Toast, newsToast, noticeToast, submitToasts, trophyToast } from './trophy/toastItems';
 import { dropTrophyMemo, loadTrophies } from './trophy/trophyData';
 import type { ToastItem } from './trophy/toastQueue';
 import '../../styles/tree.css';
@@ -129,6 +129,7 @@ function demoTickets(me: TreeMe, arena: ArenaInfo | null, subject: string): Tree
     { ...base, kind: 'abyss', id: 'demo-abyss', pair: null, premium: false },
     { ...base, kind: 'grand', id: 'demo-normal', pair, premium: false },
     { ...base, kind: 'grand', id: 'demo-premium', pair, premium: true },
+    { ...base, kind: 'level30', id: 'demo-level30', pair: null, premium: false },
   ];
 }
 
@@ -177,6 +178,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   /** まだ見ていない演出（順に 1 つずつ全画面で出す）*/
   const [events, setEvents] = useState<MergedTreeEvent[]>([]);
   setTreeStage(stage);
+  /** 通知のコールバック（先に作る）から呼ぶ loadTickets */
+  const loadTicketsRef = useRef<() => void>(() => {});
 
   /* ── トロフィー・通知（2026-10-19・実装手順_トロフィー §6）──
    * キューは 1 つ。出題中（play / arenaPlay）と演出中（events）は出さず、終わったら続きを出す。
@@ -201,6 +204,18 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       setTrophyDot(GRADE_COLOR[best.grade].c);
       dropTrophyMemo();
     }
+    // LV.30 チケットが出た → ヘッダーのチケットの枚数を取り直す（一覧の「LV.30 チケットを見る」も）
+    if (items.some((t) => t.kind === 'level30')) {
+      dropTrophyMemo();
+      loadTicketsRef.current();
+    }
+  }, []);
+  /** LEVEL 30 の通知をタップ → チケット画面（今の画面に戻る）*/
+  const viewRef = useRef<View>({ kind: 'tree' });
+  const onToastTickets = useCallback(() => {
+    loadTicketsRef.current();
+    const back = viewRef.current;
+    setView({ kind: 'tickets', back: back.kind === 'tickets' ? { kind: 'tree' } : back });
   }, []);
   const onToastOpen = useCallback((t: { subject: string; id: string }) => {
     loadTrophies(t.subject, true)
@@ -210,7 +225,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       })
       .catch(() => {});
   }, []);
-  const toasts = useToasts({ paused: toastPaused, onShown: onToastShown, onOpenTrophy: onToastOpen });
+  const toasts = useToasts({ paused: toastPaused, onShown: onToastShown, onOpenTrophy: onToastOpen, onOpenTickets: onToastTickets });
   const pushToasts = toasts.push;
   /** 未通知の獲得とお知らせ（ツリーを開いた・科目を切り替えたとき）。古い Proxy は空 */
   const loadPending = useCallback(() => {
@@ -248,6 +263,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       .then(setTickets)
       .catch(() => setTickets([]));
   }, []);
+  loadTicketsRef.current = loadTickets;
 
   useEffect(() => {
     if (abyssOpen) rememberAbyssStyle();
@@ -594,6 +610,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
     );
   }
 
+  viewRef.current = view;
   if (!me || !manifest || !progress || !subject) {
     return (
       <div className={rootClass()}>
@@ -743,7 +760,10 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           }}
           onDone={() => {}}
           onArenaDone={(result) => {
-            pushToasts((result.trophies ?? []).map((t) => trophyToast(t, subjectJa(t.subject))));
+            pushToasts([
+              ...(result.trophies ?? []).map((t) => trophyToast(t, subjectJa(t.subject))),
+              ...(result.level30 ? [level30Toast(result.level30, subjectJa(result.level30.subject))] : []),
+            ]);
             if (subject) loadArena(subject);
             setView({ kind: 'arenaResult', session: view.session, result });
           }}
@@ -782,6 +802,10 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           fieldInfo={trophyFieldInfo}
           onBack={() => setView(view.back)}
           onShowTree={showTreeField}
+          onTickets={() => {
+            loadTickets();
+            setView({ kind: 'tickets', back: view });
+          }}
         />
       )}
       {toastDetail && (

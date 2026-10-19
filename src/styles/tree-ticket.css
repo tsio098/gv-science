@@ -536,3 +536,85 @@
   color: #00e5ff;
   white-space: nowrap;
 }
+
+/* ── LV.30 チケット（ロゴのボード「LV.30 チケット」・2026-10-19）: プラチナの面（シアン → ライラック → ピンク）・枠は単色のシアン・
+   30 マスのレベルバー・キラ。プレミアムの 5 色の帯とは別に見えるよう枠は単色 ── */
+.tk.is-lv30 {
+  --tk-gold: #4fc3ff;
+  --tk-perf: rgba(79, 195, 255, 0.55);
+  --tk-notch-bg: #05363f;
+  --tk-notch-line: #4fc3ff;
+  --tk-notch-line2: #4fc3ff;
+  --tk-arrow: #4fc3ff;
+  color: #eef0ff;
+}
+.tk.is-lv30 .tk-face {
+  background: linear-gradient(160deg, #1e1a4a 0%, #120e33 55%, #06051a 100%);
+}
+.tk.is-lv30 .tk-stub .tk-face {
+  background: linear-gradient(160deg, #19163f 0%, #06051a 100%);
+}
+.tk.is-lv30:not(.is-premium) .tk-main .tk-face {
+  box-shadow: 0 0 24px rgba(79, 195, 255, 0.3);
+}
+.tk.is-lv30:not(.is-premium) .tk-stub.is-moving .tk-face {
+  box-shadow: 8px 10px 20px rgba(0, 0, 0, 0.5), 0 0 18px rgba(79, 195, 255, 0.3);
+}
+.tk.is-lv30 .tk-bonus {
+  color: #4fc3ff;
+}
+.tk.is-lv30 .tk-who,
+.tk.is-lv30 .tk-show,
+.tk.is-lv30 .tk-swipe {
+  color: #a9a3d6;
+}
+.tk.is-lv30 .tk-crown {
+  width: 60px;
+}
+.tk--v.is-lv30 .tk-crown {
+  width: 88px;
+}
+.tk.is-lv30 .tk-champion {
+  width: 200px;
+}
+.tk--v.is-lv30 .tk-champion {
+  width: 186px;
+}
+.tk.is-lv30.is-used .tk-main .tk-face {
+  border-color: #4e5e8c;
+}
+.tk-pips {
+  display: flex;
+  gap: 3px;
+}
+.tk-pips > span {
+  flex: none;
+  width: 11px;
+  height: 7px;
+}
+.tk--v .tk-pips {
+  display: grid;
+  grid-template-columns: repeat(15, 10px);
+}
+.tk--v .tk-pips > span {
+  width: auto;
+  height: 6px;
+}
+.tk-sparks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.tk-sparks > svg {
+  position: absolute;
+}
+.tk--v .tk-sparks > svg:nth-child(1) { left: 12% !important; top: 54px !important; }
+.tk--v .tk-sparks > svg:nth-child(2) { left: auto !important; right: 14%; top: 112px !important; }
+.tk--v .tk-sparks > svg:nth-child(3) { left: auto !important; right: 10%; top: 40px !important; }
+.tk-lv30-head {
+  font-family: var(--f-mono);
+  font-size: 13px;
+  letter-spacing: 0.24em;
+  color: #2df4c6;
+  white-space: nowrap;
+}

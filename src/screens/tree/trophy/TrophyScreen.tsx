@@ -4,6 +4,8 @@
  * タブ: すべて / 獲得 / 未獲得。並び: 既定の順 / 新しい順。行 = アイコン・名前・条件・獲得日 or 進み具合・取得率。
  * ファーストは 3 状態（まだ誰も / 獲得者 · 受付終了 / あなたが獲得）。隠しは獲得まで「隠しトロフィー ???」。
  * 科目は今の科目（開ける科目が 2 つ以上なら上のセグメントで切り替え）。
+ * 残念トロフィー（2026-10-19）: 獲得したものだけ、いちばん下の別枠「OOPS 残念トロフィー n」に（タブの数に入れない・0 個なら枠ごと出さない）。
+ * Lv30（LV.30 チケット）: レベルのカードを MAX の見た目にし、「LV.30 チケットを見る ▶」
  */
 import { useEffect, useMemo, useState } from 'react';
 import type { TrophyItem, TrophyList } from '../../../lib/treeApi';
@@ -11,7 +13,7 @@ import { TreeApiError, gradeLabel } from '../../../lib/treeApi';
 import { TREE_SUBJECT_NAME, type TreeSubject } from '../../../lib/treeSubject';
 import { Ico } from '../TreeIcons';
 import { rootClass } from '../treeTheme';
-import { CHROME, GRADE_COLOR, PRISM, TrophyIcon, TrophySprite } from './TrophyIcon';
+import { CHROME, GRADE_COLOR, LV30_BAND, PRISM, TrophyIcon, TrophySprite } from './TrophyIcon';
 import { TrophyDetailSheet, type FieldInfo } from './TrophyDetailSheet';
 import { loadTrophies, mdJst, rarityPct } from './trophyData';
 import '../../../styles/tree-trophy.css';
@@ -22,6 +24,8 @@ interface Props {
   fieldInfo: (subject: string, id: string) => FieldInfo | null;
   onBack: () => void;
   onShowTree: (subject: TreeSubject, field: string | null) => void;
+  /** LV.30 チケットを見る（チケット画面）*/
+  onTickets?: () => void;
 }
 
 type Tab = 'all' | 'got' | 'not';
@@ -35,7 +39,7 @@ function readSeen(): number {
   }
 }
 
-export function TrophyScreen({ subject: initial, subjects, fieldInfo, onBack, onShowTree }: Props) {
+export function TrophyScreen({ subject: initial, subjects, fieldInfo, onBack, onShowTree, onTickets }: Props) {
   const [subject, setSubject] = useState<TreeSubject>(initial);
   const [data, setData] = useState<TrophyList | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -67,13 +71,19 @@ export function TrophyScreen({ subject: initial, subjects, fieldInfo, onBack, on
   const rows = useMemo(() => {
     if (!data) return [];
     // その科目のプラチナ（全獲得）は上のカードに出す。ほかのプラチナ（範囲のランキング制覇・出藍の誉れ）は行に出す
-    let list = data.items.filter((it) => it.id !== data.platinum?.id);
+    let list = data.items.filter((it) => it.id !== data.platinum?.id && !it.oops);
     if (tab === 'got') list = list.filter((it) => it.earnedAt != null);
     if (tab === 'not') list = list.filter((it) => it.earnedAt == null);
     return [...list].sort((a, b) => (recent ? (b.earnedAt ?? 0) - (a.earnedAt ?? 0) : 0) || a.order - b.order);
   }, [data, tab, recent]);
 
+  // 残念トロフィー（獲得したものだけ返る）。並びは新しい順の切り替えに合わせる
+  const oops = useMemo(
+    () => [...(data?.items ?? []).filter((it) => it.oops)].sort((a, b) => (recent ? (b.earnedAt ?? 0) - (a.earnedAt ?? 0) : 0) || a.order - b.order),
+    [data, recent],
+  );
   const lv = data?.level;
+  const lvMax = !!lv && lv.lv >= (lv.max ?? 30);
   const plat = data?.platinum;
   const platItem = data?.items.find((it) => it.id === plat?.id) ?? null;
 
@@ -111,25 +121,49 @@ export function TrophyScreen({ subject: initial, subjects, fieldInfo, onBack, on
           ) : (
             <>
               {lv && (
-                <div className="tt-levelcard">
-                  <div className="tt-px" style={{ padding: 3, background: '#2DF4C6' }}>
-                    <div className="tt-px" style={{ position: 'relative', padding: '12px 14px 14px', background: 'linear-gradient(180deg,#0C4250,#062530)', display: 'flex', flexDirection: 'column', gap: 12, overflow: 'hidden' }}>
+                <div className="tt-levelcard" style={lvMax ? { filter: 'drop-shadow(4px 4px 0 #5B4A92) drop-shadow(0 0 10px rgba(79,195,255,.3))' } : undefined}>
+                  <div className="tt-px" style={{ padding: 3, background: lvMax ? LV30_BAND : '#2DF4C6' }}>
+                    <div className="tt-px" style={{ position: 'relative', padding: '12px 14px 14px', background: lvMax ? 'linear-gradient(180deg,#1E1A4A,#0A0820)' : 'linear-gradient(180deg,#0C4250,#062530)', display: 'flex', flexDirection: 'column', gap: 12, overflow: 'hidden' }}>
                       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14 }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          <span className="tt-arc" style={{ fontSize: 7, color: '#8ED4E0' }}>TROPHY LV.</span>
-                          <span className="tt-arc tt-chrome" style={{ fontSize: 26, lineHeight: 1, backgroundImage: CHROME.aqua, filter: 'drop-shadow(3px 3px 0 #021014)' }}>{lv.lv}</span>
+                          <span className="tt-arc" style={{ fontSize: 7, color: lvMax ? '#B6E9FF' : '#8ED4E0' }}>TROPHY LV.</span>
+                          <span className="tt-arc tt-chrome" style={{ fontSize: 26, lineHeight: 1, backgroundImage: lvMax ? CHROME.P30 : CHROME.aqua, filter: `drop-shadow(3px 3px 0 ${lvMax ? '#0A0620' : '#021014'})` }}>{lv.lv}</span>
                         </div>
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 2 }}>
-                          <div className="tt-dot" style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#8ED4E0' }}>
-                            {/* 科目ごとに Lv1〜30（2026-10-19 先生決定）。30 は全部取った印 */}
-                            <span>{lv.lv >= (lv.max ?? 30) ? 'MAX LV.' : `NEXT LV.${lv.lv + 1}`}</span>
-                            <span>{lv.lv >= (lv.max ?? 30) ? `${lv.pt} pt` : `あと ${Math.max(0, lv.need - lv.into)} pt`}</span>
-                          </div>
+                          {lvMax ? (
+                            // Lv30（2026-10-19 ボード「トロフィーレベル 30」）: MAX・バー満タン（プラチナの面の 2 色）
+                            <div className="tt-dot" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: '#B6E9FF' }}>
+                              <span className="tt-arc" style={{ fontSize: 8, color: '#FFFFFF' }}>MAX</span>
+                              <span>レベル 30 達成</span>
+                            </div>
+                          ) : (
+                            <div className="tt-dot" style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#8ED4E0' }}>
+                              {/* 科目ごとに Lv1〜30（2026-10-19 先生決定）*/}
+                              <span>{`NEXT LV.${lv.lv + 1}`}</span>
+                              <span>{`あと ${Math.max(0, lv.need - lv.into)} pt`}</span>
+                            </div>
+                          )}
                           <div className="tt-meter">
-                            <span style={{ width: `${lv.lv >= (lv.max ?? 30) ? 100 : lv.need ? Math.min(100, (lv.into / lv.need) * 100) : 0}%` }} />
+                            <span
+                              style={{
+                                width: `${lvMax ? 100 : lv.need ? Math.min(100, (lv.into / lv.need) * 100) : 0}%`,
+                                ...(lvMax ? { background: 'repeating-linear-gradient(90deg,#4FC3FF 0 6px,rgba(0,0,0,0) 6px 8px,#B05BD6 8px 14px,rgba(0,0,0,0) 14px 16px)' } : {}),
+                              }}
+                            />
                           </div>
                         </div>
                       </div>
+                      {lvMax && data.level30Ticket && onTickets && (
+                        <button
+                          type="button"
+                          className="tt-px2 tt-dot"
+                          style={{ position: 'relative', zIndex: 1, height: 44, border: 0, cursor: 'pointer', background: '#4FC3FF', color: '#0A0620', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, filter: 'drop-shadow(3px 3px 0 #5B4A92)' }}
+                          onClick={onTickets}
+                        >
+                          <TrophyIcon grade="P" size={22} scan={false} />
+                          {data.level30Ticket.used ? 'LV.30 チケット（使用済み）▶' : 'LV.30 チケットを見る ▶'}
+                        </button>
+                      )}
                       {/* プラチナは隠し要素（2026-10-19 先生決定）: 獲得するまでタイルも出さない */}
                       <div className="tt-tiles" style={{ gridTemplateColumns: `repeat(${data.counts.P > 0 ? 4 : 3}, minmax(0, 1fr))` }}>
                         {(data.counts.P > 0 ? (['P', 'G', 'S', 'B'] as const) : (['G', 'S', 'B'] as const)).map((k) => (
@@ -192,6 +226,22 @@ export function TrophyScreen({ subject: initial, subjects, fieldInfo, onBack, on
                 ))}
                 {!rows.length && <div className="tt-empty">{tab === 'got' ? 'まだ獲得したトロフィーはありません。' : 'すべて獲得しました。'}</div>}
               </div>
+
+              {/* 残念トロフィー: 獲得したものだけ・別枠（全部で何個あるかは出さない）。未獲得のタブでは出さない */}
+              {oops.length > 0 && tab !== 'not' && (
+                <div className="tt-rows" style={{ marginTop: 6 }}>
+                  <div className="tt-px2" style={{ padding: 2, background: 'rgba(169,176,154,.45)' }}>
+                    <div className="tt-px2" style={{ padding: '8px 12px', background: 'rgba(20,23,15,.92)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span className="tt-arc tt-chrome" style={{ fontSize: 8, backgroundImage: CHROME.Z }}>OOPS</span>
+                      <span className="tt-dot" style={{ flex: 1, fontSize: 13, color: '#E4E8D8' }}>残念トロフィー</span>
+                      <span className="tt-arc" style={{ fontSize: 9, color: '#FFFFFF' }}>{data.counts.oops?.earned ?? oops.length}</span>
+                    </div>
+                  </div>
+                  {oops.map((it) => (
+                    <Row key={it.id} it={it} isNew={it.earnedAt != null && it.earnedAt > seenBefore && seenBefore > 0} onOpen={() => setDetail(it)} />
+                  ))}
+                </div>
+              )}
             </>
           )}
         </div>
@@ -215,13 +265,18 @@ function Row({ it, isNew, onOpen }: { it: TrophyItem; isNew: boolean; onOpen: ()
   const got = it.earnedAt != null;
   const holder = it.firstHolder;
   const firstMine = it.first && got;
+  const oops = !!it.oops;
   const frame = firstMine
     ? 'linear-gradient(90deg,#FFD84A 0 10px,#FF5A6E 10px calc(100% - 10px),#FFD84A calc(100% - 10px))'
+    : oops
+      ? g.c
     : got
       ? g.c
       : `rgba(${g.rgb},${it.first && !holder ? 0.45 : 0.28})`;
-  const bg = firstMine ? 'linear-gradient(180deg,#3A0A18,#14040A)' : got ? 'linear-gradient(180deg,#0C4250,#062530)' : 'rgba(4,40,48,.92)';
-  const well = got ? `radial-gradient(circle,rgba(${g.rgb},.3),rgba(3,18,24,1) 72%)` : it.first ? 'rgba(20,4,10,.9)' : 'rgba(2,16,22,.8)';
+  const bg = firstMine ? 'linear-gradient(180deg,#3A0A18,#14040A)' : oops ? 'linear-gradient(180deg,#2B3026,#14170F)' : got ? 'linear-gradient(180deg,#0C4250,#062530)' : 'rgba(4,40,48,.92)';
+  const well = oops
+    ? 'radial-gradient(circle,rgba(169,176,154,.3),rgba(12,14,9,1) 72%)'
+    : got ? `radial-gradient(circle,rgba(${g.rgb},.3),rgba(3,18,24,1) 72%)` : it.first ? 'rgba(20,4,10,.9)' : 'rgba(2,16,22,.8)';
 
   // 右の列: グレード・取得率（ファーストは獲得者）・獲得日 / 受付終了 / 未獲得
   let rate: string;
@@ -264,6 +319,8 @@ function Row({ it, isNew, onOpen }: { it: TrophyItem; isNew: boolean; onOpen: ()
         <div className="tt-rowwell tt-px2" style={{ background: well }}>
           {it.hidden ? (
             <span className="tt-arc" style={{ fontSize: 16, color: 'rgba(255,216,74,.55)' }}>?</span>
+          ) : oops ? (
+            <TrophyIcon grade="Z" size={30} chip style={{ transform: 'rotate(-14deg)' }} />
           ) : (
             <TrophyIcon grade={it.grade} size={30} style={{ opacity: got ? 1 : it.first ? 0.55 : 0.4, filter: got ? `drop-shadow(0 0 4px rgba(${g.rgb},.6))` : 'saturate(.3)' }} />
           )}
@@ -271,10 +328,10 @@ function Row({ it, isNew, onOpen }: { it: TrophyItem; isNew: boolean; onOpen: ()
         {it.first && !it.hidden && <span className="tt-mini1 tt-arc" aria-hidden="true" style={{ left: 40, right: 'auto', top: 2 }}>1ST</span>}
         <div className="tt-rowtext">
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
-            <span className="tt-dot tt-rowname" style={{ color: got ? '#FFFFFF' : 'rgba(234,251,255,.65)' }}>{it.hidden ? '隠しトロフィー' : it.name}</span>
+            <span className="tt-dot tt-rowname" style={{ color: oops ? '#E4E8D8' : got ? '#FFFFFF' : 'rgba(234,251,255,.65)' }}>{it.hidden ? '隠しトロフィー' : it.name}</span>
             {isNew && <span className="tt-arc tt-px2" style={{ flex: 'none', padding: '3px 5px', background: '#FF7A45', color: '#140A05', fontSize: 6 }}>NEW</span>}
           </div>
-          <div className="tt-dot tt-rowdesc">{it.hidden ? '獲得すると内容が見えます' : it.desc}</div>
+          <div className="tt-dot tt-rowdesc" style={oops ? { color: '#A9B09A' } : undefined}>{it.hidden ? '獲得すると内容が見えます' : it.desc}</div>
           {it.progress && !got && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{ flex: 1, height: 5, background: 'rgba(234,251,255,.1)' }}>

@@ -46,3 +46,16 @@ test('名前の文字サイズ: 12 字まで 14px・13 字は 13px（プラチ�
   assert.equal(toastWidth(tr('a', 'P')), 272);
   assert.equal(toastWidth(tr('a', 'F')), 260);
 });
+
+test('残念トロフィー（Z）はブロンズと RANK DOWN の後・その他の前。LEVEL 30 は畳まず最後に 1 件で出す（2026-10-19）', () => {
+  const lv = { key: 'lv', kind: 'level30', head: 'LEVEL 30 REACHED!!', main: 'トロフィーレベル 30' };
+  const list = [note('n1'), tr('z', 'Z'), note('d', 'rankDown'), tr('b', 'B')];
+  assert.deepEqual(sortToasts(list).map((t) => t.key), ['b', 'd', 'z', 'n1']);
+  const many = pickToast([lv, tr('z', 'Z'), tr('b', 'B'), note('n')]);
+  assert.deepEqual([many.item.key, many.more, many.consumed.length, many.rest.map((t) => t.key)], ['b', 2, 3, ['lv']], '3 件は畳んで LEVEL 30 は残す');
+  const last = pickToast(many.rest);
+  assert.deepEqual([last.item.key, last.more, last.peek, last.rest.length], ['lv', 0, null, 0]);
+  const two = pickToast([lv, tr('b', 'B')]);
+  assert.deepEqual([two.item.key, two.peek, two.rest.map((t) => t.key)], ['b', null, ['lv']], 'LEVEL 30 はのぞかせない');
+  assert.deepEqual([toastMs(lv), toastWidth(lv), toastMs(tr('z', 'Z')), toastWidth(tr('z', 'Z'))], [6000, 272, 4500, 248]);
+});

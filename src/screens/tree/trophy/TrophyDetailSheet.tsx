@@ -69,7 +69,14 @@ export function TrophyDetailSheet({ item, fieldInfo, onClose, onShowTree }: Prop
                   grade={item.grade}
                   size={104}
                   stroke={0.55}
-                  style={{ position: 'relative', filter: got ? `drop-shadow(0 0 10px rgba(${g.rgb},.65))` : 'saturate(.3)', opacity: got ? 1 : 0.45 }}
+                  // 残念トロフィー: 倒れた姿（-14°）と足もとのかけら（2026-10-19）
+                  chip={item.grade === 'Z'}
+                  style={{
+                    position: 'relative',
+                    filter: got ? `drop-shadow(0 0 10px rgba(${g.rgb},.65))` : 'saturate(.3)',
+                    opacity: got ? 1 : 0.45,
+                    transform: item.grade === 'Z' ? 'rotate(-14deg)' : undefined,
+                  }}
                 />
               )}
               {item.first && !item.hidden && (

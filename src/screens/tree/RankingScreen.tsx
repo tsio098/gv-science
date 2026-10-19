@@ -5,7 +5,7 @@
  * 「アリーナ」タブ（ROUTE だけ・設計書 §5.7）: 今シーズン / 前シーズン / 2 シーズン合算（スコア → 時間の短い順）。
  * 前シーズンの 1 位は「チャンピオン」。2 シーズン合算の 1 位にボーナスチケット（未実装）
  */
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import type { ArenaRankWhich, ArenaSeason, QType, TreeManifest, TreeRanking, TreeStage } from '../../lib/treeApi';
 import { QTYPES, QTYPE_LABEL, fetchArenaRanking, fetchTreeRanking, gradeLabel } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
@@ -57,6 +57,8 @@ export function RankingScreen({ manifest, stage = 'front', initial, arena = fals
   );
   const [qtype, setQtype] = useState<QType>(initial.qtype);
   const [data, setData] = useState<TreeRanking | null>(null);
+  /** アリーナ: 先生のスコア（順位なしの行で差し込む・2026-10-19）*/
+  const [staff, setStaff] = useState<{ score: number; elapsedMs: number } | null>(null);
   const [error, setError] = useState(false);
   const [nonce, setNonce] = useState(0);
 
@@ -75,12 +77,14 @@ export function RankingScreen({ manifest, stage = 'front', initial, arena = fals
     let alive = true;
     setError(false);
     setData(null);
+    setStaff(null);
     if (scope === 'arena') {
       fetchArenaRanking(manifest.subject, arenaSeason)
         .then((d) => {
           if (!alive) return;
           setSeasonInfo(d.pair ?? [d.season]);
           setPlayed(d.me.played);
+          setStaff(d.staff ?? null);
           setData({ subject: d.subject, field: '*', qtype: '*', count: d.count, top: d.top, me: d.me });
         })
         .catch(() => alive && setError(true));
@@ -114,6 +118,34 @@ export function RankingScreen({ manifest, stage = 'front', initial, arena = fals
         : `${f?.name ?? ''} · ${QTYPE_SHORT[qtype]}`;
   const podium: Row[] = data?.top.slice(0, 3) ?? [];
   const rows: Row[] = data?.top.slice(3) ?? [];
+  /**
+   * 先生の行を入れる位置（スコア降順 → 時間の短い順の並びで、生徒の何人目の前か）。生徒の順位は変えない。
+   * 1 位より上なら表彰台の上・表彰台の途中（1〜3 位のあいだ）なら表彰台のすぐ下に「n位とm位のあいだ」と添える
+   */
+  const staffAt = isArena && staff && data
+    ? (() => {
+        const i = (data.top as Row[]).findIndex((r) => r.score < staff.score || (r.score === staff.score && (r.elapsedMs ?? 0) > staff.elapsedMs));
+        return i < 0 ? data.top.length : i;
+      })()
+    : null;
+  const staffAbove = staffAt === 0 && podium.length > 0;
+  /** 表彰台の途中に入る → 表彰台のすぐ下（リストの先頭）*/
+  const staffMid = staffAt != null && staffAt > 0 && staffAt < podium.length;
+  const staffListAt = staffMid ? podium.length : staffAt;
+  const staffNote = staffMid ? `${podium[staffAt! - 1]!.rank}位と${podium[staffAt!]!.rank}位のあいだ` : '順位なし';
+  const staffRow = staff && (
+    <div className="tr-rank-row is-staff" aria-label={`先生 ${fmtScore(staff.score)} 点（${staffNote}）`}>
+      <span className="tr-num tr-rank-n">—</span>
+      <span className="tr-grade">先生</span>
+      <span className="tr-rank-name">
+        先生 <small>{staffNote}</small>
+      </span>
+      <span className="tr-num" style={{ fontSize: 11, color: 'var(--tr-sub)', fontWeight: 500 }}>
+        {fmtTime(staff.elapsedMs)}
+      </span>
+      <span className="tr-num">{fmtScore(staff.score)}</span>
+    </div>
+  );
   /** 前シーズンの 1 位 = シーズンチャンピオン */
   const champion = (r: Row) => isArena && arenaSeason === 'prev' && r.rank === 1;
 
@@ -228,6 +260,8 @@ export function RankingScreen({ manifest, stage = 'front', initial, arena = fals
             <div className="tr-spinner" />
           </div>
         ) : data.count === 0 ? (
+          <>
+          {staffRow && <div className="tr-rank-list">{staffRow}</div>}
           <div className="tr-panel" style={{ textAlign: 'center', color: 'var(--tr-sub)', fontSize: 13, padding: '28px 16px' }}>
             {isArena
               ? arenaSeason === 'prev'
@@ -237,8 +271,10 @@ export function RankingScreen({ manifest, stage = 'front', initial, arena = fals
                   : '今シーズンはまだ誰も載っていません。ツリーの一番下のアリーナのノードから挑戦できます。'
               : 'まだ誰も載っていません。1 問正解するとランキングに載ります。'}
           </div>
+          </>
         ) : (
           <>
+            {staffAbove && <div className="tr-rank-list">{staffRow}</div>}
             <div className="tr-podium">
               {podium.map((p, i) => {
                 const set = isArena ? ARENA_PODIUM : PODIUM;
@@ -271,10 +307,12 @@ export function RankingScreen({ manifest, stage = 'front', initial, arena = fals
                 );
               })}
             </div>
-            {rows.length > 0 && (
+            {(rows.length > 0 || (staffAt != null && !staffAbove)) && (
               <div className="tr-rank-list">
                 {rows.map((r, i) => (
-                  <div key={i} className={`tr-rank-row${r.me ? ' is-me' : ''}`}>
+                  <Fragment key={i}>
+                  {staffListAt != null && !staffAbove && staffListAt === i + podium.length && staffRow}
+                  <div className={`tr-rank-row${r.me ? ' is-me' : ''}`}>
                     <span className="tr-num tr-rank-n">{r.rank}</span>
                     <span className="tr-grade">{gradeLabel(r.grade)}</span>
                     <span className="tr-rank-name">{r.nickname}</span>
@@ -285,7 +323,9 @@ export function RankingScreen({ manifest, stage = 'front', initial, arena = fals
                     )}
                     <span className="tr-num">{fmtScore(r.score)}</span>
                   </div>
+                  </Fragment>
                 ))}
+                {staffListAt != null && !staffAbove && staffListAt >= rows.length + podium.length && staffRow}
               </div>
             )}
           </>

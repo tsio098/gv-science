@@ -7,6 +7,11 @@ import type { CSSProperties } from 'react';
 import type { ToastGrade } from './toastQueue';
 
 const PATH = 'M3 2H13V3H15V6H14V7H12V8H11V9H10V10H9V12H11V13H12V15H4V13H5V12H7V10H6V9H5V8H4V7H2V6H1V3H3ZM2 4V6H4V4ZM12 4V6H14V4Z';
+/** 残念トロフィー（2026-10-19・ボード「残念トロフィー」）: 右の取っ手が折れて足もとに落ち、杯にひび */
+const PATH_Z = 'M3 2H13V3H14V4H13V5H12V8H11V9H10V10H9V12H11V13H12V15H4V13H5V12H7V10H6V9H5V8H4V7H2V6H1V3H3ZM2 4V6H4V4Z';
+const CRACK_Z = 'M8 2.2V3.6H9V4.9H7.9V6.4';
+/** 落ちた取っ手のかけら（一覧・詳細だけ。通知では別の要素で転がす）*/
+const CHIP_Z = 'M15 14H17V16H16V15H15Z';
 
 /** グレード → 面（0 / 22 / 50 | 50 / 62 / 100%）と側面の色 */
 const FACE: Record<ToastGrade, [string, string, string, string, string, string]> = {
@@ -15,6 +20,7 @@ const FACE: Record<ToastGrade, [string, string, string, string, string, string]>
   G: ['#FFFFFF', '#FFF4C2', '#FFD84A', '#A35A00', '#C9790A', '#FFE38A'],
   P: ['#FFFFFF', '#D9FFF6', '#4FC3FF', '#6A2FB0', '#B05BD6', '#FFB8E6'],
   F: ['#FFFFFF', '#FFD6DC', '#FF5A6E', '#7A0C24', '#B3203E', '#FFB0BC'],
+  Z: ['#FFFFFF', '#E4E8D8', '#A9B09A', '#4C523F', '#6E7560', '#C7CDB5'],
 };
 const SIDE: Record<ToastGrade, [string, string]> = {
   B: ['#7A4420', '#2A1206'],
@@ -22,6 +28,7 @@ const SIDE: Record<ToastGrade, [string, string]> = {
   G: ['#9A6300', '#3A2000'],
   P: ['#5B4A92', '#1C1236'],
   F: ['#6A1024', '#22040C'],
+  Z: ['#4A5040', '#181B12'],
 };
 
 /** グレードの色（枠・文字）・暗い側（影）・rgb */
@@ -31,6 +38,7 @@ export const GRADE_COLOR: Record<ToastGrade, { c: string; d: string; rgb: string
   G: { c: '#FFD84A', d: '#A35A00', rgb: '255,216,74', en: 'GOLD', pt: 6 },
   P: { c: '#D08BFF', d: '#1C1236', rgb: '208,139,255', en: 'PLATINUM', pt: 20 },
   F: { c: '#FF5A6E', d: '#7A0C24', rgb: '255,90,110', en: 'FIRST', pt: 12 },
+  Z: { c: '#A9B09A', d: '#2E3326', rgb: '169,176,154', en: 'OOPS', pt: 0 },
 };
 
 /** クロームの文字（見出し）: 52% で切れる縦グラデ */
@@ -41,6 +49,9 @@ export const CHROME = {
   S: ch('#FFFFFF', '#F4F7FF', '#C9D3E6', '#6E7891', '#9AA5BE', '#E6ECF8'),
   G: ch('#FFFFFF', '#FFF4C2', '#FFD84A', '#C9790A', '#E09A1E', '#FFE38A'),
   F: ch('#FFFFFF', '#FFD6DC', '#FF5A6E', '#7A0C24', '#B3203E', '#FFB0BC'),
+  Z: ch('#FFFFFF', '#E4E8D8', '#A9B09A', '#4C523F', '#6E7560', '#C7CDB5'),
+  /** プラチナの面（LV.30 の見出し・数字）*/
+  P30: ch('#FFFFFF', '#D9FFF6', '#4FC3FF', '#6A2FB0', '#B05BD6', '#FFB8E6'),
   aqua: ch('#FFFFFF', '#B6FFEF', '#2DF4C6', '#0E9C9A', '#17B5A8', '#9BEBFF'),
   sky: ch('#FFFFFF', '#CDEFFF', '#4FC3FF', '#1C6FA3', '#2C8FCB', '#BDE8FF'),
   pink: ch('#FFFFFF', '#FFD6EA', '#FF7AB8', '#A8336E', '#D0508E', '#FFC2DF'),
@@ -48,6 +59,8 @@ export const CHROME = {
 };
 /** プラチナの枠・見出し（分野色 5 色の帯）*/
 export const PRISM = 'linear-gradient(90deg,#2DF4C6 0 20%,#4FC3FF 20% 40%,#D08BFF 40% 60%,#FF7AB8 60% 80%,#FFD84A 80%)';
+/** LV.30 の枠（プラチナの面の 4 色の帯。プレミアムの 5 色とは別に見えるように）*/
+export const LV30_BAND = 'linear-gradient(90deg,#D9FFF6 0 25%,#4FC3FF 25% 50%,#B05BD6 50% 75%,#FFB8E6 75%)';
 
 const gid = (g: ToastGrade) => g.toLowerCase();
 
@@ -82,12 +95,16 @@ export function TrophySprite() {
   );
 }
 
-/** ドットのトロフィー。dim = 未獲得（薄く・彩度を落とす）*/
+/**
+ * ドットのトロフィー。dim = 未獲得（薄く・彩度を落とす）。
+ * Z（残念）は取っ手の折れた形 + ひび。chip = 足もとのかけら（一覧・詳細）。倒れた角度は呼ぶ側（一覧・詳細は -14°・通知はアニメーション）
+ */
 export function TrophyIcon({
   grade,
   size,
   stroke = 0.7,
   scan = true,
+  chip = false,
   style,
   className,
 }: {
@@ -95,15 +112,20 @@ export function TrophyIcon({
   size: number;
   stroke?: number;
   scan?: boolean;
+  chip?: boolean;
   style?: CSSProperties;
   className?: string;
 }) {
   const k = gid(grade);
+  const z = grade === 'Z';
+  const d = z ? PATH_Z : PATH;
   return (
     <svg viewBox="0 1 17 16" width={size} height={size} aria-hidden="true" style={{ overflow: 'visible', ...style }} className={className}>
-      <path transform="translate(1 1)" d={PATH} fillRule="evenodd" fill={`url(#tr-sd-${k})`} stroke="#06121A" strokeWidth={stroke} style={{ paintOrder: 'stroke' }} />
-      <path d={PATH} fillRule="evenodd" fill={`url(#tr-fc-${k})`} stroke="#06121A" strokeWidth={stroke} style={{ paintOrder: 'stroke' }} />
-      {scan && <path d={PATH} fillRule="evenodd" fill="url(#tr-scan)" />}
+      <path transform="translate(1 1)" d={d} fillRule="evenodd" fill={`url(#tr-sd-${k})`} stroke="#06121A" strokeWidth={stroke} style={{ paintOrder: 'stroke' }} />
+      <path d={d} fillRule="evenodd" fill={`url(#tr-fc-${k})`} stroke="#06121A" strokeWidth={stroke} style={{ paintOrder: 'stroke' }} />
+      {scan && <path d={d} fillRule="evenodd" fill="url(#tr-scan)" />}
+      {z && <path d={CRACK_Z} fill="none" stroke="#06121A" strokeWidth={stroke * 0.85} />}
+      {z && chip && <path d={CHIP_Z} fill={`url(#tr-fc-${k})`} stroke="#06121A" strokeWidth={stroke * 0.7} style={{ paintOrder: 'stroke' }} />}
     </svg>
   );
 }

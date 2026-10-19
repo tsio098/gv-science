@@ -84,7 +84,7 @@ def main():
     make(os.path.join(a.src, 'DotGothic16-Regular.ttf'), os.path.join(FONTS, 'DotGothic16-subset.woff2'), dot)
 
     # Press Start 2P（Latin だけ）
-    ps = {chr(c) for c in range(0x20, 0x7F)} | set('▲▼·')
+    ps = {chr(c) for c in range(0x20, 0x7F)} | set('▲▼·▶')  # ▶ = LEVEL 30 の「TAP ▶」（2026-10-19）
     make(os.path.join(a.src, 'PressStart2P-Regular.ttf'), os.path.join(FONTS, 'PressStart2P-subset.woff2'), ps)
 
 

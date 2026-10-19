@@ -1,7 +1,8 @@
 /**
  * ANCHOR TREE — チケット（2026-10-17 先生決定・実装手順_ロゴ・アリーナ・演出 §5.5）。
  * 2 種類: ABYSS チケット（全分野マスター度 60% を初めて満たした科目ごとに 1 枚・ボード TicketAbyss の深海配色）と、
- * 総合優勝のボーナスチケット（下）。使い方はどちらも同じ（半券を切る・サーバで 1 回だけ）。
+ * 総合優勝のボーナスチケット（下）・LV.30 チケット（2026-10-19・トロフィーレベルがはじめて 30 に届いた科目ごとに 1 枚・
+ * プラチナの面の配色・ロゴのボード「LV.30 チケット」）。使い方はどれも同じ（半券を切る・サーバで 1 回だけ）。
  * 2 シーズン（組）の総合チャンピオンに 1 枚。先生の 2 シーズン合算を超えていればプレミアム。
  * 表記は「SEASON n–n+1 総合チャンピオン」・学年 · ニックネーム・小さく「先生へ提示してください」だけ（特典・番号・期限は出さない）。
  * 使い方: 先生の前で半券（横向きは右端・縦向きは下端の点線から先）を横へスワイプして切り取る →
@@ -49,13 +50,20 @@ export function ArenaTicketScreen({ tickets, subjectName, onUsed, onBack, demo =
   const wide = useWide();
   /** テストのやり直し（チケットを作り直して半券を戻す）*/
   const [round, setRound] = useState(0);
-  // ABYSS チケットだけなら深海の画面・見出しは錨 + 「{科目} · ABYSS」、総合優勝のチケットがあればアリーナの画面
+  // ABYSS チケットだけなら深海の画面・見出しは錨 + 「{科目} · ABYSS」、LV.30 だけなら ROUTE の画面・見出しはトロフィー +「{科目} · TROPHY」、
+  // それ以外（総合優勝のチケットがある・混ざっている）はアリーナの画面
   const abyssOnly = tickets.length > 0 && tickets.every((t) => t.kind === 'abyss');
+  const lvOnly = tickets.length > 0 && tickets.every((t) => t.kind === 'level30');
   const subjects = [...new Set(tickets.map((t) => t.subject))];
   return (
-    <div className={rootClass('tk-screen') + (abyssOnly ? ' is-abyss' : ' is-arena')}>
+    <div className={rootClass('tk-screen') + (abyssOnly ? ' is-abyss' : lvOnly ? ' is-lv30' : ' is-arena')}>
       <div className="tr-ar-head">
-        {abyssOnly ? (
+        {lvOnly ? (
+          <>
+            <img className="crown" src={BRAND + 'icon_trophy_platinum.svg'} alt="" style={{ width: 24 }} />
+            <span className="tk-lv30-head">{subjects.length === 1 ? `${subjectName(subjects[0]!)} · TROPHY` : 'TROPHY'}</span>
+          </>
+        ) : abyssOnly ? (
           <>
             <img className="crown" src={BRAND + 'icon_abyss.svg'} alt="" style={{ width: 26 }} />
             <span className="tk-abyss-head">{subjects.length === 1 ? `${subjectName(subjects[0]!)} · ABYSS` : 'ABYSS'}</span>
@@ -77,8 +85,8 @@ export function ArenaTicketScreen({ tickets, subjectName, onUsed, onBack, demo =
             {(tickets.length > 1 || demo) && (
               <div className="tk-cap">
                 {demo
-                  ? t.kind === 'abyss' ? 'ABYSS（見本）' : t.premium ? 'プレミアム（見本）' : '通常（見本）'
-                  : `${subjectName(t.subject)} · ${t.kind === 'abyss' ? 'ABYSS' : '総合優勝'}`}
+                  ? t.kind === 'abyss' ? 'ABYSS（見本）' : t.kind === 'level30' ? 'LV.30（見本）' : t.premium ? 'プレミアム（見本）' : '通常（見本）'
+                  : `${subjectName(t.subject)} · ${t.kind === 'abyss' ? 'ABYSS' : t.kind === 'level30' ? 'LV.30' : '総合優勝'}`}
               </div>
             )}
             <Ticket ticket={t} wide={wide} onUsed={onUsed} demo={demo} subjectName={subjectName(t.subject)} />
@@ -101,6 +109,30 @@ function Bubbles() {
       <i style={{ left: '62%', top: '18%', width: 9, height: 9, borderColor: 'rgba(0,229,255,0.5)' }} />
       <i style={{ left: '78%', top: '52%', width: 6, height: 6, borderColor: 'rgba(208,139,255,0.55)' }} />
       <i style={{ left: '84%', top: '26%', width: 12, height: 12, borderColor: 'rgba(79,195,255,0.45)' }} />
+    </div>
+  );
+}
+
+/** LV.30 チケットの 30 マスのレベルバー（シアン系 → ピンク系・ボードの pips）*/
+const PIP_C = ['#D9FFF6', '#4FC3FF', '#B05BD6', '#FFB8E6'];
+function Pips() {
+  return (
+    <div className="tk-pips" aria-hidden="true">
+      {Array.from({ length: 30 }, (_, i) => (
+        <span key={i} style={{ background: PIP_C[Math.min(3, Math.floor(i / 7.5))] }} />
+      ))}
+    </div>
+  );
+}
+
+/** LV.30 チケットのキラ（ドットの十字・静止）*/
+const SPARK = 'M2 0h1v2h2v1H3v2H2V3H0V2h2z';
+function Sparks() {
+  return (
+    <div className="tk-sparks" aria-hidden="true">
+      <svg viewBox="0 0 5 5" width="12" height="12" style={{ left: '66%', top: 30 }}><path d={SPARK} fill="#D9FFF6" /></svg>
+      <svg viewBox="0 0 5 5" width="8" height="8" style={{ left: '84%', top: 74 }}><path d={SPARK} fill="#FFB8E6" /></svg>
+      <svg viewBox="0 0 5 5" width="10" height="10" style={{ left: '89%', top: 30 }}><path d={SPARK} fill="#B05BD6" /></svg>
     </div>
   );
 }
@@ -130,9 +162,10 @@ function Ticket({ ticket, wide, onUsed, demo, subjectName }: { ticket: TreeTicke
 
   const used = phase === 'used';
   const abyss = ticket.kind === 'abyss';
-  const premium = !abyss && ticket.premium;
+  const lv30 = ticket.kind === 'level30';
+  const premium = ticket.kind === 'grand' && ticket.premium;
   const [s1, s2] = ticket.pair ?? [];
-  const title = abyss ? `${subjectName} ABYSS 開放` : `SEASON ${s1?.n ?? ''}–${s2?.n ?? ''} 総合チャンピオン`;
+  const title = abyss ? `${subjectName} ABYSS 開放` : lv30 ? `${subjectName} トロフィーレベル 30 達成` : `SEASON ${s1?.n ?? ''}–${s2?.n ?? ''} 総合チャンピオン`;
   const who = `${gradeLabel(ticket.grade)} · ${ticket.nickname}`;
 
   const cut = async () => {
@@ -209,25 +242,31 @@ function Ticket({ ticket, wide, onUsed, demo, subjectName }: { ticket: TreeTicke
   return (
     <>
       <div
-        className={`tk ${wide ? 'tk--h' : 'tk--v'}${premium ? ' is-premium' : ''}${abyss ? ' is-abyss' : ''}${used ? ' is-used' : ''}`}
+        className={`tk ${wide ? 'tk--h' : 'tk--v'}${premium ? ' is-premium' : ''}${abyss ? ' is-abyss' : ''}${lv30 ? ' is-lv30' : ''}${used ? ' is-used' : ''}`}
         role="group"
-        aria-label={`${abyss ? 'ABYSS チケット' : 'ボーナスチケット'} ${title}${used ? '（使用済み）' : ''}`}
+        aria-label={`${abyss ? 'ABYSS チケット' : lv30 ? 'LV.30 チケット' : 'ボーナスチケット'} ${title}${used ? '（使用済み）' : ''}`}
       >
         <div className="tk-main">
           <div className="tk-face">
             {premium && <div className="tk-shine" aria-hidden="true" />}
             {abyss && <Bubbles />}
+            {lv30 && !used && <Sparks />}
             <div className="tk-content">
               <div className="tk-brand">
-                <img className="tk-crown" src={BRAND + (abyss ? 'icon_abyss.svg' : 'icon_crown.svg')} alt="" />
+                <img className="tk-crown" src={BRAND + (abyss ? 'icon_abyss.svg' : lv30 ? 'icon_trophy_platinum.svg' : 'icon_crown.svg')} alt="" />
                 <div className="tk-words">
-                  <img className="tk-champion" src={BRAND + (abyss ? 'text_abyss.svg' : 'text_champion.svg')} alt={abyss ? 'ABYSS' : 'CHAMPION'} />
+                  <img
+                    className="tk-champion"
+                    src={BRAND + (abyss ? 'text_abyss.svg' : lv30 ? 'text_lv30.svg' : 'text_champion.svg')}
+                    alt={abyss ? 'ABYSS' : lv30 ? 'LV.30' : 'CHAMPION'}
+                  />
                   {premium && <img className="tk-premium" src={BRAND + 'text_premium.svg'} alt="PREMIUM" />}
                   {!used && !(premium && wide) && <div className="tk-bonus">BONUS TICKET</div>}
                 </div>
               </div>
               {!used && premium && wide && <div className="tk-bonus">BONUS TICKET</div>}
               <div className="tk-title">{title}</div>
+              {lv30 && !used && <Pips />}
               <div className="tk-who">{who}</div>
               {!wide && !used && <div className="tk-show">先生へ提示してください</div>}
             </div>

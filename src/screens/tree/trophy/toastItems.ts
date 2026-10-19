@@ -1,7 +1,7 @@
 /**
  * API の応答 → 通知（ToastItem）。文言はボード「通知のバリエーション」（実装手順_トロフィー §5.4・§5.5）。
  */
-import type { ArenaSeason, QType, SubmitResult, TreeManifest, TreeNotice, TreeProgress, TreeStage, TrophyGet, TrophyNear } from '../../../lib/treeApi';
+import type { ArenaSeason, Level30Got, QType, SubmitResult, TreeManifest, TreeNotice, TreeProgress, TreeStage, TrophyGet, TrophyNear } from '../../../lib/treeApi';
 import { gradeLabel } from '../../../lib/treeApi';
 import { MASTER_AT, fmtScore } from '../treeTheme';
 import type { ToastItem } from './toastQueue';
@@ -12,6 +12,13 @@ const who = (h: { grade: string; nickname: string }) => `${gradeLabel(h.grade)} 
 
 /** 獲得したトロフィー */
 export function trophyToast(t: TrophyGet, subjectName: string, stage: TreeStage = 'front'): ToastItem {
+  // 残念トロフィー（2026-10-19）: 札は何が起きたか（無ければ「残念トロフィー」）・+0PT
+  if (t.grade === 'Z') {
+    return {
+      key: `trophy:${t.subject}:${t.id}`, kind: 'trophy', grade: 'Z', head: 'TROPHY GET...?', main: t.name,
+      sub: t.note || '残念トロフィー', pt: 0, trophy: { subject: t.subject, id: t.id },
+    };
+  }
   const head = t.grade === 'P' ? 'PLATINUM GET!!' : t.grade === 'F' ? 'FIRST CLEAR!!' : 'TROPHY GET!';
   // 「全獲得」はその科目のプラチナ（id = *_plat）だけ。ほかのプラチナ（範囲のランキング制覇など・2026-10-19）は副題なし
   const sub = t.grade === 'P' ? (t.id.endsWith('_plat') ? `${subjectName}のトロフィー全獲得` : undefined) : t.grade === 'F' ? '塾内で最初の 1 人' : undefined;
@@ -26,6 +33,12 @@ export function trophyToast(t: TrophyGet, subjectName: string, stage: TreeStage 
     abyss: stage === 'back',
     trophy: { subject: t.subject, id: t.id },
   };
+}
+
+/** トロフィーレベル 30（LV.30 チケット）。既読は level30:{科目}（提出の直後もツリーを開いたときも同じキー）*/
+export function level30Toast(g: Pick<Level30Got, 'subject'>, subjectName: string): ToastItem {
+  const key = `level30:${g.subject}`;
+  return { key, noticeKey: key, kind: 'level30', head: 'LEVEL 30 REACHED!!', main: 'トロフィーレベル 30', sub: `${subjectName} · ボーナスチケット獲得`, ticket: true };
 }
 
 /** 数えるトロフィーが 80% に届いた */
@@ -60,6 +73,8 @@ export function noticeToast(n: TreeNotice, subjectName: string): ToastItem | nul
         key: n.key, noticeKey: n.key, kind: 'rankDown', head: 'RANK DOWN',
         main: `${subjectName} ${n.prevRank} 位 → ${n.rank} 位`, sub: `${n.of} 人中 · 抜き返そう`,
       };
+    case 'level30':
+      return level30Toast(n, subjectName);
     case 'arena_last_day':
       return {
         key: n.key, noticeKey: n.key, kind: 'lastday', head: 'LAST DAY!',
@@ -76,6 +91,7 @@ export function submitToasts(r: SubmitResult, manifest: TreeManifest, subjectNam
   const name = (id: string) => manifest.fields.find((f) => f.id === id)?.name ?? id;
   const stageName = stage === 'back' ? 'ABYSS' : 'ROUTE';
   for (const t of r.trophies ?? []) out.push(trophyToast(t, subjectName, stage));
+  if (r.level30) out.push(level30Toast(r.level30, subjectName));
   for (const n of r.near ?? []) out.push(nearToast(n));
   for (const f of r.newlyUnlocked ?? []) {
     out.push({ key: `node:${manifest.subject}:${stage}:${f}`, kind: 'node', head: 'NODE OPEN!', main: name(f), sub: `${subjectName} · ${stageName}` });

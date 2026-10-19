@@ -3282,3 +3282,19 @@ button.tr-stat {
   justify-content: center;
   gap: 8px;
 }
+
+/* アリーナのランキングの先生の行（2026-10-19）: 順位を付けない・点線の枠・先生の色（TEACHER RECORD と同じアクア）*/
+.tr-root.is-arena .tr-rank-list .tr-rank-row.is-staff {
+  border: 1.5px dashed rgba(45, 244, 198, 0.6);
+  background: rgba(45, 244, 198, 0.08);
+}
+.tr-rank-row.is-staff .tr-rank-name {
+  color: #2df4c6;
+  font-weight: 700;
+}
+.tr-rank-row.is-staff .tr-rank-name small {
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--tr-sub);
+  margin-left: 4px;
+}

@@ -239,6 +239,14 @@ export interface SubmitResult {
   trophies?: TrophyGet[];
   /** 数えるトロフィーが 80% に届いた（PROGRESS の通知。サーバが 1 回だけ返す）*/
   near?: TrophyNear[];
+  /** この提出でその科目のトロフィーレベルがはじめて 30 に届いた（LV.30 チケット・2026-10-19）*/
+  level30?: Level30Got | null;
+}
+
+/** LV.30 チケットが出た（通知「LEVEL 30 REACHED!!」→ タップでチケット画面）*/
+export interface Level30Got {
+  subject: string;
+  ticketId: string;
 }
 
 export interface RankRow {
@@ -318,8 +326,13 @@ export const fetchTreeProgress = (subject: string, stage: TreeStage = 'front') =
   get<TreeProgress>(`/tree/progress?subject=${encodeURIComponent(subject)}${stageQ(stage)}`);
 export const startTreeSession = (subject: string, field: string, qtype: QType, stage: TreeStage = 'front') =>
   post<TreeSession>('/tree/session/start', stage === 'back' ? { subject, field, qtype, stage } : { subject, field, qtype });
+/**
+ * c=2 = 残念トロフィー・LV.30 チケットに対応した LIFF（2026-10-19）。付けないと Proxy はそれらを返さない
+ * （古い LIFF が Z のグレード・level30 のチケットを描けずに壊れないように）
+ */
+const C2 = 'c=2';
 export const submitTreeSession = (sessionId: string, answers: { qid: string; value: PartValue[]; timeMs: number }[]) =>
-  post<SubmitResult>('/tree/session/submit', { sessionId, answers });
+  post<SubmitResult>(`/tree/session/submit?${C2}`, { sessionId, answers });
 export const saveTreeNickname = (nickname: string) => post<{ nickname: string }>('/tree/profile', { nickname });
 export const fetchTreeRanking = (subject: string, field = '*', qtype: QType | '*' = '*', stage: TreeStage = 'front') => {
   const q = new URLSearchParams({ subject });
@@ -405,6 +418,7 @@ export interface ArenaResult {
   season: ArenaSeason;
   /** この挑戦で獲得したトロフィー（2026-10-19〜）*/
   trophies?: TrophyGet[];
+  level30?: Level30Got | null;
 }
 
 export interface ArenaRankRow extends RankRow {
@@ -420,13 +434,18 @@ export interface ArenaRanking {
   count: number;
   top: ArenaRankRow[];
   me: { rank: number | null; score: number; played: boolean; grade: string; nickname: string };
+  /**
+   * 先生のスコア（2026-10-19）: 順位を付けない行として順位表に差し込む。1 シーズン = その最高（記録として提出したもの）・
+   * 合算 = 同じ先生アカウントで両シーズンそろった和の最大。記録が無ければ null（古い Proxy は undefined）
+   */
+  staff?: { score: number; elapsedMs: number } | null;
 }
 
 export const fetchArena = (subject: string) => get<ArenaInfo>(`/tree/arena?subject=${encodeURIComponent(subject)}`);
 /** season = 画面が読み込んだシーズン（切り替わっていたら 409 SEASON_CHANGED。前シーズンの途中は猶予内なら再開）*/
 export const startArena = (subject: string, season?: string) => post<ArenaSession>('/tree/arena/start', { subject, season });
 export const submitArena = (sessionId: string, answers: { qid: string; value: PartValue[]; timeMs: number }[]) =>
-  post<ArenaResult>('/tree/arena/submit', { sessionId, answers });
+  post<ArenaResult>(`/tree/arena/submit?${C2}`, { sessionId, answers });
 /** 先生: 採点した挑戦を記録にする（何度押しても同じ）*/
 export const recordArena = (sessionId: string) => post<{ ok: true }>('/tree/arena/record', { sessionId });
 export type ArenaRankWhich = 'current' | 'prev' | 'pair';
@@ -478,10 +497,10 @@ export const fetchArenaTickets = () => get<{ tickets: ArenaTicket[] }>('/tree/ar
  * チケット（ABYSS チケットと総合優勝のボーナスチケット）。2026-10-17 夕方〜
  * ABYSS チケット = 全分野マスター度 60% を初めて満たした科目ごとに 1 枚（化学・生物）。使い方はボーナスと同じ（半券を切る・1 回だけ）
  */
-export type TreeTicketKind = 'abyss' | 'grand';
+export type TreeTicketKind = 'abyss' | 'grand' | 'level30';
 export interface TreeTicket extends Omit<ArenaTicket, 'pair' | 'score'> {
   kind: TreeTicketKind;
-  /** grand: 組の 2 シーズン / abyss: null */
+  /** grand: 組の 2 シーズン / abyss・level30: null */
   pair: ArenaSeason[] | null;
   score: number | null;
   issuedAt?: number;
@@ -489,7 +508,7 @@ export interface TreeTicket extends Omit<ArenaTicket, 'pair' | 'score'> {
 /** 両方のチケット。新しい Proxy が無い（404）ときは総合優勝のチケットだけ（/tree/arena/tickets）*/
 export async function fetchTreeTickets(): Promise<TreeTicket[]> {
   try {
-    return (await get<{ tickets: TreeTicket[] }>('/tree/tickets')).tickets ?? [];
+    return (await get<{ tickets: TreeTicket[] }>(`/tree/tickets?${C2}`)).tickets ?? [];
   } catch (e) {
     if (!(e instanceof TreeApiError && e.status === 404)) throw e;
     return ((await fetchArenaTickets()).tickets ?? []).map((t) => ({ ...t, kind: 'grand' as const }));
@@ -508,7 +527,8 @@ export const fetchTreeHome = (subject: string) =>
  * 科目ごとに別に獲得。グレード B / S / G / P（プラチナ）/ F（ファースト = 塾内で最初の 1 人だけ）。
  * 通知は左上のトースト（trophy/TrophyToast）。未通知の獲得と、アリーナ・ファーストのお知らせは /tree/trophies/pending。 */
 
-export type TrophyGrade = 'B' | 'S' | 'G' | 'P' | 'F';
+/** Z = 残念トロフィー（OOPS・pt 0・獲得するまで一覧に何も出さない。2026-10-19）*/
+export type TrophyGrade = 'B' | 'S' | 'G' | 'P' | 'F' | 'Z';
 
 /** 獲得した 1 件（通知用）*/
 export interface TrophyGet {
@@ -520,6 +540,10 @@ export interface TrophyGet {
   first: boolean;
   /** 条件の文 */
   desc: string;
+  /** 残念トロフィー（grade = 'Z'）*/
+  oops?: boolean;
+  /** 残念トロフィーの通知の札（何が起きたか。null なら「残念トロフィー」）*/
+  note?: string | null;
 }
 
 /** 数えるトロフィーが 80% に届いた（PROGRESS）*/
@@ -548,7 +572,9 @@ export type TreeNotice =
   | { key: string; type: 'teacher_record'; subject: string; season: ArenaSeason; score: number }
   | { key: string; type: 'arena_last_day'; subject: string; season: ArenaSeason }
   /** 科目ランキングの順位ダウン（2026-10-19・ほかの人に抜かれた。ツリーを開いたとき 1 回）*/
-  | { key: string; type: 'rank_down'; subject: string; rank: number; prevRank: number; of: number };
+  | { key: string; type: 'rank_down'; subject: string; rank: number; prevRank: number; of: number }
+  /** LV.30 チケット（まだ知らせていないもの・2026-10-19）*/
+  | { key: string; type: 'level30'; subject: string; ticketId: string };
 
 export interface TrophyPending {
   trophies: TrophyGet[];
@@ -575,6 +601,8 @@ export interface TrophyItem {
   firstHolder: { grade: string; nickname: string; at: number; me: boolean } | null;
   /** 試験が入るたびに 1 人（f_new_exam）→ 「受付終了」と出さない */
   repeat?: boolean;
+  /** 残念トロフィー（獲得したものだけ items に入る）*/
+  oops?: boolean;
   /** 関係する分野 ID（詳細のチップ）*/
   fields: string[];
   order: number;
@@ -586,7 +614,9 @@ export interface TrophyList {
   /** 科目ごとのトロフィーレベル Lv1〜max（30）。into = 今のレベルに入ってからの pt、need = 次のレベルまでの幅（max では 0）*/
   level: { lv: number; max?: number; pt: number; into: number; need: number };
   /** all / earned は件数、B〜F は獲得数 */
-  counts: { all: number; earned: number; B: number; S: number; G: number; P: number; F: number };
+  counts: { all: number; earned: number; B: number; S: number; G: number; P: number; F: number; oops?: { earned: number } };
+  /** LV.30 チケット（その科目で持っていれば）*/
+  level30Ticket?: { id: string; used: boolean } | null;
   /** プラチナは隠し要素（2026-10-19）: 獲得するまで null。ファーストも獲得するまで items に入らない */
   platinum: { now: number; max: number; earned: boolean; name: string; id: string } | null;
   items: TrophyItem[];
@@ -598,7 +628,7 @@ export interface TrophyList {
  */
 export async function fetchTrophyPending(): Promise<TrophyPending & { available: boolean }> {
   try {
-    const r = await get<Partial<TrophyPending> & { ready?: boolean }>('/tree/trophies/pending');
+    const r = await get<Partial<TrophyPending> & { ready?: boolean }>(`/tree/trophies/pending?${C2}`);
     return { trophies: r.trophies ?? [], notices: r.notices ?? [], available: r.ready !== false };
   } catch (e) {
     if (e instanceof TreeApiError && (e.status === 404 || e.status === 503)) return { trophies: [], notices: [], available: false };
@@ -608,7 +638,7 @@ export async function fetchTrophyPending(): Promise<TrophyPending & { available:
 /** 通知を出した（表示を始めた）ものを既読に */
 export const markTrophiesSeen = (trophies: { subject: string; id: string }[], keys: string[]) =>
   post<{ ok: boolean }>('/tree/trophies/seen', { trophies, keys });
-export const fetchTrophies = (subject: string) => get<TrophyList>(`/tree/trophies?subject=${encodeURIComponent(subject)}`);
+export const fetchTrophies = (subject: string) => get<TrophyList>(`/tree/trophies?subject=${encodeURIComponent(subject)}&${C2}`);
 
 /* ── 先生用 進捗一覧（2026-10-17）──────────────────────────
  * Proxy は生徒を key（userId のハッシュ）で返し、氏名は持たない。

@@ -1,10 +1,11 @@
 /**
  * トロフィー・通知のキュー（実装手順_トロフィー §0・§6.3）。純粋関数だけ（テストは test/toastQueue.test.mjs）。
- *   並び = ファースト > プラチナ > ゴールド > シルバー > ブロンズ > その他の通知（同じ順位は入った順）
+ *   並び = ファースト > プラチナ > ゴールド > シルバー > ブロンズ > RANK DOWN > 残念 > その他の通知（同じ順位は入った順）
  *   同時に 3 件以上は先頭 1 件 +「ほか n 件」に畳む（残りは出さずに既読）。2 件は 1 件ずつ（後ろの 1 件が下にのぞく）
- *   表示 4.5 秒（プラチナ 6 秒・ファースト 7 秒）
+ *   LEVEL 30（LV.30 チケット・2026-10-19）は畳まず、ほかの通知をすべて出した後に 1 件で出す
+ *   表示 4.5 秒（プラチナ・LEVEL 30 は 6 秒・ファースト 7 秒）
  */
-export type ToastGrade = 'B' | 'S' | 'G' | 'P' | 'F';
+export type ToastGrade = 'B' | 'S' | 'G' | 'P' | 'F' | 'Z';
 
 /** 通知の種類（トロフィー以外はドットのアイコン）*/
 export type ToastKind =
@@ -18,7 +19,9 @@ export type ToastKind =
   | 'lastday'
   | 'arenaRank'
   | 'teacher'
-  | 'firstOther';
+  | 'firstOther'
+  /** トロフィーレベル 30（LV.30 チケット）。タップでチケット画面 */
+  | 'level30';
 
 export interface ToastItem {
   /** 一意のキー（同じキーは 2 回入れない）*/
@@ -42,10 +45,13 @@ export interface ToastItem {
   trophy?: { subject: string; id: string };
   /** 表示したら既読にする notice の key（/tree/trophies/seen）*/
   noticeKey?: string;
+  /** タップでチケット画面（LEVEL 30）*/
+  ticket?: boolean;
 }
 
-const GRADE_RANK: Record<ToastGrade, number> = { F: 0, P: 1, G: 2, S: 3, B: 4 };
-export const toastRank = (t: ToastItem) => (t.kind === 'trophy' && t.grade ? GRADE_RANK[t.grade] : 5);
+const GRADE_RANK: Record<ToastGrade, number> = { F: 0, P: 1, G: 2, S: 3, B: 4, Z: 6 };
+/** RANK DOWN は残念（順位の残念と同時に出る）より前 */
+export const toastRank = (t: ToastItem) => (t.kind === 'trophy' && t.grade ? GRADE_RANK[t.grade] : t.kind === 'rankDown' ? 5 : t.kind === 'level30' ? 9 : 7);
 
 /** 並べ替え（安定）*/
 export function sortToasts(list: ToastItem[]): ToastItem[] {
@@ -83,25 +89,32 @@ export interface ToastPick {
 /** キューから次に出すものを選ぶ。3 件以上は先頭 + ほか n 件に畳み、全部を消費する */
 export function pickToast(queue: ToastItem[]): ToastPick | null {
   if (!queue.length) return null;
-  const sorted = sortToasts(queue);
-  const [item, ...others] = sorted as [ToastItem, ...ToastItem[]];
-  if (sorted.length >= 3) return { item, more: others.length, peek: null, consumed: sorted, rest: [] };
-  return { item, more: others.length, peek: others[0] ?? null, consumed: [item], rest: others };
+  // LEVEL 30 は畳まない: ほかの通知が残っている間は後ろに置いておき、なくなってから 1 件ずつ出す
+  const late = sortToasts(queue.filter((t) => t.kind === 'level30'));
+  const main = sortToasts(queue.filter((t) => t.kind !== 'level30'));
+  if (!main.length) {
+    const [item, ...rest] = late as [ToastItem, ...ToastItem[]];
+    return { item, more: 0, peek: null, consumed: [item], rest };
+  }
+  const [item, ...others] = main as [ToastItem, ...ToastItem[]];
+  if (main.length >= 3) return { item, more: others.length, peek: null, consumed: main, rest: late };
+  return { item, more: others.length, peek: others[0] ?? null, consumed: [item], rest: [...others, ...late] };
 }
 
 /** 表示の長さ（ミリ秒）*/
-export const toastMs = (t: ToastItem) => (t.kind === 'trophy' && t.grade === 'F' ? 7000 : t.kind === 'trophy' && t.grade === 'P' ? 6000 : 4500);
+export const toastMs = (t: ToastItem) =>
+  t.kind === 'trophy' && t.grade === 'F' ? 7000 : (t.kind === 'trophy' && t.grade === 'P') || t.kind === 'level30' ? 6000 : 4500;
 
 /** 名前の文字サイズ（px）: 12 字まで 14・13 字は 13（プラチナ 15・iPad 14）*/
 export function toastNameSize(t: Pick<ToastItem, 'kind' | 'grade' | 'main'>, wide = false): number {
-  if (t.kind === 'trophy' && t.grade === 'P') return 15;
+  if ((t.kind === 'trophy' && t.grade === 'P') || t.kind === 'level30') return 15;
   if (wide) return 14;
   return [...t.main].length >= 13 ? 13 : 14;
 }
 
 /** 通知の幅（px）*/
 export function toastWidth(t: Pick<ToastItem, 'kind' | 'grade'>, wide = false): number {
-  if (t.kind === 'trophy' && t.grade === 'P') return 272;
+  if ((t.kind === 'trophy' && t.grade === 'P') || t.kind === 'level30') return 272;
   if (t.kind === 'trophy' && t.grade === 'F') return 260;
   return wide ? 264 : 248;
 }

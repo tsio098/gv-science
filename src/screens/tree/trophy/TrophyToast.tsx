@@ -5,12 +5,15 @@
  */
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { toastSpeed } from './labSpeed';
-import { CHROME, GRADE_COLOR, PRISM, PX_ICON, PxIcon, TrophyIcon } from './TrophyIcon';
+import { CHROME, GRADE_COLOR, LV30_BAND, PRISM, PX_ICON, PxIcon, TrophyIcon } from './TrophyIcon';
 import { toastNameSize, toastWidth, type ToastItem, type ToastKind } from './toastQueue';
 
 const ROUTE_BG = 'linear-gradient(180deg,#0C4250,#062530)';
 const ABYSS_BG = 'linear-gradient(180deg,#111E3E,#050B1C)';
 const ARENA_BG = 'linear-gradient(180deg,#2A1C45,#120B22)';
+/** 残念トロフィー（くすんだブリキ）・LEVEL 30（プラチナの面）の地（2026-10-19）*/
+const OOPS_BG = 'linear-gradient(180deg,#2B3026,#14170F)';
+const LV30_BG = 'linear-gradient(180deg,#1E1A4A,#0A0820)';
 
 interface Look {
   c: string;
@@ -34,6 +37,7 @@ const NOTE_LOOK: Record<Exclude<ToastKind, 'trophy'>, Look> = {
   arenaRank: { c: '#FFD84A', d: '#A35A00', rgb: '255,216,74', chrome: CHROME.G, bg: ARENA_BG, subc: '#CBBB93', icon: PX_ICON.podium },
   teacher: { c: '#2DF4C6', d: '#0E9C9A', rgb: '45,244,198', chrome: CHROME.aqua, bg: ARENA_BG, subc: '#CBBB93', icon: PX_ICON.cap },
   firstOther: { c: '#FF5A6E', d: '#5A0A1C', rgb: '255,90,110', chrome: CHROME.F, bg: ROUTE_BG, subc: '#8ED4E0' },
+  level30: { c: '#4FC3FF', d: '#1C1236', rgb: '79,195,255', chrome: CHROME.P30, bg: LV30_BG, subc: '#B6E9FF' },
 };
 
 export function toastLook(t: ToastItem): Look {
@@ -41,6 +45,7 @@ export function toastLook(t: ToastItem): Look {
   const g = GRADE_COLOR[t.grade ?? 'B'];
   if (t.grade === 'P') return { c: g.c, d: g.d, rgb: g.rgb, chrome: PRISM, bg: 'linear-gradient(180deg,#1A1440,#0A0820)', subc: '#CBB8FF' };
   if (t.grade === 'F') return { c: g.c, d: '#5A0A1C', rgb: g.rgb, chrome: CHROME.G, bg: 'linear-gradient(180deg,#3A0A18,#14040A)', subc: '#FFB0BC' };
+  if (t.grade === 'Z') return { c: g.c, d: g.d, rgb: g.rgb, chrome: CHROME.Z, bg: OOPS_BG, subc: '#A9B09A' };
   return { c: g.c, d: g.d, rgb: g.rgb, chrome: CHROME[t.grade ?? 'B'], bg: t.abyss ? ABYSS_BG : ROUTE_BG, subc: '#8ED4E0' };
 }
 
@@ -63,8 +68,13 @@ export function ToastCard({ item, more, peek, wide, out = false, onTap }: { item
   const isP = item.kind === 'trophy' && item.grade === 'P';
   const isF = item.kind === 'trophy' && item.grade === 'F';
   const isFo = item.kind === 'firstOther';
+  /** 残念トロフィー: 弾まずに倒れる・閃光は弱く 1 回・かけらと汗・紙吹雪やキラなし */
+  const isZ = item.kind === 'trophy' && item.grade === 'Z';
+  /** LEVEL 30（プラチナの面・4 色の帯・LV30 のスタンプ）*/
+  const isL = item.kind === 'level30';
   const isTrophy = item.kind === 'trophy';
-  const box = isP ? 50 : isFo ? 36 : 40;
+  const big = isP || isL;
+  const box = big ? 50 : isFo ? 36 : 40;
   const ref = useRef<HTMLButtonElement>(null);
   const slotRef = useRef<HTMLDivElement>(null);
   const [done, setDone] = useState(false);
@@ -95,11 +105,17 @@ export function ToastCard({ item, more, peek, wide, out = false, onTap }: { item
 
   const frameBg = isP
     ? PRISM
+    : isL
+      ? LV30_BAND
     : isF
       ? 'linear-gradient(90deg,#FFD84A 0 14px,#FF5A6E 14px calc(100% - 14px),#FFD84A calc(100% - 14px))'
       : look.c;
   const glow = isP
     ? 'drop-shadow(4px 4px 0 #1C1236) drop-shadow(0 0 14px rgba(208,139,255,.6))'
+    : isL
+      ? 'drop-shadow(4px 4px 0 #1C1236) drop-shadow(0 0 14px rgba(79,195,255,.55))'
+    : isZ
+      ? 'drop-shadow(3px 3px 0 #2E3326) drop-shadow(0 0 8px rgba(169,176,154,.35))'
     : isF
       ? 'drop-shadow(3px 3px 0 #5A0A1C) drop-shadow(0 0 12px rgba(255,90,110,.6))'
       : isFo
@@ -107,13 +123,17 @@ export function ToastCard({ item, more, peek, wide, out = false, onTap }: { item
         : `drop-shadow(3px 3px 0 ${look.d}) drop-shadow(0 0 10px rgba(${look.rgb},.5))`;
   const timerBg = isP
     ? 'repeating-linear-gradient(90deg,#2DF4C6 0 8px,rgba(0,0,0,0) 8px 10px,#D08BFF 10px 18px,rgba(0,0,0,0) 18px 20px,#FFD84A 20px 28px,rgba(0,0,0,0) 28px 30px)'
+    : isL
+      ? 'repeating-linear-gradient(90deg,#4FC3FF 0 8px,rgba(0,0,0,0) 8px 10px,#B05BD6 10px 18px,rgba(0,0,0,0) 18px 20px,#FFB8E6 20px 28px,rgba(0,0,0,0) 28px 30px)'
     : isF
       ? 'repeating-linear-gradient(90deg,#FF5A6E 0 8px,rgba(0,0,0,0) 8px 10px,#FFD84A 10px 18px,rgba(0,0,0,0) 18px 20px)'
       : `repeating-linear-gradient(90deg,${look.c} 0 8px,rgba(0,0,0,0) 8px 10px)`;
   const aria =
     isTrophy
-      ? `${isP ? 'プラチナトロフィー' : isF ? 'ファーストトロフィー' : 'トロフィー'} ${item.main} を獲得。${more ? `ほか ${more} 件。` : ''}${peek ? 'タップで次へ' : 'タップで詳細'}`
-      : `${item.head} ${item.main}${item.sub ? ' ' + item.sub : ''}`;
+      ? `${isP ? 'プラチナトロフィー' : isF ? 'ファーストトロフィー' : isZ ? '残念トロフィー' : 'トロフィー'} ${item.main} を獲得。${more ? `ほか ${more} 件。` : ''}${peek ? 'タップで次へ' : 'タップで詳細'}`
+      : isL
+        ? `トロフィーレベル 30 達成。${item.sub ?? ''}。タップでチケットを見る`
+        : `${item.head} ${item.main}${item.sub ? ' ' + item.sub : ''}`;
 
   const head = (
     <span className={`tt-arc tt-chrome tt-head${isFo ? '' : ' tt-blink'}`} style={{ backgroundImage: isP ? PRISM : look.chrome }}>
@@ -122,7 +142,26 @@ export function ToastCard({ item, more, peek, wide, out = false, onTap }: { item
   );
 
   let row: JSX.Element | null = null;
-  if (isTrophy) {
+  if (isZ) {
+    row = (
+      <span className="tt-row tt-name">
+        <span className="tt-dot tt-sub" style={{ color: look.subc }}>{item.sub}</span>
+        {more > 0 ? <span className="tt-dot tt-px2 tt-more">ほか {more} 件</span> : <span className="tt-arc tt-pt" style={{ color: look.c }}>+0PT</span>}
+      </span>
+    );
+  } else if (isL) {
+    row = (
+      <>
+        <span className="tt-row tt-name">
+          <span className="tt-dot tt-sub" style={{ color: look.subc }}>{item.sub}</span>
+          <span className="tt-arc tt-pt">TAP ▶</span>
+        </span>
+        <span className="tt-l30bar" aria-hidden="true">
+          <span className="l-fill" />
+        </span>
+      </>
+    );
+  } else if (isTrophy) {
     const tag = isP || isF ? <span className="tt-dot tt-sub" style={{ color: look.subc }}>{item.sub}</span> : <span className="tt-arc tt-en" style={{ color: look.c }}>{GRADE_COLOR[item.grade ?? 'B'].en}</span>;
     row = (
       <span className="tt-row tt-name">
@@ -145,9 +184,9 @@ export function ToastCard({ item, more, peek, wide, out = false, onTap }: { item
     );
   }
 
-  const beamTop = isP ? 37 : isFo ? 0 : 30;
+  const beamTop = big ? 37 : isFo ? 0 : 30;
   return (
-    <div ref={slotRef} className={`tt-slot${done ? ' is-done' : ''}${out ? ' is-out' : ''}`} style={{ width: w + 14, height: isP ? 86 : 80 }}>
+    <div ref={slotRef} className={`tt-slot${done ? ' is-done' : ''}${out ? ' is-out' : ''}`} style={{ width: w + 14, height: big ? 90 : 80 }}>
       {isP && (
         <>
           <span className="tt-aura" aria-hidden="true" />
@@ -165,27 +204,48 @@ export function ToastCard({ item, more, peek, wide, out = false, onTap }: { item
         <span className="tt-peekcard tt-px tt-peek" aria-hidden="true" style={{ width: w, background: toastLook(peek).c }} />
       )}
       {!isFo && (
-        <span className="tt-beamline tt-beam" aria-hidden="true" style={{ top: beamTop, width: w, boxShadow: `0 0 8px ${look.c},0 0 2px #FFFFFF` }} />
+        <span
+          className="tt-beamline tt-beam"
+          aria-hidden="true"
+          style={isZ ? { top: beamTop, width: w, background: '#E4E8D8', boxShadow: '0 0 6px #A9B09A' } : { top: beamTop, width: w, boxShadow: `0 0 8px ${look.c},0 0 2px #FFFFFF` }}
+        />
       )}
       <button
         ref={ref}
         type="button"
-        className={`tt-toast tt-in${isP ? ' is-p' : isF ? ' is-f' : isFo ? ' is-fo' : ''}`}
+        className={`tt-toast tt-in${isP ? ' is-p' : isF ? ' is-f' : isFo ? ' is-fo' : isZ ? ' is-z' : isL ? ' is-l30' : ''}`}
         style={{ width: w, filter: glow }}
         aria-label={aria}
         onClick={onTap}
       >
-        <span className={`tt-frame tt-px${isP ? ' tt-prism' : ''}${isF ? ' tt-shake' : ''}`} style={{ background: frameBg, padding: isP ? 4 : isFo ? 2 : 3 }}>
-          <span className="tt-body tt-px" style={{ background: look.bg, padding: isP ? '8px 10px 11px 8px' : isFo ? '7px 10px 9px 7px' : undefined, gap: isP ? 10 : 9 }}>
+        <span className={`tt-frame tt-px${isP ? ' tt-prism' : ''}${isF ? ' tt-shake' : ''}`} style={{ background: frameBg, padding: big ? 4 : isFo ? 2 : 3 }}>
+          <span className="tt-body tt-px" style={{ background: look.bg, padding: big ? '8px 10px 11px 8px' : isFo || isZ ? '7px 10px 9px 7px' : undefined, gap: big ? 10 : 9 }}>
             <span
-              className={`tt-well tt-px2${isFo ? '' : ' tt-pop'}`}
+              className={`tt-well tt-px2${isFo || isZ ? '' : ' tt-pop'}`}
               style={{
                 width: box,
                 height: box,
-                background: isFo ? 'rgba(20,4,10,.9)' : `radial-gradient(circle,rgba(${look.rgb},${isTrophy ? (isP || isF ? 0.45 : 0.38) : 0.32}),${isP ? 'rgba(10,8,32,1)' : isF ? 'rgba(20,4,10,1)' : 'rgba(3,18,24,1)'} 72%)`,
+                position: isZ ? 'relative' : undefined,
+                background: isFo
+                  ? 'rgba(20,4,10,.9)'
+                  : isZ
+                    ? 'radial-gradient(circle,rgba(169,176,154,.3),rgba(12,14,9,1) 72%)'
+                    : `radial-gradient(circle,rgba(${look.rgb},${isTrophy || isL ? (isP || isF || isL ? 0.45 : 0.38) : 0.32}),${isP || isL ? 'rgba(10,8,32,1)' : isF ? 'rgba(20,4,10,1)' : 'rgba(3,18,24,1)'} 72%)`,
               }}
             >
-              {isTrophy || isFo ? (
+              {isZ ? (
+                <>
+                  <TrophyIcon grade="Z" size={30} className="z-pop" />
+                  <svg className="z-chip" viewBox="0 0 3 2" width="7" height="5" aria-hidden="true" style={{ position: 'absolute', right: 2, bottom: 4 }}>
+                    <path d="M1 0H3V2H2V1H1Z" fill="#A9B09A" stroke="#06121A" strokeWidth=".4" style={{ paintOrder: 'stroke' }} />
+                  </svg>
+                  <svg className="z-sweat" viewBox="0 0 3 4" width="6" height="8" aria-hidden="true" style={{ position: 'absolute', right: 4, top: 4 }}>
+                    <path d="M1 0H2V1H3V3H2V4H1V3H0V1H1Z" fill="#8ED4E0" />
+                  </svg>
+                </>
+              ) : isL ? (
+                <TrophyIcon grade="P" size={38} style={{ filter: 'drop-shadow(0 0 6px rgba(79,195,255,.8))' }} />
+              ) : isTrophy || isFo ? (
                 <TrophyIcon
                   grade={isFo ? 'F' : item.grade ?? 'B'}
                   size={isP ? 38 : isFo ? 24 : 30}
@@ -196,15 +256,15 @@ export function ToastCard({ item, more, peek, wide, out = false, onTap }: { item
                 <PxIcon d={look.icon ?? ''} c={look.c} side={look.d} />
               )}
             </span>
-            <span className="tt-text" style={{ gap: isP ? 5 : 4 }}>
+            <span className="tt-text" style={{ gap: big ? 5 : 4 }}>
               {head}
-              <span className={`tt-dot tt-main${isTrophy || isFo ? ' tt-name' : ''}`} style={{ fontSize: fs, lineHeight: isP ? 1.1 : 1.15 }}>
+              <span className={`tt-dot tt-main${isTrophy || isFo || isL ? ' tt-name' : ''}`} style={{ fontSize: fs, lineHeight: big ? 1.1 : 1.15, color: isZ ? '#E4E8D8' : undefined }}>
                 {item.main}
               </span>
               {row}
             </span>
             <span className="tt-scan" />
-            <span className="tt-flashbox tt-flash" />
+            <span className={isZ ? 'tt-flashbox z-flash' : 'tt-flashbox tt-flash'} style={isZ ? { background: '#E4E8D8' } : undefined} />
             {!isFo && (
               <span className="tt-timerbox">
                 <span className="tt-timer" style={{ background: timerBg }} />
@@ -212,12 +272,14 @@ export function ToastCard({ item, more, peek, wide, out = false, onTap }: { item
             )}
           </span>
         </span>
-        {isTrophy && (
+        {(isTrophy || isL) && !isZ && (
           <span
             className="tt-burstdot tt-burst"
             aria-hidden="true"
             style={
-              isP
+              isL
+                ? { left: 37, top: 37, width: 4, height: 4, color: '#D9FFF6', boxShadow: '0 -16px #4FC3FF,12px -12px #FFB8E6,16px 0 #4FC3FF,12px 12px #B05BD6,0 16px #4FC3FF,-12px 12px #FFB8E6,-16px 0 #4FC3FF,-12px -12px #B05BD6' }
+                : isP
                 ? { left: 37, top: 37, width: 4, height: 4, color: '#FFD84A', boxShadow: '0 -16px #2DF4C6,12px -12px #4FC3FF,16px 0 #D08BFF,12px 12px #FF7AB8,0 16px #FFD84A,-12px 12px #2DF4C6,-16px 0 #4FC3FF,-12px -12px #FF7AB8' }
                 : isF
                   ? { left: 30, top: 31, width: 4, height: 4, color: '#FFD84A', boxShadow: '0 -16px #FF5A6E,12px -12px #FFD84A,16px 0 #FF5A6E,12px 12px #FFD84A,0 16px #FF5A6E,-12px 12px #FFD84A,-16px 0 #FF5A6E,-12px -12px #FFD84A' }
@@ -235,7 +297,14 @@ export function ToastCard({ item, more, peek, wide, out = false, onTap }: { item
             <span className="tt-stamp1 tt-arc tt-stamp" aria-hidden="true">1ST</span>
           </>
         )}
-        {isTrophy && (
+        {isL && (
+          <>
+            <span className="tt-stamp1 tt-stamp30 tt-arc tt-stamp" aria-hidden="true">LV30</span>
+            <Spark size={12} fill="#FFB8E6" style={{ left: 62, bottom: -8 }} />
+            <Spark size={9} fill="#D9FFF6" style={{ left: -6, top: 8, animationDelay: '1.45s' }} />
+          </>
+        )}
+        {isTrophy && !isZ && (
           isP ? (
             <>
               <Spark size={14} fill="#FFD84A" style={{ right: -8, top: -8 }} />
