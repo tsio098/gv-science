@@ -4,11 +4,13 @@
  * 間違えた問題は問題（画像）と自分の答えだけを見せ、正解は表示しない（2026-10-15 先生決定）。
  * ニックネームはここで入力し、離れるときに保存する（/tree/profile。NG ワードなら離れずに知らせる）。
  * 分野の順位の前後（Phase 4）・間違えた問題の報告（課題 #21）。ボタンで文章の入力欄を開き、問題画像と文章を先生の Google Chat に送る（2026-10-17）。
+ * 2026-10-19 先生の指示: 間違えた問題にリード文も出す（設問の上）・スクショ（そのカードだけを画像に・PlayShot）・「質問・報告」→「改善要望」。
  */
-import { useState } from 'react';
+import { useRef, useState, type RefObject } from 'react';
 import type { FieldGroup, PartValue, PlayQuestion, SubmitResult, TreeManifest, TreeSession } from '../../lib/treeApi';
 import { QTYPE_LABEL, circled, examLabel, gradeLabel, treeImage } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
+import { PlayShot, SHOT_SKIP } from './PlayShot';
 import { REVIEW_COLOR, T, alpha, fmtScore, fmtTime, groupColor, groupSide, rootClass } from './treeTheme';
 
 interface Props {
@@ -32,20 +34,35 @@ type ReportState = 'idle' | 'open' | 'sending' | 'sent' | 'already' | 'error';
 
 const REPORT_MAX = 500;
 
+/** 問題画像 1 枚（読み込み中・失敗の表示つき）*/
+function PaperImg({ url, failed, alt }: { url: string | null; failed: boolean; alt: string }) {
+  return url ? <img src={url} alt={alt} /> : <div className="tr-imgph">{failed ? '画像を読み込めませんでした' : '読み込み中…'}</div>;
+}
+
 function WrongItem({
   label,
   mine,
+  lead,
   body,
+  layer,
   onReport,
 }: {
   label: string;
   mine: string;
+  /** リード文の画像（無ければ null）*/
+  lead: string | null;
   body: string | null;
+  /** スクショのプレビューを出す先（結果画面のいちばん外側）*/
+  layer: RefObject<HTMLElement>;
   onReport: (message: string) => Promise<'sent' | 'already' | 'error'>;
 }) {
+  const card = useRef<HTMLDivElement>(null);
+  const actions = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const [leadUrl, setLeadUrl] = useState<string | null>(null);
+  const [leadFailed, setLeadFailed] = useState(false);
   const [report, setReport] = useState<ReportState>('idle');
   const [text, setText] = useState('');
   const toggle = () => {
@@ -53,6 +70,10 @@ function WrongItem({
     if (!url && body) {
       setFailed(false);
       treeImage(body).then(setUrl).catch(() => setFailed(true));
+    }
+    if (!leadUrl && lead) {
+      setLeadFailed(false);
+      treeImage(lead).then(setLeadUrl).catch(() => setLeadFailed(true));
     }
   };
   const send = async () => {
@@ -62,7 +83,7 @@ function WrongItem({
   };
   const writing = report === 'open' || report === 'sending' || report === 'error';
   return (
-    <div className="tr-wrong">
+    <div className="tr-wrong" ref={card}>
       <button type="button" className="tr-wrong-head" onClick={toggle} aria-expanded={open}>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
           <div style={{ fontSize: 12, color: T.sub }}>{label}</div>
@@ -76,23 +97,37 @@ function WrongItem({
       </button>
       {open && (
         <>
-          <div className="tr-paper">
-            {url ? <img src={url} alt={label} /> : <div className="tr-imgph">{failed ? '画像を読み込めませんでした' : '読み込み中…'}</div>}
-          </div>
-          {report === 'idle' && (
-            <button type="button" className="tr-report" onClick={() => setReport('open')}>
-              <Ico id="i-flag" size={13} />
-              この問題について先生に質問・報告
-            </button>
+          {lead && (
+            <>
+              <div className="tr-wrong-cap">リード文</div>
+              <div className="tr-paper">
+                <PaperImg url={leadUrl} failed={leadFailed} alt={`${label} リード文`} />
+              </div>
+              <div className="tr-wrong-cap">設問</div>
+            </>
           )}
+          <div className="tr-paper">
+            <PaperImg url={url} failed={failed} alt={label} />
+          </div>
+          <div className={`tr-wrong-actions ${SHOT_SKIP}`} ref={actions}>
+            <PlayShot target={card} layer={layer} cropAt={actions} className={`tr-report ${SHOT_SKIP}`}>
+              スクショ
+            </PlayShot>
+            {report === 'idle' && (
+              <button type="button" className="tr-report" onClick={() => setReport('open')}>
+                <Ico id="i-flag" size={13} />
+                この問題への改善要望
+              </button>
+            )}
+          </div>
           {writing && (
-            <div className="tr-report-form">
+            <div className={`tr-report-form ${SHOT_SKIP}`}>
               <textarea
                 className="tr-report-text"
                 value={text}
                 maxLength={REPORT_MAX}
                 rows={3}
-                placeholder="聞きたいこと・おかしいと思うところを書いてください"
+                placeholder="おかしいと思うところ・直してほしいところを書いてください"
                 onChange={(e) => setText(e.target.value)}
                 disabled={report === 'sending'}
                 autoFocus
@@ -112,7 +147,7 @@ function WrongItem({
             </div>
           )}
           {(report === 'sent' || report === 'already') && (
-            <div className="tr-report is-sent">
+            <div className={`tr-report is-sent ${SHOT_SKIP}`}>
               <Ico id="i-flag" size={13} />
               {report === 'sent' ? '送りました。先生が確認します' : 'この問題は送信済みです'}
             </div>
@@ -175,9 +210,13 @@ export function ResultScreen({ result, session, manifest, grade, nickname, crab,
     .filter((f) => f && f.total > 0)
     .map((f) => f!.name);
   const fs = result.fieldScore;
+  const rootRef = useRef<HTMLDivElement>(null);
+  /** セットの問題はリード文がセット（出題の単位）の方にある */
+  const leadOf = (qid: string, q: PlayQuestion | undefined) =>
+    q?.img.lead ?? session.units.find((u) => u.qids.includes(qid))?.lead ?? null;
 
   return (
-    <div className={rootClass('tr-result')}>
+    <div className={rootClass('tr-result')} ref={rootRef}>
       <div className="tr-result-head">
         <div
           style={{
@@ -303,7 +342,9 @@ export function ResultScreen({ result, session, manifest, grade, nickname, crab,
                   key={r.qid}
                   label={label}
                   mine={mineLabel(q, r.value)}
+                  lead={leadOf(r.qid, q)}
                   body={q?.img.body ?? null}
+                  layer={rootRef}
                   onReport={(message) => onReport(r.qid, message, label, q?.img.body ?? null)}
                 />
               );

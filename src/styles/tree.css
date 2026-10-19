@@ -1074,6 +1074,26 @@ html.tr-noswipe #root * {
   align-items: center;
   gap: 6px;
 }
+/* 間違えた問題: リード文・設問の見出しと、スクショ・改善要望のボタン列（2026-10-19）*/
+.tr-wrong-cap {
+  font-size: 11px;
+  color: var(--tr-sub);
+  margin-bottom: -4px;
+}
+.tr-wrong-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.tr-wrong-actions .tr-report svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.tr-wrong-actions .tr-report .tr-shot-spin {
+  width: 12px;
+  height: 12px;
+}
 .tr-report.is-sent {
   border-style: solid;
   border-color: rgba(var(--tr-accent-rgb), 0.5);

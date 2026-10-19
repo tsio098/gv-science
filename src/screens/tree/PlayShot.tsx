@@ -11,6 +11,9 @@
  * 問題画像（blob URL の <img>）だけ抜け落ちることがある。→ 画面の DOM は今までどおり画像化し、問題画像はその上に
  * 自前で描き直す（drawQuestionImages）。画面に見えている位置・大きさ・はみ出し（スクロール・ピンチ拡大）はそのまま。
  * DOM 側の画像は複製の中で非表示にして二重に写らないようにする。
+ *
+ * 2026-10-19 先生の指示: 結果画面の「間違えた問題」でも使う（そのカードだけを画像にする）。
+ * className / children でボタンの見た目を変え、layer（プレビューを出す先）を画面のいちばん外側にする（カードの中だと閉じ込められる）。
  */
 import { useState, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
@@ -121,7 +124,24 @@ const CameraIcon = () => (
   </svg>
 );
 
-export function PlayShot({ target }: { target: RefObject<HTMLElement> }) {
+export function PlayShot({
+  target,
+  layer: layerRef,
+  className = "tr-shot",
+  children,
+  cropAt,
+}: {
+  /** 画像にする要素 */
+  target: RefObject<HTMLElement>;
+  /** プレビュー・エラーを出す要素（省略時は target）*/
+  layer?: RefObject<HTMLElement>;
+  /** ボタンのクラス（省略時は出題画面の丸いボタン）*/
+  className?: string;
+  /** ボタンの中身（省略時はカメラのアイコンだけ）*/
+  children?: ReactNode;
+  /** この要素の上端で画像の下を切る（写さないボタン列が下に残す空白を除く）*/
+  cropAt?: RefObject<HTMLElement>;
+}) {
   const [busy, setBusy] = useState(false);
   const [shot, setShot] = useState<{
     url: string;
@@ -164,7 +184,18 @@ export function PlayShot({ target }: { target: RefObject<HTMLElement> }) {
       });
       const ctx = canvas.getContext("2d");
       if (ctx) drawQuestionImages(ctx, el, imgs, scale);
-      const url = canvas.toDataURL("image/png");
+      let out = canvas;
+      const cut = cropAt?.current;
+      if (cut) {
+        const h = Math.round((cut.getBoundingClientRect().top - el.getBoundingClientRect().top) * scale);
+        if (h > 0 && h < canvas.height) {
+          out = document.createElement("canvas");
+          out.width = canvas.width;
+          out.height = h;
+          out.getContext("2d")?.drawImage(canvas, 0, 0);
+        }
+      }
+      const url = out.toDataURL("image/png");
       const file = new File(
         [await (await fetch(url)).blob()],
         `anchor-tree-${stamp()}.png`,
@@ -205,15 +236,17 @@ export function PlayShot({ target }: { target: RefObject<HTMLElement> }) {
     document.body.removeChild(a);
   };
 
-  const layer = (node: ReactNode) =>
-    target.current ? createPortal(node, target.current) : node;
+  const layer = (node: ReactNode) => {
+    const host = (layerRef ?? target).current;
+    return host ? createPortal(node, host) : node;
+  };
 
   return (
     <>
       <button
         type="button"
-        className={`tr-shot${busy ? " is-shooting" : ""}`}
-        aria-label="この画面のスクショを撮る"
+        className={`${className}${busy ? " is-shooting" : ""}`}
+        aria-label={children ? undefined : "この画面のスクショを撮る"}
         disabled={busy}
         onClick={() => void take()}
       >
@@ -222,6 +255,7 @@ export function PlayShot({ target }: { target: RefObject<HTMLElement> }) {
         ) : (
           <CameraIcon />
         )}
+        {children}
       </button>
 
       {error &&
