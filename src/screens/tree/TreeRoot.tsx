@@ -87,7 +87,7 @@ function ownLineId(): string | null {
 type View =
   | { kind: 'tree' }
   | { kind: 'play'; session: TreeSession }
-  | { kind: 'result'; session: TreeSession; result: SubmitResult }
+  | { kind: 'result'; session: TreeSession; result: SubmitResult; marked: string[] }
   | { kind: 'ranking'; scope: RankScope; field: string | null; qtype: QType; back: View }
   /** 先生用 生徒の進捗一覧（2026-10-17・先生用アカウントだけ）*/
   | { kind: 'staff' }
@@ -679,10 +679,10 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
             refreshProgress();
             setView({ kind: 'tree' });
           }}
-          onDone={(result) => {
+          onDone={(result, marked) => {
             // トロフィー・分野の解放・マスター・順位アップは結果画面に入ってから出す
             pushToasts(submitToasts(result, manifest, manifest.name, stage));
-            setView({ kind: 'result', session: view.session, result });
+            setView({ kind: 'result', session: view.session, result, marked });
           }}
         />
       )}
@@ -690,6 +690,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
         <ResultScreen
           result={view.result}
           session={view.session}
+          marked={view.marked}
           manifest={manifest}
           grade={me.grade}
           nickname={me.nickname}

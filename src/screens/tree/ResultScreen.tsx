@@ -5,6 +5,7 @@
  * ニックネームはここで入力し、離れるときに保存する（/tree/profile。NG ワードなら離れずに知らせる）。
  * 分野の順位の前後（Phase 4）・間違えた問題の報告（課題 #21）。ボタンで文章の入力欄を開き、問題画像と文章を先生の Google Chat に送る（2026-10-17）。
  * 2026-10-19 先生の指示: 間違えた問題にリード文も出す（設問の上）・スクショ（そのカードだけを画像に・PlayShot）・「質問・報告」→「改善要望」。
+ * 2026-10-19 先生の要望: 出題中に「あとで復習」を付けた問題も、正解していても同じ一覧に出す（見出し「復習する問題」・カードに「間違い」「チェック」の印）。
  */
 import { useRef, useState, type RefObject } from 'react';
 import type { FieldGroup, PartValue, PlayQuestion, SubmitResult, TreeManifest, TreeSession } from '../../lib/treeApi';
@@ -16,6 +17,8 @@ import { REVIEW_COLOR, T, alpha, fmtScore, fmtTime, groupColor, groupSide, rootC
 interface Props {
   result: SubmitResult;
   session: TreeSession;
+  /** 出題中に「あとで復習」を付けた問題 ID */
+  marked: string[];
   manifest: TreeManifest;
   grade: string;
   nickname: string;
@@ -42,6 +45,8 @@ function PaperImg({ url, failed, alt }: { url: string | null; failed: boolean; a
 function WrongItem({
   label,
   mine,
+  wrong,
+  checked,
   lead,
   body,
   layer,
@@ -49,6 +54,10 @@ function WrongItem({
 }: {
   label: string;
   mine: string;
+  /** 不正解か（チェックだけで正解した問題は false）*/
+  wrong: boolean;
+  /** 「あとで復習」を付けたか */
+  checked: boolean;
   /** リード文の画像（無ければ null）*/
   lead: string | null;
   body: string | null;
@@ -87,8 +96,16 @@ function WrongItem({
       <button type="button" className="tr-wrong-head" onClick={toggle} aria-expanded={open}>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
           <div style={{ fontSize: 12, color: 'var(--tr-sub)' }}>{label}</div>
-          <div style={{ fontSize: 13 }}>
-            あなたの答え <b className="tr-num" style={{ color: REVIEW_COLOR }}>{mine}</b>
+          <div style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span>
+              あなたの答え <b className="tr-num" style={{ color: wrong ? REVIEW_COLOR : T.text }}>{mine}</b>
+            </span>
+            {checked && (
+              <>
+                <span className={`tr-tag${wrong ? ' is-wrong' : ' is-ok'}`}>{wrong ? '間違い' : '正解'}</span>
+                <span className="tr-tag is-check">チェック</span>
+              </>
+            )}
           </div>
         </div>
         <span style={{ color: 'var(--tr-sub)', transform: open ? 'rotate(90deg)' : undefined, display: 'flex' }}>
@@ -176,16 +193,22 @@ function mineLabel(q: PlayQuestion | undefined, value: PartValue[]) {
 export function WrongList({
   results,
   session,
+  marked = [],
   layer,
   onReport,
 }: {
   results: { qid: string; correct: boolean; value: PartValue[] }[];
   session: TreeSession;
+  /** 「あとで復習」を付けた問題 ID（正解でも一覧に出す）*/
+  marked?: string[];
   layer: RefObject<HTMLElement>;
   onReport: (qid: string, message: string, label: string, img: string | null) => Promise<'sent' | 'already' | 'error'>;
 }) {
-  const wrong = results.filter((r) => !r.correct);
-  if (!wrong.length) return null;
+  const checked = new Set(marked);
+  const list = results.filter((r) => !r.correct || checked.has(r.qid));
+  if (!list.length) return null;
+  const nWrong = list.filter((r) => !r.correct).length;
+  const nChecked = list.filter((r) => checked.has(r.qid)).length;
   /** セットの問題はリード文がセット（出題の単位）の方にある */
   const leadOf = (qid: string, q: PlayQuestion | undefined) =>
     q?.img.lead ?? session.units.find((u) => u.qids.includes(qid))?.lead ?? null;
@@ -193,9 +216,14 @@ export function WrongList({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
         <i style={{ width: 8, height: 8, borderRadius: 2, background: REVIEW_COLOR, display: 'block' }} />
-        間違えた問題 {wrong.length} 問
+        {nChecked ? `復習する問題 ${list.length} 問` : `間違えた問題 ${nWrong} 問`}
+        {nChecked > 0 && (
+          <span className="tr-num" style={{ fontSize: 12, fontWeight: 500, color: 'var(--tr-sub)' }}>
+            （間違い {nWrong} · チェック {nChecked}）
+          </span>
+        )}
       </div>
-      {wrong.map((r) => {
+      {list.map((r) => {
         const q = session.questions[r.qid];
         const label = !q
           ? r.qid
@@ -207,6 +235,8 @@ export function WrongList({
             key={r.qid}
             label={label}
             mine={mineLabel(q, r.value)}
+            wrong={!r.correct}
+            checked={checked.has(r.qid)}
             lead={leadOf(r.qid, q)}
             body={q?.img.body ?? null}
             layer={layer}
@@ -228,7 +258,7 @@ function rankDelta(b: number | null, a: number | null, of: number) {
   return `${of} 人中`;
 }
 
-export function ResultScreen({ result, session, manifest, grade, nickname, crab, onSaveNick, onRetry, onBack, onRanking, onReport, busy }: Props) {
+export function ResultScreen({ result, session, marked, manifest, grade, nickname, crab, onSaveNick, onRetry, onBack, onRanking, onReport, busy }: Props) {
   const field = manifest.fields.find((f) => f.id === session.field);
   const group = (field?.group ?? 'basic') as FieldGroup;
   const col = groupColor(group);
@@ -369,7 +399,7 @@ export function ResultScreen({ result, session, manifest, grade, nickname, crab,
           </div>
         )}
 
-        <WrongList results={result.results} session={session} layer={rootRef} onReport={onReport} />
+        <WrongList results={result.results} session={session} marked={marked} layer={rootRef} onReport={onReport} />
       </div>
 
       <div className="tr-foot">

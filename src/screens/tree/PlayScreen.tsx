@@ -19,6 +19,8 @@
  * - 出題画面のスクショボタンは廃止（2026-10-17 追加→アリーナは 2026-10-18・通常も 2026-10-19 先生の指示で削除）。
  *   スクショは結果画面の間違えた問題のカード（PlayShot）だけ。アリーナは画面を離れている間（アプリ切替・通知センター等）問題を覆って隠す。
  *   スマホ本体のボタン操作のスクショは Web からは止められない（隠せるのは画面を離れたときだけ）
+ * - 復習チェック（2026-10-19 先生の要望・設計書 §5.1）: 「あとで復習」を付けた問題は、正解でも結果画面の一覧に出す。
+ *   端末の中だけで持つ（提出 API には送らない）。選択肢に重ねないよう、単問は解答パッドの見出し行、セット・ABYSS は小問の見出し行に置く。アリーナには出さない
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AbyssPart, ArenaResult, FieldGroup, PlayQuestion, SubmitResult, TreeSession } from '../../lib/treeApi';
@@ -35,7 +37,8 @@ interface Props {
   fieldName: string;
   group: FieldGroup;
   onExit: () => void;
-  onDone: (result: SubmitResult) => void;
+  /** marked = 「あとで復習」を付けた問題 ID（出題順）*/
+  onDone: (result: SubmitResult, marked: string[]) => void;
   /** チャンピオンアリーナの提出結果（session.arena のとき）*/
   onArenaDone?: (result: ArenaResult) => void;
 }
@@ -88,6 +91,22 @@ const multiPick = (q: PlayQuestion) => {
 };
 const partsOf = (q: PlayQuestion): AbyssPart[] => (q.answer.kind === 'parts' ? q.answer.parts : []);
 
+/** 「あとで復習」のチェック（選択肢のボタンとは別の、小さなピル）*/
+function MarkToggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+  return (
+    <button type="button" className={`tr-mark${on ? ' is-on' : ''}`} aria-pressed={on} onClick={onToggle}>
+      <i className="tr-mark-box" aria-hidden="true">
+        {on && (
+          <svg viewBox="0 0 12 12" width="10" height="10">
+            <path d="M2.2 6.3 4.8 8.8 9.8 3.4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
+      </i>
+      あとで復習
+    </button>
+  );
+}
+
 /**
  * アリーナ: 画面を離れている間 true（2026-10-18 先生の指示・スクショ対策）。
  * visibilitychange（アプリ切替・ホーム）と blur（通知センター・コントロールセンターなど）で隠し、戻ったら出す。タイマーは止めない。
@@ -129,6 +148,15 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
     return open < 0 ? units.length - 1 : open;
   });
   const [picks, setPicks] = useState<Record<string, string[]>>(() => saved?.picks ?? {});
+  const [marked, setMarked] = useState<Set<string>>(() => new Set());
+  const toggleMark = (qid: string) =>
+    setMarked((s) => {
+      const n = new Set(s);
+      if (n.has(qid)) n.delete(qid);
+      else n.add(qid);
+      return n;
+    });
+  const mark = (qid: string) => (isArena ? null : <MarkToggle on={marked.has(qid)} onToggle={() => toggleMark(qid)} />);
   /** ABYSS: 設問ごとの欄の入力と、キーパッドで入力中の数値欄 */
   const isBackStage = session.stage === 'back';
   const [raws, setRaws] = useState<Record<string, RawVal[]>>(() => saved?.raws ?? {});
@@ -252,7 +280,10 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
         saveArena(session.sessionId, null);
         onArenaDone?.(r);
       } else {
-        onDone(await submitTreeSession(session.sessionId, answers));
+        onDone(
+          await submitTreeSession(session.sessionId, answers),
+          answers.map((a) => a.qid).filter((id) => marked.has(id))
+        );
       }
     } catch (e) {
       if (e instanceof TreeApiError && e.code === 'ALREADY_SUBMITTED') {
@@ -456,11 +487,14 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
               <div key={q.id} className="tr-frame tr-member">
                 <div className="tr-member-head">
                   <span>{isSet ? `小問 ${i + 1} / ${qs.length}` : '設問'}</span>
-                  {q.label && (
-                    <span className="tr-num" style={{ color: 'var(--tr-sub)', fontWeight: 500 }}>
-                      {q.label}
-                    </span>
-                  )}
+                  <span className="tr-member-right">
+                    {q.label && (
+                      <span className="tr-num" style={{ color: 'var(--tr-sub)', fontWeight: 500 }}>
+                        {q.label}
+                      </span>
+                    )}
+                    {mark(q.id)}
+                  </span>
                 </div>
                 <div className="tr-paper">{renderImg(q.img.body, `問題 ${q.label ?? ''}`)}</div>
                 <AbyssAnswer
@@ -487,8 +521,11 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
                   <span>
                     小問 {i + 1} / {qs.length}
                   </span>
-                  <span className="tr-num" style={{ color: 'var(--tr-sub)', fontWeight: 500 }}>
-                    解答番号 {boxLabel(q)}
+                  <span className="tr-member-right">
+                    <span className="tr-num" style={{ color: 'var(--tr-sub)', fontWeight: 500 }}>
+                      解答番号 {boxLabel(q)}
+                    </span>
+                    {mark(q.id)}
                   </span>
                 </div>
                 <div className="tr-paper">{renderImg(q.img.body, `問題 解答番号 ${boxLabel(q)}`)}</div>
@@ -581,8 +618,11 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
             <>
               <div className="tr-pad-head">
                 <span>解答をえらぶ</span>
-                <span>
-                  選択中: <b className="tr-num">{pickedLabel}</b>
+                <span className="tr-member-right">
+                  <span>
+                    選択中: <b className="tr-num">{pickedLabel}</b>
+                  </span>
+                  {mark(first.id)}
                 </span>
               </div>
               {renderChoices(first, false)}
