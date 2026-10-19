@@ -30,7 +30,7 @@ function SwipeDiagRows() {
     ['LINE 判定', d.line ? `はい（${ua}）` : 'いいえ'],
     ['対策', d.active ? '有効' : `無効${d.undone ? `（${d.undone}）` : ''}`],
     ['scrollY', `${Math.round(d.scrollY)} / body ${Math.round(d.bodyHeight)} / 画面 ${Math.round(d.innerHeight)}`],
-    ['戻した回数', `${d.resets}　止めた touchmove ${d.blocked}`],
+    ['戻した回数', `${d.resets}　止めた touchmove ${d.blocked}　横スクロール ${d.sideways}`],
     ['直前のタッチ', d.lastTouch ? `開始 ${Math.round(d.lastTouch.start)} → 終了 ${Math.round(d.lastTouch.end)}` : '—'],
   ];
   return (

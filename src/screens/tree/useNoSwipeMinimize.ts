@@ -13,6 +13,11 @@
  *    iOS は指を離すまで scrollTo が効かないので、scroll イベントで戻すだけでは間に合わない
  *  - 指を離したとき・画面に戻ったときにも OVER へ戻す
  *  - 状態を swipeDiag() で読めるようにして、先生用の「別のブラウザで使う」に出す（実機でしか確かめられないため）
+ *
+ * 2026-10-19 先生の報告「ランキングの分野チップを横にスライドして指を離すと、それ以降スライドできない」:
+ *   縦の向きしか見ていなかったので、横スクロールの領域（.tr-chips など）を横に動かす指も止めていた。
+ *   → 指が横向き（|dx| ≥ |dy|）で、横に動ける領域の中なら、その指は最後まで止めない（向きは最初の touchmove で 1 回だけ決める。
+ *     途中で止めると iOS は横スクロールも止まる）。LINE の縮小は下スワイプだけなので、横の指は通してよい
  */
 import { useEffect } from 'react';
 
@@ -35,6 +40,8 @@ export interface SwipeDiag {
   resets: number;
   /** touchmove を止めた回数 */
   blocked: number;
+  /** 横スクロールとして通した指の数 */
+  sideways: number;
   /** 直前のタッチ（開始時と終了時の scrollY）*/
   lastTouch: { start: number; end: number } | null;
 }
@@ -48,6 +55,7 @@ const diag: SwipeDiag = {
   innerHeight: 0,
   resets: 0,
   blocked: 0,
+  sideways: 0,
   lastTouch: null,
 };
 
@@ -80,6 +88,17 @@ function canScrollWithin(target: EventTarget | null, dy: number): boolean {
   return false;
 }
 
+/** target から上にたどって、横にスクロールできる領域（overflow-x: auto / scroll で中身がはみ出している）があれば true */
+function inSidewaysScroller(target: EventTarget | null): boolean {
+  let e = target instanceof Element ? target : null;
+  for (; e && e !== document.body; e = e.parentElement) {
+    if (e.scrollWidth <= e.clientWidth + 1) continue;
+    const ox = getComputedStyle(e).overflowX;
+    if (ox === 'auto' || ox === 'scroll') return true;
+  }
+  return false;
+}
+
 export function useNoSwipeMinimize() {
   useEffect(() => {
     if (!inLineBrowser()) return;
@@ -100,14 +119,27 @@ export function useNoSwipeMinimize() {
       }
     };
     const later = () => window.requestAnimationFrame(keep);
+    let startX = 0;
     let startY = 0;
+    /** この指の向き（最初の touchmove で決める）。'side' = 横スクロールとして最後まで通す */
+    let gesture: 'side' | 'other' | null = null;
     const onTouchStart = (e: TouchEvent) => {
-      if (e.touches.length === 1) startY = e.touches[0]!.clientY;
+      if (e.touches.length === 1) {
+        startX = e.touches[0]!.clientX;
+        startY = e.touches[0]!.clientY;
+      }
+      gesture = null;
       diag.lastTouch = { start: window.scrollY, end: window.scrollY };
     };
     const onTouchMove = (e: TouchEvent) => {
       if (!active || !e.cancelable || e.touches.length !== 1) return;
+      const dx = e.touches[0]!.clientX - startX;
       const dy = e.touches[0]!.clientY - startY;
+      if (gesture === null && (dx !== 0 || dy !== 0)) {
+        gesture = Math.abs(dx) >= Math.abs(dy) && inSidewaysScroller(e.target) ? 'side' : 'other';
+        if (gesture === 'side') diag.sideways++;
+      }
+      if (gesture === 'side') return;
       if (!canScrollWithin(e.target, dy)) {
         diag.blocked++;
         e.preventDefault();
