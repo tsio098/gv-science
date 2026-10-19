@@ -13,7 +13,8 @@ const who = (h: { grade: string; nickname: string }) => `${gradeLabel(h.grade)} 
 /** 獲得したトロフィー */
 export function trophyToast(t: TrophyGet, subjectName: string, stage: TreeStage = 'front'): ToastItem {
   const head = t.grade === 'P' ? 'PLATINUM GET!!' : t.grade === 'F' ? 'FIRST CLEAR!!' : 'TROPHY GET!';
-  const sub = t.grade === 'P' ? `${subjectName}のトロフィー全獲得` : t.grade === 'F' ? '塾内で最初の 1 人' : undefined;
+  // 「全獲得」はその科目のプラチナ（id = *_plat）だけ。ほかのプラチナ（範囲のランキング制覇など・2026-10-19）は副題なし
+  const sub = t.grade === 'P' ? (t.id.endsWith('_plat') ? `${subjectName}のトロフィー全獲得` : undefined) : t.grade === 'F' ? '塾内で最初の 1 人' : undefined;
   return {
     key: `trophy:${t.subject}:${t.id}`,
     kind: 'trophy',

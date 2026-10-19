@@ -66,7 +66,8 @@ export function TrophyScreen({ subject: initial, subjects, fieldInfo, onBack, on
 
   const rows = useMemo(() => {
     if (!data) return [];
-    let list = data.items.filter((it) => it.grade !== 'P');
+    // その科目のプラチナ（全獲得）は上のカードに出す。ほかのプラチナ（範囲のランキング制覇・出藍の誉れ）は行に出す
+    let list = data.items.filter((it) => it.id !== data.platinum?.id);
     if (tab === 'got') list = list.filter((it) => it.earnedAt != null);
     if (tab === 'not') list = list.filter((it) => it.earnedAt == null);
     return [...list].sort((a, b) => (recent ? (b.earnedAt ?? 0) - (a.earnedAt ?? 0) : 0) || a.order - b.order);
@@ -74,7 +75,7 @@ export function TrophyScreen({ subject: initial, subjects, fieldInfo, onBack, on
 
   const lv = data?.level;
   const plat = data?.platinum;
-  const platItem = data?.items.find((it) => it.grade === 'P') ?? null;
+  const platItem = data?.items.find((it) => it.id === plat?.id) ?? null;
 
   return (
     <div className={rootClass('tt-list')}>
@@ -252,9 +253,6 @@ function Row({ it, isNew, onOpen }: { it: TrophyItem; isNew: boolean; onOpen: ()
       meta = mdJst(it.earnedAt!);
       metaArc = true;
       metaColor = '#FFFFFF';
-    } else if (it.hidden) {
-      meta = 'ウルトラレア';
-      metaColor = g.c;
     } else {
       meta = '未獲得';
     }

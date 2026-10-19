@@ -566,7 +566,7 @@ export interface TrophyItem {
   first: boolean;
   earnedAt: number | null;
   progress: { now: number; max: number } | null;
-  /** 取得率 = n / of（of = その科目を開ける在籍生徒・先生除く）*/
+  /** 取得率 = n / of（of = 全生徒 = 在籍生徒・先生除く。その科目を選んでいない生徒も含む・2026-10-19）*/
   rarity: { n: number; of: number };
   firstHolder: { grade: string; nickname: string; at: number; me: boolean } | null;
   /** 試験が入るたびに 1 人（f_new_exam）→ 「受付終了」と出さない */
