@@ -53,6 +53,8 @@ export interface TreeField {
   prereqs: string[];
   types: Record<QType, string[]>;
   total: number;
+  /** 合流した生物基礎の分野（生物のツリーの「基」・2026-10-19）。アリーナには出ない */
+  kiso?: boolean;
 }
 
 export interface TreeManifest {

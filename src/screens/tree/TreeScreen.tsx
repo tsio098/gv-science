@@ -265,6 +265,15 @@ export function TreeScreen(props: Props) {
                     }}
                   >
                     <span style={{ height: `${started ? m * 100 : 0}%`, background: col }} />
+                    {/* 合流した生物基礎の分野は左上の角に「基」（2026-10-19 先生決定・印 1）。満ちた面に重なったら濃い文字に */}
+                    {f.kiso && (
+                      <i
+                        className="tr-kcorner"
+                        style={{ color: !ready ? icon : started && m >= 0.72 ? T.onColor : open ? col : alpha(col, 0.5) }}
+                      >
+                        基
+                      </i>
+                    )}
                     <Ico id={f.icon} size={24} />
                   </div>
                   {ready &&
@@ -304,14 +313,15 @@ export function TreeScreen(props: Props) {
                     {f.name}
                   </span>
                   {master && (
-                    <span className="tr-badge" style={{ left: x - 31, top: y - 31, background: T.text, color: side, boxShadow: `0 0 10px ${alpha(col, 0.7)}` }}>
+                    // 基の分野は左上の角に「基」があるので、★は右上へ（2026-10-19）
+                    <span className="tr-badge" style={{ left: f.kiso ? x + 14 : x - 31, top: y - 31, background: T.text, color: side, boxShadow: `0 0 10px ${alpha(col, 0.7)}` }}>
                       <Ico id="i-star" size={10} />
                     </span>
                   )}
                   {ready && open && (p?.newCount ?? 0) > 0 && (
                     <span
                       className="tr-badge tr-num"
-                      style={{ left: x + 14, top: y - 31, background: NEW_COLOR, color: NEW_FG, boxShadow: '0 0 10px rgba(255,122,69,0.6)' }}
+                      style={{ left: f.kiso && master ? x + 34 : x + 14, top: y - 31, background: NEW_COLOR, color: NEW_FG, boxShadow: '0 0 10px rgba(255,122,69,0.6)' }}
                       aria-label={`新着 ${p!.newCount} 問`}
                     >
                       +{p!.newCount}

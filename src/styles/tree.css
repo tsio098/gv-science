@@ -342,6 +342,17 @@ html.tr-noswipe #root * {
 .tr-cube > svg {
   position: relative;
 }
+/* 合流した生物基礎の分野の印（ノードの左上の角・2026-10-19 先生決定 印 1）*/
+.tr-kcorner {
+  position: absolute;
+  left: 4px;
+  top: 2px;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 11px;
+  z-index: 1;
+}
 .tr-sq {
   width: 15px;
   height: 15px;

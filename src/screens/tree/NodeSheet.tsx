@@ -143,6 +143,7 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
           <div>
             <span className="tr-pop-name">{field.name}</span>
             <span className="tr-tag" style={{ color: col, boxShadow: `0 0 8px ${alpha(col, 0.4)}` }}>
+              {field.kiso ? '生物基礎 · ' : ''}
               {GROUP_NAME[field.group as FieldGroup] ?? ''}
             </span>
           </div>
