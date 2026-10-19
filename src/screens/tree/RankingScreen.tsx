@@ -140,9 +140,7 @@ export function RankingScreen({ manifest, stage = 'front', initial, arena = fals
       <span className="tr-rank-name">
         先生 <small>{staffNote}</small>
       </span>
-      <span className="tr-num" style={{ fontSize: 11, color: 'var(--tr-sub)', fontWeight: 500 }}>
-        {fmtTime(staff.elapsedMs)}
-      </span>
+      {/* 先生の行はタイムを出さない（2026-10-19 先生の指示。並べる位置の同点判定にはタイムを使う）*/}
       <span className="tr-num">{fmtScore(staff.score)}</span>
     </div>
   );
