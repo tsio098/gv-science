@@ -3,16 +3,21 @@
  * スコア（/ 1,000）と今シーズンの順位だけ（2026-10-17 先生の指示）。
  * ニックネームは通常の結果画面と同じく、離れるときに保存する。見た目は夜の紫 + 金（ボード A09）。
  * 先生用アカウントは「記録として提出」を押した挑戦だけが先生の記録になる（2026-10-18 先生の指示。押さなければテスト扱い）。
+ * 先生用アカウントだけ、間違えた問題（問題画像と自分の答え・改善要望）を通常の結果画面と同じ形で出す（2026-10-19 先生の指示。生徒はスコアと順位だけのまま）。
  */
-import { useState } from 'react';
-import type { ArenaResult } from '../../lib/treeApi';
+import { useRef, useState } from 'react';
+import type { ArenaResult, ArenaSession } from '../../lib/treeApi';
 import { gradeLabel, recordArena } from '../../lib/treeApi';
 import { ArenaHead, ArenaSparks } from './ArenaScreen';
 import { Ico } from './TreeIcons';
+import { WrongList } from './ResultScreen';
 import { arenaSeasonName, fmtScore, rootClass } from './treeTheme';
 
 interface Props {
   result: ArenaResult;
+  session: ArenaSession;
+  /** 先生用アカウント（間違えた問題を出す）*/
+  staff: boolean;
   grade: string;
   nickname: string;
   /** 自分のカニの種名（空欄で保存したときの名前）。無ければ「プレイヤー」 */
@@ -20,9 +25,11 @@ interface Props {
   onSaveNick: (nickname: string) => Promise<string | null>;
   onBack: () => void;
   onRanking: () => void;
+  onReport: (qid: string, message: string, label: string, img: string | null) => Promise<'sent' | 'already' | 'error'>;
 }
 
-export function ArenaResultScreen({ result, grade, nickname, crab, onSaveNick, onBack, onRanking }: Props) {
+export function ArenaResultScreen({ result, session, staff, grade, nickname, crab, onSaveNick, onBack, onRanking, onReport }: Props) {
+  const rootRef = useRef<HTMLDivElement>(null);
   const [nick, setNick] = useState(nickname === 'プレイヤー' || nickname === crab ? '' : nickname);
   const [nickError, setNickError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -45,7 +52,7 @@ export function ArenaResultScreen({ result, grade, nickname, crab, onSaveNick, o
   };
 
   return (
-    <div className={rootClass('is-arena tr-ar-screen')}>
+    <div className={rootClass('is-arena tr-ar-screen')} ref={rootRef}>
       <div className="tr-ar-glow" aria-hidden="true" />
       <ArenaSparks />
       <ArenaHead compact sub={`${arenaSeasonName(result.season.n)} · 結果`} closeLabel="ツリーへ戻る" disabled={saving} onClose={() => void leave(onBack)} />
@@ -88,6 +95,8 @@ export function ArenaResultScreen({ result, grade, nickname, crab, onSaveNick, o
             <Ico id="i-chev-right" size={18} />
           </span>
         </button>
+
+        {staff && <WrongList results={result.results} session={session} layer={rootRef} onReport={onReport} />}
       </div>
 
       <div className="tr-ar-foot" style={{ gap: 10 }}>

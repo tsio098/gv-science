@@ -752,6 +752,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       {view.kind === 'arenaResult' && (
         <ArenaResultScreen
           result={view.result}
+          session={view.session}
+          staff={me.grade === '先生'}
           grade={me.grade}
           nickname={me.nickname}
           crab={me.crab ?? null}
@@ -761,6 +763,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
             setView({ kind: 'tree' });
           }}
           onRanking={() => setView({ kind: 'ranking', scope: 'arena', field: null, qtype: 'tf', back: { kind: 'tree' } })}
+          onReport={(qid, message, label, img) => report(view.session.sessionId, qid, message, label, img)}
         />
       )}
       {view.kind === 'tickets' && (

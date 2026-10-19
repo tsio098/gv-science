@@ -86,12 +86,12 @@ function WrongItem({
     <div className="tr-wrong" ref={card}>
       <button type="button" className="tr-wrong-head" onClick={toggle} aria-expanded={open}>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <div style={{ fontSize: 12, color: T.sub }}>{label}</div>
+          <div style={{ fontSize: 12, color: 'var(--tr-sub)' }}>{label}</div>
           <div style={{ fontSize: 13 }}>
             あなたの答え <b className="tr-num" style={{ color: REVIEW_COLOR }}>{mine}</b>
           </div>
         </div>
-        <span style={{ color: T.sub, transform: open ? 'rotate(90deg)' : undefined, display: 'flex' }}>
+        <span style={{ color: 'var(--tr-sub)', transform: open ? 'rotate(90deg)' : undefined, display: 'flex' }}>
           <Ico id="i-chev-right" size={16} />
         </span>
       </button>
@@ -134,7 +134,7 @@ function WrongItem({
               />
               {report === 'error' && <div className="tr-report-err">送れませんでした。もう一度送ってください</div>}
               <div className="tr-report-row">
-                <span className="tr-num" style={{ fontSize: 11, color: T.sub }}>
+                <span className="tr-num" style={{ fontSize: 11, color: 'var(--tr-sub)' }}>
                   {text.length}/{REPORT_MAX}
                 </span>
                 <button type="button" className="tr-report-cancel" onClick={() => setReport('idle')} disabled={report === 'sending'}>
@@ -167,6 +167,55 @@ function mineLabel(q: PlayQuestion | undefined, value: PartValue[]) {
       .join(' / ');
   }
   return value.map((v) => circled(String(v))).join('・');
+}
+
+/**
+ * 間違えた問題の一覧（通常の結果画面・先生用のアリーナ結果画面で共通）。
+ * 問題（リード文・設問の画像）と自分の答えだけ。正解は出さない（2026-10-15 先生決定）。
+ */
+export function WrongList({
+  results,
+  session,
+  layer,
+  onReport,
+}: {
+  results: { qid: string; correct: boolean; value: PartValue[] }[];
+  session: TreeSession;
+  layer: RefObject<HTMLElement>;
+  onReport: (qid: string, message: string, label: string, img: string | null) => Promise<'sent' | 'already' | 'error'>;
+}) {
+  const wrong = results.filter((r) => !r.correct);
+  if (!wrong.length) return null;
+  /** セットの問題はリード文がセット（出題の単位）の方にある */
+  const leadOf = (qid: string, q: PlayQuestion | undefined) =>
+    q?.img.lead ?? session.units.find((u) => u.qids.includes(qid))?.lead ?? null;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <i style={{ width: 8, height: 8, borderRadius: 2, background: REVIEW_COLOR, display: 'block' }} />
+        間違えた問題 {wrong.length} 問
+      </div>
+      {wrong.map((r) => {
+        const q = session.questions[r.qid];
+        const label = !q
+          ? r.qid
+          : q.answer.kind === 'parts'
+            ? `${examLabel(q.source.exam)} · ${q.label ?? ''}`
+            : `${q.source.kind === 'basic' ? '基本 · ' : ''}${examLabel(q.source.exam)} · 解答番号 ${q.answer.boxes.map((b) => b.n).join('・')}`;
+        return (
+          <WrongItem
+            key={r.qid}
+            label={label}
+            mine={mineLabel(q, r.value)}
+            lead={leadOf(r.qid, q)}
+            body={q?.img.body ?? null}
+            layer={layer}
+            onReport={(message) => onReport(r.qid, message, label, q?.img.body ?? null)}
+          />
+        );
+      })}
+    </div>
+  );
 }
 
 const rankUp = (b: number | null, a: number | null) => a != null && (b == null || a < b);
@@ -204,16 +253,12 @@ export function ResultScreen({ result, session, manifest, grade, nickname, crab,
   const mBefore = before ? Math.round(before.mastery * 100) : 0;
   const mAfter = after ? Math.round(after.mastery * 100) : 0;
   const keep = result.results.filter((r) => r.correct && !r.firstCorrect && r.bonusUp === 0).length;
-  const wrong = result.results.filter((r) => !r.correct);
   const unlockedNames = result.newlyUnlocked
     .map((id) => manifest.fields.find((f) => f.id === id))
     .filter((f) => f && f.total > 0)
     .map((f) => f!.name);
   const fs = result.fieldScore;
   const rootRef = useRef<HTMLDivElement>(null);
-  /** セットの問題はリード文がセット（出題の単位）の方にある */
-  const leadOf = (qid: string, q: PlayQuestion | undefined) =>
-    q?.img.lead ?? session.units.find((u) => u.qids.includes(qid))?.lead ?? null;
 
   return (
     <div className={rootClass('tr-result')} ref={rootRef}>
@@ -324,33 +369,7 @@ export function ResultScreen({ result, session, manifest, grade, nickname, crab,
           </div>
         )}
 
-        {wrong.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <i style={{ width: 8, height: 8, borderRadius: 2, background: REVIEW_COLOR, display: 'block' }} />
-              間違えた問題 {wrong.length} 問
-            </div>
-            {wrong.map((r) => {
-              const q = session.questions[r.qid];
-              const label = !q
-                ? r.qid
-                : q.answer.kind === 'parts'
-                  ? `${examLabel(q.source.exam)} · ${q.label ?? ''}`
-                  : `${q.source.kind === 'basic' ? '基本 · ' : ''}${examLabel(q.source.exam)} · 解答番号 ${q.answer.boxes.map((b) => b.n).join('・')}`;
-              return (
-                <WrongItem
-                  key={r.qid}
-                  label={label}
-                  mine={mineLabel(q, r.value)}
-                  lead={leadOf(r.qid, q)}
-                  body={q?.img.body ?? null}
-                  layer={rootRef}
-                  onReport={(message) => onReport(r.qid, message, label, q?.img.body ?? null)}
-                />
-              );
-            })}
-          </div>
-        )}
+        <WrongList results={result.results} session={session} layer={rootRef} onReport={onReport} />
       </div>
 
       <div className="tr-foot">
