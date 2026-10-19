@@ -162,6 +162,8 @@ export const rootClass = (extra = '') => `tr-root${T.name === 'ABYSS' ? ' is-aby
 export const NEW_COLOR = '#FF7A45';
 export const NEW_FG = '#140A05';
 export const REVIEW_COLOR = '#FFB38A';
+/** 「あとで復習」のチェック（間違いのオレンジと見分ける・2026-10-19）。tree.css の --tr-check と同じ */
+export const CHECK_COLOR = '#B9A6FF';
 
 /** マスター度がこれ以上でマスター表示（★・文字色の枠・強い発光）*/
 export const MASTER_AT = 0.8;

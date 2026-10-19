@@ -5,14 +5,15 @@
  * ニックネームはここで入力し、離れるときに保存する（/tree/profile。NG ワードなら離れずに知らせる）。
  * 分野の順位の前後（Phase 4）・間違えた問題の報告（課題 #21）。ボタンで文章の入力欄を開き、問題画像と文章を先生の Google Chat に送る（2026-10-17）。
  * 2026-10-19 先生の指示: 間違えた問題にリード文も出す（設問の上）・スクショ（そのカードだけを画像に・PlayShot）・「質問・報告」→「改善要望」。
- * 2026-10-19 先生の要望: 出題中に「あとで復習」を付けた問題も、正解していても同じ一覧に出す（見出し「復習する問題」・カードに「間違い」「チェック」の印）。
+ * 2026-10-19 先生の要望: 出題中に「あとで復習」を付けた問題も結果に出す。間違いと見分けられるよう一覧を 2 つに分ける（同日 先生の指示）:
+ * 「間違えた問題」（チェックも付けた問題は「チェック」の印）と「チェックした問題」（正解したがチェックを付けた問題・ラベンダー）。
  */
 import { useRef, useState, type RefObject } from 'react';
 import type { FieldGroup, PartValue, PlayQuestion, SubmitResult, TreeManifest, TreeSession } from '../../lib/treeApi';
 import { QTYPE_LABEL, circled, examLabel, gradeLabel, treeImage } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
 import { PlayShot, SHOT_SKIP } from './PlayShot';
-import { REVIEW_COLOR, T, alpha, fmtScore, fmtTime, groupColor, groupSide, rootClass } from './treeTheme';
+import { CHECK_COLOR, REVIEW_COLOR, T, alpha, fmtScore, fmtTime, groupColor, groupSide, rootClass } from './treeTheme';
 
 interface Props {
   result: SubmitResult;
@@ -54,7 +55,7 @@ function WrongItem({
 }: {
   label: string;
   mine: string;
-  /** 不正解か（チェックだけで正解した問題は false）*/
+  /** 不正解か（チェックした問題の一覧の、正解した問題は false）*/
   wrong: boolean;
   /** 「あとで復習」を付けたか */
   checked: boolean;
@@ -100,12 +101,7 @@ function WrongItem({
             <span>
               あなたの答え <b className="tr-num" style={{ color: wrong ? REVIEW_COLOR : T.text }}>{mine}</b>
             </span>
-            {checked && (
-              <>
-                <span className={`tr-tag${wrong ? ' is-wrong' : ' is-ok'}`}>{wrong ? '間違い' : '正解'}</span>
-                <span className="tr-tag is-check">チェック</span>
-              </>
-            )}
+            {wrong && checked && <span className="tr-checktag">チェック</span>}
           </div>
         </div>
         <span style={{ color: 'var(--tr-sub)', transform: open ? 'rotate(90deg)' : undefined, display: 'flex' }}>
@@ -205,45 +201,48 @@ export function WrongList({
   onReport: (qid: string, message: string, label: string, img: string | null) => Promise<'sent' | 'already' | 'error'>;
 }) {
   const checked = new Set(marked);
-  const list = results.filter((r) => !r.correct || checked.has(r.qid));
-  if (!list.length) return null;
-  const nWrong = list.filter((r) => !r.correct).length;
-  const nChecked = list.filter((r) => checked.has(r.qid)).length;
+  const wrong = results.filter((r) => !r.correct);
+  /** 正解したがチェックを付けた問題（間違えてチェックした問題は「間違えた問題」の方に出す）*/
+  const okChecked = results.filter((r) => r.correct && checked.has(r.qid));
+  if (!wrong.length && !okChecked.length) return null;
   /** セットの問題はリード文がセット（出題の単位）の方にある */
   const leadOf = (qid: string, q: PlayQuestion | undefined) =>
     q?.img.lead ?? session.units.find((u) => u.qids.includes(qid))?.lead ?? null;
+  const item = (r: (typeof results)[number]) => {
+    const q = session.questions[r.qid];
+    const label = !q
+      ? r.qid
+      : q.answer.kind === 'parts'
+        ? `${examLabel(q.source.exam)} · ${q.label ?? ''}`
+        : `${q.source.kind === 'basic' ? '基本 · ' : ''}${examLabel(q.source.exam)} · 解答番号 ${q.answer.boxes.map((b) => b.n).join('・')}`;
+    return (
+      <WrongItem
+        key={r.qid}
+        label={label}
+        mine={mineLabel(q, r.value)}
+        wrong={!r.correct}
+        checked={checked.has(r.qid)}
+        lead={leadOf(r.qid, q)}
+        body={q?.img.body ?? null}
+        layer={layer}
+        onReport={(message) => onReport(r.qid, message, label, q?.img.body ?? null)}
+      />
+    );
+  };
+  const head = (color: string, text: string) => (
+    <div style={{ fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+      <i style={{ width: 8, height: 8, borderRadius: 2, background: color, display: 'block' }} />
+      {text}
+    </div>
+  );
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div style={{ fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-        <i style={{ width: 8, height: 8, borderRadius: 2, background: REVIEW_COLOR, display: 'block' }} />
-        {nChecked ? `復習する問題 ${list.length} 問` : `間違えた問題 ${nWrong} 問`}
-        {nChecked > 0 && (
-          <span className="tr-num" style={{ fontSize: 12, fontWeight: 500, color: 'var(--tr-sub)' }}>
-            （間違い {nWrong} · チェック {nChecked}）
-          </span>
-        )}
-      </div>
-      {list.map((r) => {
-        const q = session.questions[r.qid];
-        const label = !q
-          ? r.qid
-          : q.answer.kind === 'parts'
-            ? `${examLabel(q.source.exam)} · ${q.label ?? ''}`
-            : `${q.source.kind === 'basic' ? '基本 · ' : ''}${examLabel(q.source.exam)} · 解答番号 ${q.answer.boxes.map((b) => b.n).join('・')}`;
-        return (
-          <WrongItem
-            key={r.qid}
-            label={label}
-            mine={mineLabel(q, r.value)}
-            wrong={!r.correct}
-            checked={checked.has(r.qid)}
-            lead={leadOf(r.qid, q)}
-            body={q?.img.body ?? null}
-            layer={layer}
-            onReport={(message) => onReport(r.qid, message, label, q?.img.body ?? null)}
-          />
-        );
-      })}
+      {wrong.length > 0 && head(REVIEW_COLOR, `間違えた問題 ${wrong.length} 問`)}
+      {wrong.map(item)}
+      {okChecked.length > 0 && (
+        <div style={{ marginTop: wrong.length ? 10 : 0 }}>{head(CHECK_COLOR, `チェックした問題 ${okChecked.length} 問`)}</div>
+      )}
+      {okChecked.map(item)}
     </div>
   );
 }

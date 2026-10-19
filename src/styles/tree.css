@@ -24,6 +24,7 @@
   --tr-ground-rgb: 4, 48, 57;
   --tr-shadow-dark: #04302b;
   --tr-review: #ffb38a;
+  --tr-check: #b9a6ff;
   --tr-orange: #ff7a45;
   --tr-new-fg: #140a05;
   --tr-line: rgba(45, 244, 198, 0.5);
@@ -945,38 +946,28 @@ html.tr-noswipe #root * {
 }
 .tr-mark.is-on {
   border-style: solid;
-  border-color: var(--tr-review);
-  background: rgba(255, 179, 138, 0.16);
-  color: var(--tr-review);
+  border-color: var(--tr-check);
+  background: rgba(185, 166, 255, 0.16);
+  color: var(--tr-check);
 }
 .tr-mark.is-on .tr-mark-box {
-  background: var(--tr-review);
-  border-color: var(--tr-review);
+  background: var(--tr-check);
+  border-color: var(--tr-check);
   color: var(--tr-on);
 }
 .tr-mark:focus-visible {
   outline: 2px solid var(--tr-accent);
   outline-offset: 2px;
 }
-/* 復習する問題のカードの印（間違い / 正解 / チェック）*/
-.tr-tag {
+/* 間違えた問題のうちチェックも付けた問題の印（.tr-tag はノードのシートで使っているので別の名前）*/
+.tr-checktag {
   font-size: 10px;
   font-weight: 700;
   padding: 1px 7px;
   border-radius: 999px;
   line-height: 1.6;
-}
-.tr-tag.is-wrong {
-  color: var(--tr-review);
-  border: 1px solid rgba(255, 179, 138, 0.6);
-}
-.tr-tag.is-ok {
-  color: var(--tr-accent);
-  border: 1px solid rgba(var(--tr-accent-rgb), 0.5);
-}
-.tr-tag.is-check {
   color: var(--tr-on);
-  background: var(--tr-review);
+  background: var(--tr-check);
 }
 .tr-overlay {
   position: absolute;
