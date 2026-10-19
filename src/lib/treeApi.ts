@@ -655,12 +655,14 @@ export interface StaffDay {
 export interface StaffSubject {
   /** その日の終わりのスコア */
   score: number;
+  /** いまのマスター度（%）。過去の日でもいまの値。古い Proxy には無い */
+  mastery?: number;
   day: StaffDay;
   prev: StaffDay;
   /** 今年度の累計（いまの時点）*/
   season: { plays: number; correct: number; total: number };
   /** 分野ごと。season = その分野の今年度の累計 */
-  fields: Record<string, { score: number; day: StaffDay; prev: StaffDay; season: StaffSubject['season'] }>;
+  fields: Record<string, { score: number; mastery?: number; day: StaffDay; prev: StaffDay; season: StaffSubject['season'] }>;
 }
 
 export interface StaffStudent {

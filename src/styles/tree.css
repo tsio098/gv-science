@@ -2638,7 +2638,7 @@ button.tr-stat {
 }
 .st-frow {
   display: grid;
-  grid-template-columns: minmax(120px, 1.6fr) minmax(110px, 1.4fr) repeat(4, minmax(64px, 1fr));
+  grid-template-columns: minmax(120px, 1.6fr) minmax(110px, 1.4fr) repeat(5, minmax(64px, 1fr));
   align-items: center;
   gap: 8px;
   min-height: 40px;
@@ -2756,7 +2756,7 @@ button.tr-stat {
     padding: 4px 12px 12px;
   }
   .st-frow {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     row-gap: 2px;
     padding: 6px 0;
   }
@@ -2764,7 +2764,7 @@ button.tr-stat {
     display: none;
   }
   .st-fname {
-    grid-column: 1 / 4;
+    grid-column: 1 / 5;
   }
   .st-fscore {
     justify-content: flex-end;
