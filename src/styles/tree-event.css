@@ -977,3 +977,23 @@ div.ev-node {
     animation: none !important;
   }
 }
+
+/* 先生の確認用の日付（?evnow）の札。ツリーの下・押すと消える（2026-10-21）*/
+.tr-evnow {
+  position: fixed;
+  left: 50%;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 60;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 154, 31, 0.7);
+  border-radius: 999px;
+  background: rgba(14, 5, 32, 0.92);
+  color: #ffe6c2;
+  font: 600 12px/1.2 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', sans-serif;
+  white-space: nowrap;
+}
+.tr-evnow span {
+  margin-left: 6px;
+  opacity: 0.8;
+}

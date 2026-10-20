@@ -24,7 +24,6 @@ import {
   MASTER_AT,
   PHONE_GEOM,
   NEW_COLOR,
-  NEW_FG,
   QTYPE_ICON,
   T,
   alpha,
@@ -360,9 +359,10 @@ export function TreeScreen(props: Props) {
                     </span>
                   )}
                   {ready && open && (p?.newCount ?? 0) > 0 && (
+                    // 新着の「+n」は控えめに（2026-10-21 先生「主張が強すぎる」）: 塗りと発光をやめ、細い枠と文字の色だけ
                     <span
-                      className="tr-badge tr-num"
-                      style={{ left: f.kiso && master ? x + 34 : x + 14, top: y - 31, background: NEW_COLOR, color: NEW_FG, boxShadow: '0 0 10px rgba(255,122,69,0.6)' }}
+                      className="tr-badge tr-num tr-newbadge"
+                      style={{ left: f.kiso && master ? x + 34 : x + 14, top: y - 29, color: NEW_COLOR }}
                       aria-label={`新着 ${p!.newCount} 問`}
                     >
                       +{p!.newCount}

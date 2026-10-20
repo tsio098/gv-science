@@ -345,21 +345,49 @@ export const startTreeSession = (subject: string, field: string, qtype: QType, s
 const C2 = 'c=4';
 /**
  * 先生用アカウントの日付の確認（季節イベント・2026-10-20）: LIFF の URL に ?evnow=2026-10-22T09:00+09:00（%2B09:00 でも可）を付けて開くと、
- * イベントの API に now= を付ける（Proxy は先生のときだけ使い、生徒は無視する）。evnow= を空にすると消す
+ * イベントの API に now= を付ける（Proxy は先生のときだけ使い、生徒は無視する）。evnow= を空にすると消す。
+ * 2026-10-21: ?evnow を外して開き直しても進めた日付のまま残った（LINE が画面を閉じずに残すと sessionStorage も残る）→
+ * 覚えるのは 30 分まで・ツリーの下に「確認用の日付」の札を出して × で消せるようにした（clearSeasonEventNow）
  */
 const EVNOW_KEY = 'gvTree.evnow';
+const EVNOW_TTL_MS = 30 * 60_000;
 function evNow(): string | null {
   try {
     // URL の + は空白として読まれる（?evnow=…T09:00+09:00 → "…T09:00 09:00" で日付にならず、Proxy は黙って本当の時刻を使っていた）→ + に戻す
     const raw = new URLSearchParams(window.location.search).get('evnow');
     const q = raw == null ? null : raw.trim().replace(/ (\d{2}:?\d{2})$/, '+$1');
     if (q != null) {
-      if (q) sessionStorage.setItem(EVNOW_KEY, q);
+      if (q) sessionStorage.setItem(EVNOW_KEY, JSON.stringify({ v: q, at: Date.now() }));
       else sessionStorage.removeItem(EVNOW_KEY);
     }
-    return sessionStorage.getItem(EVNOW_KEY);
+    const saved = sessionStorage.getItem(EVNOW_KEY);
+    if (!saved) return null;
+    const o = JSON.parse(saved) as { v?: unknown; at?: unknown };
+    if (typeof o?.v !== 'string' || typeof o.at !== 'number' || Date.now() - o.at > EVNOW_TTL_MS) {
+      sessionStorage.removeItem(EVNOW_KEY);
+      return null;
+    }
+    return o.v;
   } catch {
+    try {
+      sessionStorage.removeItem(EVNOW_KEY);
+    } catch {
+      /* noop */
+    }
     return null;
+  }
+}
+/** 先生の確認用の日付を消す（URL の ?evnow も外す。外さないと次に読んだとき URL から戻る）*/
+export function clearSeasonEventNow() {
+  try {
+    sessionStorage.removeItem(EVNOW_KEY);
+    const u = new URL(window.location.href);
+    if (u.searchParams.has('evnow')) {
+      u.searchParams.delete('evnow');
+      window.history.replaceState(window.history.state, '', u.pathname + u.search + u.hash);
+    }
+  } catch {
+    /* noop */
   }
 }
 /** 先生の確認用の日付（?evnow）。画面の「あと n 日」なども合わせる */

@@ -380,6 +380,17 @@ html.tr-noswipe #root * {
   justify-content: center;
   z-index: 15;
 }
+/* 新着の「+n」（2026-10-21 控えめに）: 塗りなし・細い枠・少し小さく */
+.tr-badge.tr-newbadge {
+  min-width: 15px;
+  height: 14px;
+  padding: 0 4px;
+  border-radius: 7px;
+  font-size: 9px;
+  border: 1px solid rgba(255, 122, 69, 0.45);
+  background: rgba(6, 22, 28, 0.55);
+  opacity: 0.85;
+}
 /* タップ領域は立方体 + 種別の正方形をまとめて 56×78（課題 #17） */
 .tr-hit {
   position: absolute;

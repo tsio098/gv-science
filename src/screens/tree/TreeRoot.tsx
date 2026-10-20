@@ -38,6 +38,8 @@ import {
   startArena,
   startTreeSession,
   fetchSeasonEvent,
+  seasonEventNowParam,
+  clearSeasonEventNow,
   startSeasonEventSession,
   startSeasonEventTest,
 } from '../../lib/treeApi';
@@ -208,6 +210,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   /** 季節イベントを読み込み中（その間は「開催されていません」を出さない・2026-10-21 検証で修正）*/
   const [seasonEventLoading, setSeasonEventLoading] = useState(false);
   const [eventMessage, setEventMessage] = useState<string | null>(null);
+  /** 先生の確認用の日付（?evnow）。ツリーの下に札を出して × で消す（2026-10-21: 外しても残ったため）*/
+  const [evNowTag, setEvNowTag] = useState<string | null>(() => seasonEventNowParam());
   setTreeStage(stage);
   /** 通知のコールバック（先に作る）から呼ぶ loadTickets */
   const loadTicketsRef = useRef<() => void>(() => {});
@@ -809,6 +813,20 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           onDismissMessage={() => setMessage(null)}
         />
       )}
+      {view.kind === 'tree' && me.grade === '先生' && evNowTag && (
+        <button
+          type="button"
+          className="tr-evnow"
+          aria-label="確認用の日付を消す"
+          onClick={() => {
+            clearSeasonEventNow();
+            setEvNowTag(null);
+            if (subject) loadSeasonEvent(subject);
+          }}
+        >
+          確認用の日付 {evNowLabel(evNowTag)} <span aria-hidden="true">×</span>
+        </button>
+      )}
       {view.kind === 'play' && (
         <PlayScreen
           session={view.session}
@@ -1072,4 +1090,13 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       )}
     </>
   );
+}
+
+/** ?evnow の日付 → 「10/22 09:00」（JST）。読めなければそのまま */
+function evNowLabel(v: string): string {
+  const t = Date.parse(v);
+  if (!Number.isFinite(t)) return v;
+  const d = new Date(t + 9 * 3600_000);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getUTCMonth() + 1}/${d.getUTCDate()} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
 }
