@@ -159,6 +159,8 @@ export interface PartsAnswer {
   parts: AbyssPart[];
   /** 欄の順序を問わない（「3 つ答えよ」等）*/
   unordered: boolean;
+  /** 一部の欄だけ順序を問わない（欄の番号 0〜 の組。例 [[0, 2]]。古い Proxy は付けない）*/
+  unorderedGroups?: number[][];
 }
 
 export interface PlayQuestion {
@@ -707,6 +709,7 @@ export type StaffSolution =
   | {
       kind: 'parts';
       unordered: boolean;
+      unorderedGroups?: number[][];
       parts: (
         | { kind: 'choice'; label: string | null; correct: string | string[] }
         | { kind: 'term'; label: string | null; accept: string[] }

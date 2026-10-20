@@ -87,6 +87,7 @@ function solutionLines(sol: StaffSolution, pub: AbyssPart[]): string[] {
     return lab + fmtNumeric(p.value, p.sig, sci) + (p.unit ? ' ' + p.unit : '') + (p.sig ? `（有効数字 ${p.sig} 桁）` : '');
   });
   if (sol.unordered) out.push('（欄の順序は問わない）');
+  for (const g of sol.unorderedGroups || []) out.push(`（${g.map((i) => sol.parts[i]?.label || `欄 ${i + 1}`).join('・')} は順不同）`);
   return out;
 }
 

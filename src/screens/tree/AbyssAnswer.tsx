@@ -126,8 +126,9 @@ interface Props {
 
 export function AbyssAnswer({ q, values, onChange, numFocus, onNumFocus }: Props) {
   if (q.answer.kind !== 'parts') return null;
-  const { parts, unordered } = q.answer;
+  const { parts, unordered, unorderedGroups } = q.answer;
   const many = parts.length > 1;
+  const partLabel = (i: number) => parts[i]?.label || `欄 ${i + 1}`;
   return (
     <div className="ab-answer">
       {q.prompt && (
@@ -137,6 +138,12 @@ export function AbyssAnswer({ q, values, onChange, numFocus, onNumFocus }: Props
         </div>
       )}
       {unordered && <div className="ab-hint">順不同（どの欄から答えてもよい）</div>}
+      {!unordered &&
+        (unorderedGroups || []).map((g, k) => (
+          <div key={'g' + k} className="ab-hint">
+            {g.map(partLabel).join('・')} は順不同（どちらの欄から答えてもよい）
+          </div>
+        ))}
       {parts.map((p, i) => {
         const v = values[i] ?? emptyRaw(p);
         const label = p.label || (many ? `欄 ${i + 1}` : '解答');
