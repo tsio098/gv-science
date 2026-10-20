@@ -344,13 +344,15 @@ export const startTreeSession = (subject: string, field: string, qtype: QType, s
  */
 const C2 = 'c=4';
 /**
- * 先生用アカウントの日付の確認（季節イベント・2026-10-20）: LIFF の URL に ?evnow=2026-10-22T09:00+09:00 を付けて開くと、
+ * 先生用アカウントの日付の確認（季節イベント・2026-10-20）: LIFF の URL に ?evnow=2026-10-22T09:00+09:00（%2B09:00 でも可）を付けて開くと、
  * イベントの API に now= を付ける（Proxy は先生のときだけ使い、生徒は無視する）。evnow= を空にすると消す
  */
 const EVNOW_KEY = 'gvTree.evnow';
 function evNow(): string | null {
   try {
-    const q = new URLSearchParams(window.location.search).get('evnow');
+    // URL の + は空白として読まれる（?evnow=…T09:00+09:00 → "…T09:00 09:00" で日付にならず、Proxy は黙って本当の時刻を使っていた）→ + に戻す
+    const raw = new URLSearchParams(window.location.search).get('evnow');
+    const q = raw == null ? null : raw.trim().replace(/ (\d{2}:?\d{2})$/, '+$1');
     if (q != null) {
       if (q) sessionStorage.setItem(EVNOW_KEY, q);
       else sessionStorage.removeItem(EVNOW_KEY);

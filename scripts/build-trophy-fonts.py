@@ -87,8 +87,9 @@ def main():
     dot |= chars_of_files(glob.glob(os.path.join(ROOT, 'src', '**', '*.ts'), recursive=True))
     dot |= chars_of_files(glob.glob(os.path.join(ROOT, 'src', '**', '*.tsx'), recursive=True))
     dot |= chars_of_files([p for p in [CRABS] if os.path.exists(p)])
-    # 制御文字・サロゲート・絵文字や私用領域（フォントに無い）は除く
-    dot = {c for c in dot if c >= ' ' and not (0xD800 <= ord(c) <= 0xDFFF) and ord(c) < 0xE000}
+    # 制御文字・サロゲート・私用領域・BMP の外（絵文字など。フォントに無い）は除く
+    # （2026-10-21 修正: 前は ord(c) < 0xE000 で、全角英数・記号 U+FF01〜FF5E の（）！？％ なども落としていた）
+    dot = {c for c in dot if c >= ' ' and not (0xD800 <= ord(c) <= 0xDFFF) and not (0xE000 <= ord(c) <= 0xF8FF) and ord(c) <= 0xFFFF}
     make(os.path.join(a.src, 'DotGothic16-Regular.ttf'), os.path.join(FONTS, 'DotGothic16-subset.woff2'), dot)
 
     # Press Start 2P（Latin だけ）
