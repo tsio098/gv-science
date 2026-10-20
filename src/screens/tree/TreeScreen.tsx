@@ -39,6 +39,11 @@ import {
 import { EventNode, eventNodeState } from './event/EventNode';
 import { EV_ASSET, EV_HAS_ART } from './event/evTheme';
 
+/** イベントノード（.ev-node）の幅・その中の立方体の左端までの距離（(124 - 66) / 2）・長方形とのすき間 */
+const EV_NODE_W = 124;
+const EV_CUBE_DX = 29;
+const EV_GAP = 16;
+
 interface Props {
   manifest: TreeManifest;
   progress: TreeProgress;
@@ -105,17 +110,24 @@ export function TreeScreen(props: Props) {
   const geom = wide ? IPAD_GEOM : PHONE_GEOM;
   const DOCK_W = 400;
   const maxLayer = Math.max(0, ...manifest.fields.map((f) => f.pos.layer));
-  const canvasW = geom.w;
+  /** ツリーそのものの幅（初めの表示の中央・アリーナの位置はこれで決める。イベントノードがはみ出すときだけキャンバスを右に広げる）*/
+  const treeW = geom.w;
   // チャンピオンアリーナのノード（ROUTE だけ）は最下層の分野の下
   const showArena = props.stage === 'front' && !!props.arena && props.arena.subject === manifest.subject;
   const arenaY = geom.y(maxLayer) + 170;
-  // イベントノード（ROUTE だけ）: 根の分野（いちばん上の層のいちばん右）の右上。ほかのノードと線でつながない（ボード E01）
+  // イベントノード（ROUTE だけ）。ほかのノードと線でつながない（2026-10-21 先生・モック https://claude.ai/artifact/X9wdaPuKFNwK2PoAbQvKqK）:
+  //   ツリーの長方形（分野ノードを囲む・右辺 = いちばん右の分野の立方体の右端・上辺 = いちばん上の分野の立方体の上端）の右の外に、
+  //   イベントの立方体を 16px あけて置き、立方体の上端を長方形の上辺にそろえる。
+  //   生物基礎だけは横は前の位置（根の分野の右上）のまま、縦は他の科目と同じ（長方形の上辺）
   const showEvent = props.stage === 'front' && !!props.seasonEvent && eventNodeState(props.seasonEvent) != null;
-  const roots = manifest.fields.filter((f) => f.pos.layer === Math.min(...manifest.fields.map((x) => x.pos.layer)));
-  const rootX = roots.length ? Math.max(...roots.map((f) => geom.x(f.pos.x))) : canvasW / 2;
-  const rootY = geom.y(roots[0]?.pos.layer ?? 0);
-  const evX = Math.min(canvasW - 130, rootX + 120 - 62);
-  const evY = Math.max(8, rootY - 28 - 33);
+  const topLayer = Math.min(...manifest.fields.map((x) => x.pos.layer));
+  const roots = manifest.fields.filter((f) => f.pos.layer === topLayer);
+  const rootX = roots.length ? Math.max(...roots.map((f) => geom.x(f.pos.x))) : treeW / 2;
+  const treeRight = manifest.fields.length ? Math.max(...manifest.fields.map((f) => geom.x(f.pos.x))) + 23 : treeW / 2;
+  const treeTop = geom.y(topLayer) - 23;
+  const evX = manifest.subject === 'biology-basic' ? Math.min(treeW - 130, rootX + 120 - 62) : treeRight + EV_GAP - EV_CUBE_DX;
+  const evY = treeTop;
+  const canvasW = showEvent ? Math.max(treeW, evX + EV_NODE_W + EV_GAP) : treeW;
   const canvasH = Math.max(geom.h, showArena ? arenaY + 130 : geom.y(maxLayer) + 170);
 
   const pz = usePanZoom({
@@ -130,10 +142,10 @@ export function TreeScreen(props: Props) {
   useEffect(() => {
     const { w } = pz.size();
     if (!w) return;
-    const z = !wide && w > canvasW ? Math.min(1.35, w / canvasW) : 1;
-    pz.setView({ x: (w - canvasW * z) / 2, y: 0, z });
+    const z = !wide && w > treeW ? Math.min(1.35, w / treeW) : 1;
+    pz.setView({ x: (w - treeW * z) / 2, y: 0, z });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canvasW, wide]);
+  }, [treeW, wide]);
 
   // 選んだノードを、ポップオーバーに隠れない位置へ
   useEffect(() => {
@@ -395,7 +407,7 @@ export function TreeScreen(props: Props) {
               <ArenaNode
                 info={props.arena!}
                 wide={wide}
-                x={canvasW / 2}
+                x={treeW / 2}
                 y={arenaY}
                 onOpen={() => {
                   setMenu(false);
