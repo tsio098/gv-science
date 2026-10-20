@@ -37,12 +37,15 @@ import {
   BRAND,
 } from './treeTheme';
 import { EventNode, eventNodeState } from './event/EventNode';
-import { EV_ASSET, EV_HAS_ART } from './event/evTheme';
+import { EV_ASSET, EV_HAS_ART, evMd } from './event/evTheme';
 
 /** イベントノード（.ev-node）の幅・その中の立方体の左端までの距離（(124 - 66) / 2）・長方形とのすき間 */
 const EV_NODE_W = 124;
 const EV_CUBE_DX = 29;
 const EV_GAP = 16;
+/** 目印を止める上下の位置（上はヘッダーのボタンの下・下は画面の下端から）*/
+const EV_MARK_TOP = 96;
+const EV_MARK_BOTTOM = 24;
 
 interface Props {
   manifest: TreeManifest;
@@ -130,13 +133,41 @@ export function TreeScreen(props: Props) {
   const canvasW = showEvent ? Math.max(treeW, evX + EV_NODE_W + EV_GAP) : treeW;
   const canvasH = Math.max(geom.h, showArena ? arenaY + 130 : geom.y(maxLayer) + 170);
 
+  // イベントの目印（2026-10-21 先生がモックの B を選択）: イベントの立方体が画面の右の外にあるとき、画面の右端に「HALLOWEEN ›」の札を重ねる。
+  // 高さは立方体に合わせる（上下の端で止める）・押すとツリーが左へすべって立方体が入る・入ったら消える。
+  // 表示が動くたびに呼ばれるので、React の state は使わず札の style を直接書く
+  const evMarkRef = useRef<HTMLButtonElement>(null);
+  const placeEvMark = (v: { x: number; y: number; z: number }, size: { w: number; h: number }) => {
+    const el = evMarkRef.current;
+    if (!el) return;
+    const cx = (evX + EV_CUBE_DX + 33) * v.z + v.x;
+    const off = showEvent && size.w > 0 && cx > size.w;
+    el.style.display = off ? '' : 'none';
+    if (!off) return;
+    const cy = (evY + 33) * v.z + v.y;
+    el.style.top = `${Math.round(Math.min(Math.max(cy - 15, EV_MARK_TOP), size.h - 30 - EV_MARK_BOTTOM))}px`;
+  };
   const pz = usePanZoom({
     contentW: canvasW,
     contentH: canvasH,
     minZ: 0.6,
     maxZ: 2,
     extraBottom: selected && !wide ? 360 : 0,
+    onView: placeEvMark,
   });
+  // イベントの読み込み・科目の切り替えで位置が変わったら合わせ直す
+  useEffect(() => {
+    placeEvMark(pz.get(), pz.size());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showEvent, evX, evY]);
+  /** 札を押した: イベントのノードの右端が画面の右端から 12px 内に来るまで左へすべらせる（上に外れていれば下ろす）*/
+  const goEvent = () => {
+    const { x, y, z } = pz.get();
+    const { w } = pz.size();
+    const nx = Math.min(x, w - 12 - (evX + EV_NODE_W) * z);
+    const ny = Math.max(y, EV_MARK_TOP - evY * z);
+    pz.setView({ x: nx, y: ny }, true);
+  };
 
   // 初期位置: 左右中央・上端（スマホは左右 105px ずつ隠れる）。iPad 縦は幅に合わせて拡大（最大 1.35 倍）
   useEffect(() => {
@@ -422,6 +453,28 @@ export function TreeScreen(props: Props) {
 
       <div className="tr-fade-top" />
       <div className="tr-fade-bottom" />
+      {showEvent && props.seasonEvent?.event && (() => {
+        const st = eventNodeState(props.seasonEvent);
+        const dim = st === 'soon' || st === 'lock';
+        const ev = props.seasonEvent.event;
+        const name = ev.name.replace(/\s*CHALLENGE$/, '');
+        return (
+          <button
+            type="button"
+            ref={evMarkRef}
+            className={`ev-mark${dim ? ' is-dim' : ''}`}
+            style={{ display: 'none' }}
+            aria-label={`${ev.name} へ移動`}
+            onClick={goEvent}
+          >
+            <img src={EV_ASSET(ev.kind).icon2x} alt="" className="ev-mark-icon" />
+            <span className="ev-mark-text">{name}</span>
+            <span className="ev-mark-chev" aria-hidden="true">›</span>
+            {/* 予告の日付は札の下に小さく（札の幅を開催中と同じにして、375px 幅でも根の分野にかからないように）*/}
+            {st === 'soon' && <span className="ev-mark-date">{evMd(ev.startAt)}〜</span>}
+          </button>
+        );
+      })()}
       <div className="tr-stagemark">{T.name}</div>
 
       {/* スマホ幅でボタンが多いとき（トロフィーのボタンを足した 2026-10-19）: 4 つ以上ならステージの切替をアイコンだけに、5 つなら丸ボタンを 32px に */}

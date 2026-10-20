@@ -997,3 +997,64 @@ div.ev-node {
   margin-left: 6px;
   opacity: 0.8;
 }
+
+/* ツリーのイベントの目印（モック B・2026-10-21）: イベントのノードが画面の右の外にあるとき、画面の右端に重ねる札。
+   top は TreeScreen が表示の動きに合わせて直接書く。予告・鍵つきは灰色 */
+.ev-mark {
+  position: absolute;
+  right: 10px;
+  top: 96px;
+  z-index: 28;
+  height: 30px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 0 4px;
+  border: 1.5px solid #ff9a1f;
+  border-radius: 15px;
+  background: rgba(46, 22, 80, 0.94);
+  color: #ffe6c2;
+  font-family: 'DotGothic16', 'Hiragino Sans', var(--f-jp), sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ev-mark:focus-visible {
+  outline: 2px solid #eafbff;
+  outline-offset: 2px;
+}
+.ev-mark-icon {
+  width: 24px;
+  height: 24px;
+  image-rendering: pixelated;
+}
+.ev-mark-chev {
+  font: 700 18px/1 'Hiragino Sans', sans-serif;
+  color: #ff9a1f;
+  margin-left: 2px;
+}
+.ev-mark.is-dim {
+  border-color: rgba(234, 251, 255, 0.45);
+  background: rgba(5, 54, 64, 0.92);
+  color: rgba(234, 251, 255, 0.7);
+}
+.ev-mark.is-dim .ev-mark-icon {
+  filter: grayscale(1) brightness(0.75);
+}
+.ev-mark.is-dim .ev-mark-chev {
+  color: rgba(234, 251, 255, 0.45);
+}
+.ev-mark-date {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 3px);
+  text-align: center;
+  font-size: 10px;
+  color: rgba(234, 251, 255, 0.7);
+  text-shadow: 1px 1px 0 #021014;
+  pointer-events: none;
+}

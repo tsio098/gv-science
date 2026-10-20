@@ -25,6 +25,8 @@ export interface PanZoomOptions {
   onDoubleTap?: () => void;
   /** 倍率が変わったとき（表示用）*/
   onZoom?: (z: number) => void;
+  /** 表示が動いたとき（毎フレーム呼ぶので React の state を変えないこと。ツリーのイベントの目印の位置合わせ用・2026-10-21）*/
+  onView?: (v: { x: number; y: number; z: number }, size: { w: number; h: number }) => void;
 }
 
 interface View {
@@ -80,6 +82,7 @@ export function usePanZoom(opts: PanZoomOptions) {
         lastZ.current = z;
         o.current.onZoom?.(z);
       }
+      o.current.onView?.(v.current, size.current);
     },
     []
   );
