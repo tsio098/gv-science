@@ -9,10 +9,10 @@
  * 「間違えた問題」（チェックも付けた問題は「チェック」の印）と「チェックした問題」（正解したがチェックを付けた問題・ラベンダー）。
  * 季節イベントの挑戦（result.event・ボード R05・2026-10-20）: ハロウィンの色（is-ev-halloween）・見出しは「HALLOWEEN · 科目 · 結果」・
  * 加算のカードの下に「EVENT MASTER 64% → 70%」の行と「定着 +4 題 · あと 6 日」・3 枚のタイルは科目の値（累積スコア・マスター度・順位）・
- * 左下のボタンは「イベントへ」（イベント画面に戻る）
+ * 左下のボタンは「イベントへ」（イベント画面に戻る）・出題状況はイベントの 70 題（2026-10-21 先生の指示・科目全体の問題数ではなく）
  */
 import { useRef, useState, type RefObject } from 'react';
-import type { FieldGroup, PartValue, PlayQuestion, SubmitResult, TreeManifest, TreeSession } from '../../lib/treeApi';
+import type { Dist, FieldGroup, PartValue, PlayQuestion, SubmitResult, TreeManifest, TreeSession } from '../../lib/treeApi';
 import { QTYPE_LABEL, circled, examLabel, gradeLabel, treeImage } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
 import { PlayShot, SHOT_SKIP } from './PlayShot';
@@ -294,6 +294,20 @@ export function ResultScreen({ result, session, marked, manifest, grade, nicknam
   const { summary, node } = result;
   const before = node.before;
   const after = node.after;
+  // 出題状況のカード: ふつうはその種別の問題・季節イベントはイベントの 70 題（ev.after・定着/正解済み/要復習/未着手）
+  const distCard: { label: string; total: number; dist: Dist } | null = ev
+    ? {
+        label: 'イベント',
+        total: ev.after.total,
+        dist: { mastered: ev.after.settled, solved: ev.after.correct, review: ev.after.review, fresh: ev.after.untouched },
+      }
+    : after
+      ? {
+          label: QTYPE_LABEL[session.qtype],
+          total: after.total,
+          dist: { ...after.dist, fresh: Math.max(0, after.total - after.dist.mastered - after.dist.solved - after.dist.review) },
+        }
+      : null;
   const mBefore = before ? Math.round(before.mastery * 100) : 0;
   const mAfter = after ? Math.round(after.mastery * 100) : 0;
   const keep = result.results.filter((r) => r.correct && !r.firstCorrect && r.bonusUp === 0).length;
@@ -532,18 +546,18 @@ export function ResultScreen({ result, session, marked, manifest, grade, nicknam
           </div>
         )}
 
-        {RETRO && after && (
-          // ボード R03: 出題状況（R02 と同じ 20 マス・要復習は中空の枠）
+        {RETRO && distCard && (
+          // ボード R03: 出題状況（R02 と同じ 20 マス・要復習は中空の枠）。季節イベントはイベントの 70 題
           <div className="tr-panel tr-dist-card">
             <div className="tr-dist-title">
-              出題状況（{ev ? manifest.name : QTYPE_LABEL[session.qtype]} <span className="tr-arc">{after.total}</span> 問）
+              出題状況（{distCard.label} <span className="tr-arc">{distCard.total}</span> {ev ? '題' : '問'}）
             </div>
-            <Pips dist={after.dist} total={after.total} color={ev ? '#FF9A1F' : T.accent} />
+            <Pips dist={distCard.dist} total={distCard.total} color={ev ? '#FF9A1F' : T.accent} />
             <div className="tr-dist-legend">
-              <span><i className="is-mastered" />定着 <b className="tr-arc">{after.dist.mastered}</b></span>
-              <span><i className="is-solved" />正解済み <b className="tr-arc">{after.dist.solved}</b></span>
-              <span><i className="is-review" />要復習 <b className="tr-arc">{after.dist.review}</b></span>
-              <span><i className="is-fresh" />未着手 <b className="tr-arc">{Math.max(0, after.total - after.dist.mastered - after.dist.solved - after.dist.review)}</b></span>
+              <span><i className="is-mastered" />定着 <b className="tr-arc">{distCard.dist.mastered}</b></span>
+              <span><i className="is-solved" />正解済み <b className="tr-arc">{distCard.dist.solved}</b></span>
+              <span><i className="is-review" />要復習 <b className="tr-arc">{distCard.dist.review}</b></span>
+              <span><i className="is-fresh" />未着手 <b className="tr-arc">{distCard.dist.fresh}</b></span>
             </div>
           </div>
         )}
