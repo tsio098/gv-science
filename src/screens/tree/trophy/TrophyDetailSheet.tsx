@@ -23,11 +23,13 @@ interface Props {
   onClose: () => void;
   /** ツリーで見る（関係する分野があれば最初の分野を選ぶ）*/
   onShowTree: (field: string | null) => void;
+  /** 先生用アカウント（2026-10-20）: 獲得者の表示名（本名。取れなければニックネーム）。あれば獲得者の一覧を出す */
+  holderName?: (h: { key: string; nickname: string }) => string;
 }
 
 const SPARK = 'M2 0h1v2h2v1H3v2H2V3H0V2h2z';
 
-export function TrophyDetailSheet({ item, fieldInfo, onClose, onShowTree }: Props) {
+export function TrophyDetailSheet({ item, fieldInfo, onClose, onShowTree, holderName }: Props) {
   const g = GRADE_COLOR[item.grade];
   const chrome = item.grade === 'P' ? PRISM : item.grade === 'F' ? CHROME.F : CHROME[item.grade];
   const got = item.earnedAt != null;
@@ -167,6 +169,28 @@ export function TrophyDetailSheet({ item, fieldInfo, onClose, onShowTree }: Prop
                 </span>
               </div>
             </div>
+
+            {holderName && item.holders && (
+              <div className="tt-px2 tt-stat" style={{ alignSelf: 'stretch', alignItems: 'stretch', textAlign: 'left' }}>
+                <span className="tt-dot" style={{ fontSize: 11, color: '#8ED4E0' }}>獲得した生徒 {item.holders.length} 人（早い順・先生用）</span>
+                {item.holders.length === 0 ? (
+                  <span className="tt-dot" style={{ fontSize: 13, color: '#8ED4E0' }}>まだ誰も獲得していません</span>
+                ) : (
+                  <div style={{ maxHeight: 180, overflowY: 'auto', WebkitOverflowScrolling: 'touch', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {item.holders.map((h) => (
+                      <div key={h.key} className="tt-dot" style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 13 }}>
+                        <span style={{ flex: 'none', minWidth: 30, color: '#8ED4E0', fontSize: 11 }}>{gradeLabel(h.grade)}</span>
+                        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {holderName(h)}
+                          {holderName(h) !== h.nickname && <span style={{ fontSize: 11, color: '#8ED4E0' }}> {h.nickname}</span>}
+                        </span>
+                        <span className="tt-arc" style={{ flex: 'none', fontSize: 8, color: '#8ED4E0' }}>{ymdJst(h.at, '/')}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div style={{ alignSelf: 'stretch', display: 'flex', gap: 10, paddingTop: 2 }}>
               <button type="button" className="tt-dot tt-px2" style={{ flex: 1, height: 50, background: 'rgba(4,48,57,.9)', border: 0, color: '#EAFBFF', fontSize: 15 }} onClick={onClose}>

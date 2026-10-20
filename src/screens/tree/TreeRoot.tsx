@@ -53,6 +53,7 @@ import { TreeScreen } from './TreeScreen';
 import { PlayScreen } from './PlayScreen';
 import { ResultScreen } from './ResultScreen';
 import { StaffScreen } from './StaffScreen';
+import { StaffQuestionsScreen } from './StaffQuestionsScreen';
 import { SUBJECT_JA, type ScheduleSubject } from '../../lib/types';
 import { TrophyScreen } from './trophy/TrophyScreen';
 import { TrophyDetailSheet, fieldInfoFrom } from './trophy/TrophyDetailSheet';
@@ -91,6 +92,8 @@ type View =
   | { kind: 'ranking'; scope: RankScope; field: string | null; qtype: QType; back: View }
   /** 先生用 生徒の進捗一覧（2026-10-17・先生用アカウントだけ）*/
   | { kind: 'staff' }
+  /** 先生用 問題の確認（2026-10-20）*/
+  | { kind: 'staffQuestions' }
   /** チャンピオンアリーナ（設計書 §5.7）: 入口 → 出題 → 結果 */
   | { kind: 'arena' }
   | { kind: 'arenaPlay'; session: ArenaSession }
@@ -648,6 +651,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
             setView({ kind: 'ranking', scope: field ? 'field' : 'subject', field, qtype: 'tf', back: { kind: 'tree' } })
           }
           onStaff={me.grade === '先生' ? () => setView({ kind: 'staff' }) : undefined}
+          onStaffQuestions={me.grade === '先生' ? () => setView({ kind: 'staffQuestions' }) : undefined}
           onFxLab={me.grade === '先生' ? () => setView({ kind: 'fxlab' }) : undefined}
           tickets={tickets.filter((t) => !t.usedAt).length}
           onTickets={() => setView({ kind: 'tickets', back: { kind: 'tree' } })}
@@ -722,6 +726,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
         />
       )}
       {view.kind === 'staff' && <StaffScreen onBack={() => setView({ kind: 'tree' })} />}
+      {view.kind === 'staffQuestions' && <StaffQuestionsScreen onBack={() => setView({ kind: 'tree' })} />}
       {view.kind === 'fxlab' && (
         <FxLabScreen grade={me.grade} nickname={me.nickname} subject={subject} subjectName={manifest.name} season={arena?.season ?? null} onTickets={() => setView({ kind: 'tickets', back: { kind: 'fxlab' } })} onToasts={pushToasts} onBack={() => setView({ kind: 'tree' })} />
       )}

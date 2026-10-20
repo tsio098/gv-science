@@ -3356,3 +3356,147 @@ button.tr-stat {
   color: var(--tr-sub);
   margin-left: 4px;
 }
+
+/* ── 先生用 問題の確認（2026-10-20）──────────────────── */
+
+.sq-search {
+  flex: none;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--tr-line-soft);
+  background: var(--tr-card);
+  color: var(--tr-text);
+  font-size: 16px; /* iOS がズームしない大きさ */
+  box-sizing: border-box;
+}
+.sq-search::placeholder {
+  color: var(--tr-sub);
+}
+.sq-note {
+  flex: none;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--tr-sub);
+}
+.sq-exams,
+.sq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: none;
+}
+.sq-exam {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(var(--tr-text-rgb), 0.2);
+  background: var(--tr-card);
+  color: var(--tr-text);
+  text-align: left;
+}
+.sq-exam > svg {
+  flex: none;
+  color: var(--tr-sub);
+}
+.sq-exam-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sq-exam-main b {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.sq-exam-main small {
+  font-size: 11px;
+  color: var(--tr-sub);
+}
+.sq-new {
+  flex: none;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--tr-accent);
+  color: var(--tr-on);
+}
+.sq-count {
+  flex: none;
+  font-size: 12px;
+  color: var(--tr-sub);
+}
+.sq-card-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 13px;
+}
+.sq-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--tr-line-soft);
+  color: var(--tr-text);
+  white-space: nowrap;
+}
+.sq-tag > i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+.sq-tag.is-sub {
+  color: var(--tr-sub);
+}
+.sq-answer {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+}
+.sq-answer > span {
+  flex: none;
+  font-size: 11px;
+  color: var(--tr-sub);
+}
+.sq-answer > b {
+  font-size: 15px;
+  color: var(--tr-accent);
+  overflow-wrap: anywhere;
+}
+.sq-places {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--tr-sub);
+}
+.sq-text,
+.sq-given {
+  font-size: 12px;
+  line-height: 1.6;
+}
+.sq-given {
+  color: var(--tr-sub);
+}
+.sq-paper {
+  border: 0;
+  width: 100%;
+  cursor: zoom-in;
+}
+.sq-id {
+  font-size: 10px;
+  color: var(--tr-sub);
+  overflow-wrap: anywhere;
+}

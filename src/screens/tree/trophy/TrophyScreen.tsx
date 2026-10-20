@@ -9,7 +9,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import type { TrophyItem, TrophyList } from '../../../lib/treeApi';
-import { TreeApiError, gradeLabel } from '../../../lib/treeApi';
+import { TreeApiError, fetchStaffNames, gradeLabel } from '../../../lib/treeApi';
 import { TREE_SUBJECT_NAME, type TreeSubject } from '../../../lib/treeSubject';
 import { Ico } from '../TreeIcons';
 import { rootClass } from '../treeTheme';
@@ -46,6 +46,8 @@ export function TrophyScreen({ subject: initial, subjects, fieldInfo, onBack, on
   const [tab, setTab] = useState<Tab>('all');
   const [recent, setRecent] = useState(false);
   const [detail, setDetail] = useState<TrophyItem | null>(null);
+  /** 先生用アカウント（2026-10-20）: 獲得者の本名 { key: 氏名 }。GAS から直接（Proxy を通さない）。null = 未取得・失敗 */
+  const [names, setNames] = useState<Record<string, string> | null>(null);
   // 前に一覧を開いた時刻より後の獲得に NEW を付ける
   const [seenBefore] = useState(readSeen);
   useEffect(() => {
@@ -61,12 +63,19 @@ export function TrophyScreen({ subject: initial, subjects, fieldInfo, onBack, on
     setData(null);
     setError(null);
     loadTrophies(subject, true)
-      .then((d) => live && setData(d))
+      .then((d) => {
+        if (!live) return;
+        setData(d);
+        if (d.names) fetchStaffNames(d.names).then((n) => live && setNames(n)).catch(() => {});
+      })
       .catch((e) => live && setError(e instanceof TreeApiError ? e.code : 'NETWORK'));
     return () => {
       live = false;
     };
   }, [subject]);
+  const staff = !!data && data.items.some((it) => it.holders !== undefined);
+  /** 獲得者の表示名: 本名（取れなければニックネーム）*/
+  const holderName = (h: { key: string; nickname: string }) => names?.[h.key] ?? h.nickname;
 
   const rows = useMemo(() => {
     if (!data) return [];
@@ -222,9 +231,14 @@ export function TrophyScreen({ subject: initial, subjects, fieldInfo, onBack, on
 
               <div className="tt-rows">
                 {rows.map((it) => (
-                  <Row key={it.id} it={it} isNew={it.earnedAt != null && it.earnedAt > seenBefore && seenBefore > 0} onOpen={() => setDetail(it)} />
+                  <Row key={it.id} it={it} isNew={it.earnedAt != null && it.earnedAt > seenBefore && seenBefore > 0} onOpen={() => setDetail(it)} holderName={staff ? holderName : undefined} />
                 ))}
                 {!rows.length && <div className="tt-empty">{tab === 'got' ? 'まだ獲得したトロフィーはありません。' : 'すべて獲得しました。'}</div>}
+                {staff && (
+                  <div className="tt-dot" style={{ fontSize: 11, lineHeight: 1.6, color: '#8ED4E0' }}>
+                    先生用: 各トロフィーの下に獲得した生徒（{names ? '本名' : 'ニックネーム'}・獲得の早い順）。押すと全員の一覧が開きます。隠し・ファースト・プラチナも条件つきで出ています。
+                  </div>
+                )}
               </div>
 
               {/* 残念トロフィー: 獲得したものだけ・別枠（全部で何個あるかは出さない）。未獲得のタブでは出さない */}
@@ -238,7 +252,7 @@ export function TrophyScreen({ subject: initial, subjects, fieldInfo, onBack, on
                     </div>
                   </div>
                   {oops.map((it) => (
-                    <Row key={it.id} it={it} isNew={it.earnedAt != null && it.earnedAt > seenBefore && seenBefore > 0} onOpen={() => setDetail(it)} />
+                    <Row key={it.id} it={it} isNew={it.earnedAt != null && it.earnedAt > seenBefore && seenBefore > 0} onOpen={() => setDetail(it)} holderName={staff ? holderName : undefined} />
                   ))}
                 </div>
               )}
@@ -254,13 +268,14 @@ export function TrophyScreen({ subject: initial, subjects, fieldInfo, onBack, on
           fieldInfo={(id) => fieldInfo(subject, id)}
           onClose={() => setDetail(null)}
           onShowTree={(field) => onShowTree(subject, field)}
+          holderName={staff ? holderName : undefined}
         />
       )}
     </div>
   );
 }
 
-function Row({ it, isNew, onOpen }: { it: TrophyItem; isNew: boolean; onOpen: () => void }) {
+function Row({ it, isNew, onOpen, holderName }: { it: TrophyItem; isNew: boolean; onOpen: () => void; holderName?: (h: { key: string; nickname: string }) => string }) {
   const g = GRADE_COLOR[it.grade];
   const got = it.earnedAt != null;
   const holder = it.firstHolder;
@@ -313,6 +328,17 @@ function Row({ it, isNew, onOpen }: { it: TrophyItem; isNew: boolean; onOpen: ()
     }
   }
 
+  // 先生用: 取得した人数と、獲得者の名前（1 行・はみ出しは …）
+  const holders = holderName ? it.holders : undefined;
+  if (holders) {
+    rate = `取得 ${holders.length} 人 · ${rarityPct(it.rarity)}`;
+    if (!got) {
+      meta = holders.length ? `最初 ${mdJst(holders[0]!.at)}` : 'まだ誰も';
+      metaArc = false;
+      metaColor = holders.length ? '#EAFBFF' : '#8ED4E0';
+    }
+  }
+
   return (
     <button type="button" className="tt-rowbtn tt-px2" style={{ background: frame }} onClick={onOpen} aria-label={`${it.hidden ? '隠しトロフィー' : it.name} ${g.en} ${got ? '獲得済み' : '未獲得'}`}>
       <div className="tt-rowin tt-px2" style={{ background: bg }}>
@@ -332,7 +358,12 @@ function Row({ it, isNew, onOpen }: { it: TrophyItem; isNew: boolean; onOpen: ()
             {isNew && <span className="tt-arc tt-px2" style={{ flex: 'none', padding: '3px 5px', background: '#FF7A45', color: '#140A05', fontSize: 6 }}>NEW</span>}
           </div>
           <div className="tt-dot tt-rowdesc" style={oops ? { color: '#A9B09A' } : undefined}>{it.hidden ? '獲得すると内容が見えます' : it.desc}</div>
-          {it.progress && !got && (
+          {holders && holders.length > 0 && (
+            <div className="tt-dot" style={{ fontSize: 11, color: '#FFE9A8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {holders.map((h) => `${gradeLabel(h.grade)} ${holderName!(h)}`).join('、')}
+            </div>
+          )}
+          {it.progress && !got && !holders && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{ flex: 1, height: 5, background: 'rgba(234,251,255,.1)' }}>
                 <div style={{ width: `${Math.min(100, (it.progress.now / Math.max(1, it.progress.max)) * 100)}%`, height: '100%', background: `repeating-linear-gradient(90deg,${g.c} 0 5px,rgba(0,0,0,0) 5px 7px)` }} />

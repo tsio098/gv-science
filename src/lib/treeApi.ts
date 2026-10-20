@@ -67,7 +67,8 @@ export interface TreeManifest {
   version: number;
   unlockPct: number;
   timeLimitSec: Record<QType, number>;
-  exams: { exam: string; lastDate: string; count: number }[];
+  /** kind = 'exam'（今年度に実施した演習）/ 'basic'（基本問題）。addedAt = その試験を初めて載せた日（新着の判定）*/
+  exams: { exam: string; lastDate: string | null; count: number; kind?: string; addedAt?: string }[];
   fields: TreeField[];
 }
 
@@ -606,6 +607,15 @@ export interface TrophyItem {
   /** 関係する分野 ID（詳細のチップ）*/
   fields: string[];
   order: number;
+  /** 先生用アカウントだけ（2026-10-20）: 獲得した生徒（古い順）。本名は key で GAS treeNames から */
+  holders?: TrophyHolder[];
+}
+
+export interface TrophyHolder {
+  key: string;
+  grade: string;
+  nickname: string;
+  at: number;
 }
 
 export interface TrophyList {
@@ -620,6 +630,8 @@ export interface TrophyList {
   /** プラチナは隠し要素（2026-10-19）: 獲得するまで null。ファーストも獲得するまで items に入らない */
   platinum: { now: number; max: number; earned: boolean; name: string; id: string } | null;
   items: TrophyItem[];
+  /** 先生用アカウントだけ: 本名を GAS から取るチケット（AGENT_KEY が無い環境では null）*/
+  names?: StaffOverview['names'];
 }
 
 /**
@@ -686,6 +698,43 @@ export interface StaffOverview {
 
 export const fetchStaffOverview = (date?: string) =>
   get<StaffOverview>('/tree/staff/overview' + (date ? '?date=' + encodeURIComponent(date) : ''));
+
+/* ── 先生用 問題の確認（2026-10-20）──────────────────────── */
+
+/** 先生用の正解。ROUTE = 欄ごとのマーク（'3' = ③。alts = 別の正しい組）・ABYSS = 欄ごと */
+export type StaffSolution =
+  | { kind: 'choice'; group: 'unordered' | null; boxes: { n: number; correct: string; min: number }[]; alts: string[][] }
+  | {
+      kind: 'parts';
+      unordered: boolean;
+      parts: (
+        | { kind: 'choice'; label: string | null; correct: string | string[] }
+        | { kind: 'term'; label: string | null; accept: string[] }
+        | { kind: 'numeric'; label: string | null; value: number; sig: number | null; unit: string | null; fixedExp?: number }
+      )[];
+    };
+
+export interface StaffQuestion extends PlayQuestion {
+  solution: StaffSolution;
+  /** セットに入れた小問の元の種別・分野 */
+  origType: QType | null;
+  origField: string | null;
+  standalone: boolean;
+  /** 出る場所（分野 × 種別。分野へのコピー・alsoSolo も含む）*/
+  places: { field: string; type: QType }[];
+}
+
+export interface StaffQuestions {
+  subject: string;
+  stage: TreeStage;
+  version: number;
+  exam: string;
+  questions: StaffQuestion[];
+  sets: Record<string, { id: string; field: string; lead: string | null; members: string[]; timeLimitSec: number | null }>;
+}
+
+export const fetchStaffQuestions = (subject: string, stage: TreeStage, exam: string) =>
+  get<StaffQuestions>(`/tree/staff/questions?subject=${encodeURIComponent(subject)}${stageQ(stage)}&exam=${encodeURIComponent(exam)}`);
 
 let namesMemo: { at: number; names: Record<string, string> } | null = null;
 const NAMES_MEMO_MS = 10 * 60_000;
