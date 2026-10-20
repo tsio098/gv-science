@@ -21,6 +21,8 @@ const FACE: Record<ToastGrade, [string, string, string, string, string, string]>
   P: ['#FFFFFF', '#D9FFF6', '#4FC3FF', '#6A2FB0', '#B05BD6', '#FFB8E6'],
   F: ['#FFFFFF', '#FFD6DC', '#FF5A6E', '#7A0C24', '#B3203E', '#FFB0BC'],
   Z: ['#FFFFFF', '#E4E8D8', '#A9B09A', '#4C523F', '#6E7560', '#C7CDB5'],
+  /** EVENT（季節イベント・2026-10-20）: 絵は icon_trophy_ev_*（下の TrophyIcon）。ここは見出しなどのクロームと同じ橙 */
+  E: ['#FFFFFF', '#FFE6C2', '#FF9A1F', '#B8480A', '#FF9A1F', '#FFC872'],
 };
 const SIDE: Record<ToastGrade, [string, string]> = {
   B: ['#7A4420', '#2A1206'],
@@ -29,6 +31,7 @@ const SIDE: Record<ToastGrade, [string, string]> = {
   P: ['#5B4A92', '#1C1236'],
   F: ['#6A1024', '#22040C'],
   Z: ['#4A5040', '#181B12'],
+  E: ['#7A2C00', '#2A0E00'],
 };
 
 /** グレードの色（枠・文字）・暗い側（影）・rgb */
@@ -39,6 +42,7 @@ export const GRADE_COLOR: Record<ToastGrade, { c: string; d: string; rgb: string
   P: { c: '#D08BFF', d: '#1C1236', rgb: '208,139,255', en: 'PLATINUM', pt: 20 },
   F: { c: '#FF5A6E', d: '#7A0C24', rgb: '255,90,110', en: 'FIRST', pt: 12 },
   Z: { c: '#A9B09A', d: '#2E3326', rgb: '169,176,154', en: 'OOPS', pt: 0 },
+  E: { c: '#FF9A1F', d: '#7A2C00', rgb: '255,154,31', en: 'EVENT', pt: 0 },
 };
 
 /** クロームの文字（見出し）: 52% で切れる縦グラデ */
@@ -50,6 +54,9 @@ export const CHROME = {
   G: ch('#FFFFFF', '#FFF4C2', '#FFD84A', '#C9790A', '#E09A1E', '#FFE38A'),
   F: ch('#FFFFFF', '#FFD6DC', '#FF5A6E', '#7A0C24', '#B3203E', '#FFB0BC'),
   Z: ch('#FFFFFF', '#E4E8D8', '#A9B09A', '#4C523F', '#6E7560', '#C7CDB5'),
+  /** EVENT（ハロウィンの橙）・TICKET GET!（紫）*/
+  E: ch('#FFFFFF', '#FFE6C2', '#FF9A1F', '#B8480A', '#FF9A1F', '#FFC872'),
+  evPurple: ch('#FFFFFF', '#F1E6FF', '#C9A2FF', '#5A2E9A', '#8A4FE0', '#E6D2FF'),
   /** プラチナの面（LV.30 の見出し・数字）*/
   P30: ch('#FFFFFF', '#D9FFF6', '#4FC3FF', '#6A2FB0', '#B05BD6', '#FFB8E6'),
   aqua: ch('#FFFFFF', '#B6FFEF', '#2DF4C6', '#0E9C9A', '#17B5A8', '#9BEBFF'),
@@ -63,6 +70,8 @@ export const PRISM = 'linear-gradient(90deg,#2DF4C6 0 20%,#4FC3FF 20% 40%,#D08BF
 export const LV30_BAND = 'linear-gradient(90deg,#D9FFF6 0 25%,#4FC3FF 25% 50%,#B05BD6 50% 75%,#FFB8E6 75%)';
 
 const gid = (g: ToastGrade) => g.toLowerCase();
+/** EVENT トロフィーの絵（今はハロウィンだけ。次のイベントの杯は TrophyItem の id で分ける）*/
+export const EVENT_TROPHY_IMG = '/tree/brand/ev/icon_trophy_ev_halloween.svg';
 
 /** グラデの定義（画面に 1 つ）*/
 export function TrophySprite() {
@@ -116,6 +125,20 @@ export function TrophyIcon({
   style?: CSSProperties;
   className?: string;
 }) {
+  // EVENT トロフィーは素材の絵（かぼちゃの杯・外に月と星）。4px ドットなので pixelated
+  if (grade === 'E') {
+    return (
+      <img
+        src={EVENT_TROPHY_IMG}
+        alt=""
+        aria-hidden="true"
+        width={size}
+        height={size}
+        className={className}
+        style={{ display: 'block', objectFit: 'contain', imageRendering: 'pixelated', ...style }}
+      />
+    );
+  }
   const k = gid(grade);
   const z = grade === 'Z';
   const d = z ? PATH_Z : PATH;

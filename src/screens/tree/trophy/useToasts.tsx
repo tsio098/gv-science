@@ -17,6 +17,10 @@ export function sfxFor(t: ToastItem): SfxName {
       return t.grade === 'F' ? 'firstSelf' : t.grade === 'P' ? 'platinum' : t.grade === 'G' ? 'gold' : t.grade === 'S' ? 'silver' : t.grade === 'Z' ? 'oops' : 'bronze';
     case 'level30':
       return 'level30';
+    case 'evClear':
+      return 'evClear';
+    case 'evTicket':
+      return 'evTicket';
     case 'node':
     case 'master':
       return 'node';
@@ -53,14 +57,17 @@ export function useToasts({
   onShown,
   onOpenTrophy,
   onOpenTickets,
+  onOpenEvent,
 }: {
   paused: boolean;
   /** 表示を始めた（畳んで出さない分も含む）*/
   onShown?: (items: ToastItem[]) => void;
   /** トロフィーの通知をタップ（次が無いとき）→ 詳細 */
   onOpenTrophy?: (t: { subject: string; id: string }) => void;
-  /** LEVEL 30 の通知をタップ → チケット画面 */
+  /** LEVEL 30・TICKET GET! の通知をタップ → チケット画面 */
   onOpenTickets?: () => void;
+  /** EVENT CLEAR!! の通知をタップ → その科目のイベント画面（100% 達成）*/
+  onOpenEvent?: (subject: string) => void;
 }) {
   const [queue, setQueue] = useState<ToastItem[]>([]);
   const [cur, setCur] = useState<(ToastPick & { n: number }) | null>(null);
@@ -68,8 +75,8 @@ export function useToasts({
   const shown = useRef(new Set<string>());
   const seq = useRef(0);
   const wide = useWideToast();
-  const cb = useRef({ onShown, onOpenTrophy, onOpenTickets });
-  cb.current = { onShown, onOpenTrophy, onOpenTickets };
+  const cb = useRef({ onShown, onOpenTrophy, onOpenTickets, onOpenEvent });
+  cb.current = { onShown, onOpenTrophy, onOpenTickets, onOpenEvent };
 
   const push = useCallback((items: ToastItem[]) => {
     if (!items.length) return;
@@ -122,7 +129,8 @@ export function useToasts({
 
   const tap = useCallback(() => {
     if (!cur || out) return;
-    if (!cur.peek && cur.item.trophy) cb.current.onOpenTrophy?.(cur.item.trophy);
+    if (cur.item.kind === 'evClear' && cur.item.ev) cb.current.onOpenEvent?.(cur.item.ev.subject);
+    else if (!cur.peek && cur.item.trophy) cb.current.onOpenTrophy?.(cur.item.trophy);
     else if (cur.item.ticket) cb.current.onOpenTickets?.();
     close();
   }, [cur, out, close]);

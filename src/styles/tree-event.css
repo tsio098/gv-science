@@ -1,0 +1,979 @@
+/* ============================================================
+   ANCHOR TREE — 季節イベント（ハロウィンチャレンジ・2026-10-20・季節イベントのボード E01〜E05・Tickets・獲得の演出と効果音）
+   配色は実装手順 §0-3（.is-ev-halloween の変数）。部品はトロフィー画面と同じドットの角・走査線・クローム・DotGothic16 / Press Start 2P。
+   - clip-path の要素に box-shadow を付けない（切れる）→ 押し出し・発光は外側の要素の filter: drop-shadow
+   - クロームは background-image（background の一括指定は使わない。clip が消えて四角になる環境がある）
+   - LIFF WebView ではアニメーションが止まることがある → 基底（animation なし）が最後の状態・steps() のコマ送りだけ
+   ============================================================ */
+
+/* ── 共通の部品 ── */
+.ev-arc {
+  font-family: 'Press Start 2P', 'DotGothic16', monospace;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.ev-dot {
+  font-family: 'DotGothic16', 'Hiragino Sans', var(--f-jp), sans-serif;
+  font-weight: 400;
+  font-synthesis: none;
+}
+.ev-chrome {
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  background-image: linear-gradient(180deg, #ffffff 0%, #ffe6c2 30%, #ff9a1f 52%, #b8480a 52%, #ff9a1f 74%, #ffc872 100%);
+  filter: drop-shadow(2px 2px 0 #140600);
+}
+.ev-chrome.is-gold {
+  background-image: linear-gradient(180deg, #ffffff 0%, #fff6c0 30%, #ffdd33 52%, #b88a00 52%, #d9a800 74%, #ffee99 100%);
+  filter: drop-shadow(3px 3px 0 #140600);
+}
+.ev-chrome.is-aqua {
+  background-image: linear-gradient(180deg, #ffffff 0%, #b6ffef 30%, #2df4c6 52%, #0e9c9a 52%, #17b5a8 72%, #9bebff 100%);
+  filter: drop-shadow(1px 1px 0 #021014);
+}
+.ev-px {
+  clip-path: polygon(8px 0, calc(100% - 8px) 0, calc(100% - 8px) 4px, calc(100% - 4px) 4px, calc(100% - 4px) 8px, 100% 8px, 100% calc(100% - 8px), calc(100% - 4px) calc(100% - 8px), calc(100% - 4px) calc(100% - 4px), calc(100% - 8px) calc(100% - 4px), calc(100% - 8px) 100%, 8px 100%, 8px calc(100% - 4px), 4px calc(100% - 4px), 4px calc(100% - 8px), 0 calc(100% - 8px), 0 8px, 4px 8px, 4px 4px, 8px 4px);
+}
+.ev-px2 {
+  clip-path: polygon(4px 0, calc(100% - 4px) 0, calc(100% - 4px) 2px, calc(100% - 2px) 2px, calc(100% - 2px) 4px, 100% 4px, 100% calc(100% - 4px), calc(100% - 2px) calc(100% - 4px), calc(100% - 2px) calc(100% - 2px), calc(100% - 4px) calc(100% - 2px), calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 2px), 2px calc(100% - 2px), 2px calc(100% - 4px), 0 calc(100% - 4px), 0 4px, 2px 4px, 2px 2px, 4px 2px);
+}
+/* 分野の立方体と同じ角（4px を 2px 刻み 2 段）*/
+.ev-pxc {
+  clip-path: polygon(4px 0, calc(100% - 4px) 0, calc(100% - 4px) 2px, calc(100% - 2px) 2px, calc(100% - 2px) 4px, 100% 4px, 100% calc(100% - 4px), calc(100% - 2px) calc(100% - 4px), calc(100% - 2px) calc(100% - 2px), calc(100% - 4px) calc(100% - 2px), calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 2px), 2px calc(100% - 2px), 2px calc(100% - 4px), 0 calc(100% - 4px), 0 4px, 2px 4px, 2px 2px, 4px 2px);
+}
+.ev-scan {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.25) 0 1px, rgba(0, 0, 0, 0) 1px 3px);
+  opacity: 0.5;
+}
+
+/* ── 配色（§0-3）── */
+.is-ev-halloween {
+  --ev-bg: linear-gradient(180deg, #3a1a5a 0%, #1e0c36 45%, #0a0418 100%);
+  --ev-card: linear-gradient(180deg, #2e1650, #140828);
+  --ev-main: #ff9a1f;
+  --ev-main-rgb: 255, 154, 31;
+  --ev-on: #1a0800;
+  --ev-side: #7a2c00;
+  --ev-text: #fff1e0;
+  --ev-sub: #cdb4e8;
+  --ev-accent: #c9a2ff;
+  --ev-well: #241040;
+  --ev-foot: rgba(10, 4, 24, 0.9);
+}
+
+/* ── 画面（E02〜E04）── */
+.tr-root.ev-screen {
+  background: var(--ev-bg);
+  background-color: #0a0418;
+  color: var(--ev-text);
+  font-family: 'DotGothic16', 'Hiragino Sans', var(--f-jp), sans-serif;
+}
+.ev-moon {
+  position: absolute;
+  right: 26px;
+  top: calc(var(--tr-top) + 32px);
+  width: 68px;
+  height: 80px;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0 14px rgba(255, 233, 176, 0.35));
+  pointer-events: none;
+}
+.ev-star {
+  position: absolute;
+  margin-top: var(--tr-top);
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+.ev-head {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  max-width: 576px;
+  margin: 0 auto;
+  top: calc(var(--tr-top) + 2px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 2;
+}
+/* ドットの角の四角のボタン（外 = 文字色 30%・内 = 地）*/
+.ev-sqbtn {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: rgba(255, 241, 224, 0.3);
+  color: var(--ev-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.ev-sqbtn > span {
+  width: 40px;
+  height: 40px;
+  background: var(--ev-well);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ev-sqbtn.is-route {
+  background: rgba(234, 251, 255, 0.3);
+  color: #eafbff;
+}
+.ev-sqbtn.is-route > span {
+  background: #073e4b;
+}
+.ev-title {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.ev-title-img {
+  height: 22px;
+  width: auto;
+  display: block;
+  align-self: flex-start;
+}
+.ev-title-sub {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ev-sub);
+}
+.ev-body {
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* 広い画面（iPad）は中央に寄せる */
+  max-width: 600px;
+  margin: 0 auto;
+  top: calc(var(--tr-top) + 118px);
+  bottom: calc(96px + var(--tr-bottom));
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 18px 18px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 1;
+}
+.ev-msg {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #ffb38a;
+}
+.ev-shadow {
+  filter: drop-shadow(4px 4px 0 var(--ev-side)) drop-shadow(0 0 10px rgba(var(--ev-main-rgb), 0.3));
+  flex: none;
+}
+.ev-shadow.is-full {
+  filter: drop-shadow(4px 4px 0 var(--ev-side)) drop-shadow(0 0 14px rgba(var(--ev-main-rgb), 0.5));
+}
+.ev-shadow.is-test {
+  filter: drop-shadow(4px 4px 0 #6a5200) drop-shadow(0 0 12px rgba(255, 221, 51, 0.35));
+}
+.ev-shadow.is-aqua {
+  filter: drop-shadow(4px 4px 0 #0e9c9a) drop-shadow(0 0 10px rgba(45, 244, 198, 0.3));
+}
+.ev-frame {
+  padding: 3px;
+}
+.ev-card {
+  position: relative;
+  background: var(--ev-card);
+  overflow: hidden;
+}
+.ev-card.is-aqua {
+  background: linear-gradient(180deg, #0c4250, #062530);
+}
+.ev-master {
+  padding: 12px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ev-master-top {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+}
+.ev-master-pct {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.ev-big {
+  font-size: 30px;
+  line-height: 1;
+}
+.ev-clear-img {
+  height: 30px;
+  width: auto;
+  display: block;
+  margin-left: auto;
+  transform: rotate(-6deg);
+}
+.ev-master-days {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding-bottom: 2px;
+  min-width: 0;
+}
+.ev-days-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--ev-sub);
+}
+.ev-bar {
+  height: 8px;
+  background: rgba(255, 241, 224, 0.1);
+}
+.ev-bar > span {
+  display: block;
+  height: 100%;
+  background: repeating-linear-gradient(90deg, var(--ev-main) 0 6px, rgba(0, 0, 0, 0) 6px 8px);
+}
+.ev-master-grid {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.ev-side {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding-top: 2px;
+  min-width: 0;
+}
+/* 70 マス: 定着 = 主色（上 25% は明るい色）+ 側面 2px／正解済み = 下半分だけ主色／要復習 = 2px の枠だけ（中は空）／未着手 = 10% */
+.ev-cells {
+  --ev-cell: 20px;
+  display: grid;
+  grid-template-columns: repeat(10, var(--ev-cell));
+  gap: 3px;
+  flex: none;
+}
+.ev-cells > .ev-cell {
+  width: var(--ev-cell);
+  height: var(--ev-cell);
+}
+@media (max-width: 389px) {
+  .ev-cells {
+    --ev-cell: 18px;
+  }
+}
+.ev-cell {
+  display: block;
+  box-sizing: border-box;
+  flex: none;
+}
+.ev-cell.s3 {
+  background: linear-gradient(180deg, #ffe6c2 0 25%, var(--ev-main) 25%);
+  box-shadow: 2px 2px 0 var(--ev-side);
+}
+.ev-cell.s2 {
+  background: linear-gradient(0deg, var(--ev-main) 0 50%, rgba(255, 241, 224, 0.1) 50%);
+}
+.ev-cell.s1 {
+  border: 2px solid #ffb38a;
+  background: transparent;
+}
+.ev-cell.s0 {
+  background: rgba(255, 241, 224, 0.1);
+}
+.ev-legend {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.ev-label {
+  font-size: 8px;
+  color: var(--ev-main);
+  margin-top: 2px;
+}
+.ev-rewards {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.ev-reward-frame {
+  display: block;
+  padding: 2px;
+  border: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: default;
+}
+button.ev-reward-frame {
+  cursor: pointer;
+}
+.ev-reward {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 7px 10px 7px 7px;
+  background: rgba(20, 8, 40, 0.92);
+}
+.ev-reward.is-got {
+  background: linear-gradient(180deg, #3a1a5a, #1e0c36);
+}
+.ev-reward-well {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  background: #1e0c36;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.ev-reward.is-got .ev-reward-well {
+  background: radial-gradient(circle, rgba(255, 154, 31, 0.35), #140828 72%);
+}
+.ev-reward-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.ev-reward-name {
+  font-size: 14px;
+  color: var(--ev-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ev-reward.is-got .ev-reward-name {
+  color: #ffffff;
+  text-shadow: 1px 1px 0 #140600;
+}
+.ev-reward-cond {
+  font-size: 11px;
+  color: var(--ev-sub);
+}
+.ev-reward-st {
+  flex: none;
+  padding: 5px 6px;
+  font-size: 7px;
+  background: rgba(255, 241, 224, 0.14);
+  color: var(--ev-sub);
+}
+.ev-reward-st.is-got {
+  background: var(--ev-main);
+  color: var(--ev-on);
+}
+.ev-reward-st.is-test {
+  background: #ffdd33;
+  color: #0c0a00;
+}
+.ev-note-frame {
+  padding: 2px;
+  background: rgba(255, 241, 224, 0.28);
+}
+.ev-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  background: rgba(10, 4, 24, 0.85);
+}
+
+/* 下のボタン（主 = 主色の塗り ＋ 押し出し・副 = 枠だけ）*/
+.ev-foot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 14px 16px calc(20px + var(--tr-bottom));
+  background: var(--ev-foot);
+  border-top: 2px solid rgba(var(--ev-main-rgb), 0.3);
+  z-index: 3;
+}
+.ev-foot > * {
+  max-width: 568px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.ev-foot.is-aqua {
+  background: rgba(4, 40, 48, 0.92);
+  border-top-color: rgba(45, 244, 198, 0.3);
+}
+.ev-cta-wrap {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  filter: drop-shadow(4px 4px 0 var(--ev-side)) drop-shadow(0 0 10px rgba(var(--ev-main-rgb), 0.5));
+}
+.ev-cta-wrap.is-test {
+  filter: drop-shadow(4px 4px 0 #6a5200) drop-shadow(0 0 10px rgba(255, 221, 51, 0.5));
+}
+.ev-cta-wrap.is-aqua {
+  filter: drop-shadow(4px 4px 0 #0e9c9a) drop-shadow(0 0 10px rgba(45, 244, 198, 0.45));
+}
+.ev-cta-wrap:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.ev-cta {
+  height: 52px;
+  background: var(--ev-main);
+  color: var(--ev-on);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.ev-cta.is-test {
+  background: #ffdd33;
+  color: #0c0a00;
+  flex-direction: column;
+  gap: 4px;
+}
+.ev-cta.is-aqua {
+  background: #2df4c6;
+  color: #04302b;
+}
+.ev-ghost-wrap {
+  display: block;
+  padding: 2px;
+  border: 0;
+  background: rgba(var(--ev-main-rgb), 0.5);
+  cursor: pointer;
+}
+.ev-ghost-wrap:disabled {
+  opacity: 0.55;
+}
+.ev-ghost {
+  height: 48px;
+  background: var(--ev-well);
+  color: var(--ev-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ev-cta-wrap:active .ev-cta,
+.ev-ghost-wrap:active .ev-ghost {
+  transform: translate(2px, 2px);
+}
+
+/* ── テストの結果（E04）── */
+.ev-rays {
+  position: absolute;
+  left: -60px;
+  right: -60px;
+  top: 250px;
+  height: 420px;
+  background: repeating-conic-gradient(from 0deg at 50% 50%, rgba(255, 154, 31, 0.12) 0deg 8deg, rgba(255, 154, 31, 0) 8deg 16deg);
+  -webkit-mask-image: radial-gradient(circle, #000 20%, transparent 65%);
+  mask-image: radial-gradient(circle, #000 20%, transparent 65%);
+  pointer-events: none;
+}
+.ev-result-head {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: calc(var(--tr-top) + 8px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+.ev-result .ev-body {
+  top: calc(var(--tr-top) + 58px);
+}
+.ev-pass {
+  padding: 6px 8px;
+  font-size: 10px;
+  background: #ffdd33;
+  color: #0c0a00;
+  transform: rotate(-4deg);
+}
+.ev-pass.is-miss {
+  background: #ffb38a;
+  color: #1a0800;
+}
+.ev-testbar {
+  position: relative;
+  height: 12px;
+  background: rgba(255, 241, 224, 0.1);
+}
+.ev-testbar > span {
+  display: block;
+  height: 100%;
+  background: repeating-linear-gradient(90deg, #ffdd33 0 6px, rgba(0, 0, 0, 0) 6px 8px);
+}
+.ev-testbar > i {
+  position: absolute;
+  top: -5px;
+  bottom: -5px;
+  width: 2px;
+  background: #ffffff;
+}
+/* チケット（E04 の縦向き・角丸のチケット。Tickets のボードと同じ橙 → 紫の枠）*/
+.ev-ticket {
+  position: relative;
+  align-self: center;
+  width: min(298px, 100%);
+  height: 400px;
+  flex: none;
+  transform: rotate(-2deg);
+  margin: 6px 0 2px;
+}
+.ev-ticket-in {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  border-radius: 22px;
+  border: 3px solid transparent;
+  background: linear-gradient(160deg, #3a1a5a 0%, #1e0c36 60%, #0a0418 100%) padding-box,
+    linear-gradient(160deg, #ff9a1f 0%, #ffc872 35%, #c9a2ff 70%, #8a4fe0 100%) border-box;
+  box-shadow: 0 0 30px rgba(255, 154, 31, 0.45);
+  overflow: hidden;
+}
+.ev-ticket-main {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 300px;
+  box-sizing: border-box;
+  padding: 18px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+}
+.ev-ticket-cut {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  top: 300px;
+  border-top: 2px dashed rgba(255, 200, 114, 0.6);
+}
+.ev-ticket-stub {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 302px;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.ev-ticket-notch {
+  position: absolute;
+  top: 285px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #160a2a;
+  box-sizing: border-box;
+}
+.ev-ticket-notch.a {
+  left: -19px;
+  border: 3px solid #ff9a1f;
+}
+.ev-ticket-notch.b {
+  right: -19px;
+  border: 3px solid #c9a2ff;
+}
+
+/* 「10/31 のみ使用可能」の札（外枠 2px 橙 → 紫・角丸 7px・中は紫の地）*/
+.ev-daytag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ev-daytag-frame {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 7px;
+  background: linear-gradient(90deg, #ff9a1f 0%, #ffc872 45%, #c9a2ff 100%);
+  box-shadow: 0 0 12px rgba(255, 154, 31, 0.4);
+}
+.ev-daytag-in {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px 4px 7px;
+  border-radius: 5px;
+  background: linear-gradient(180deg, #3a1a5a, #140828);
+}
+.ev-daytag-date {
+  font-size: 9px;
+  line-height: 1;
+  filter: drop-shadow(1px 1px 0 #140600);
+}
+.ev-daytag-txt {
+  font-size: 11px;
+  line-height: 1;
+  color: #ffe6c2;
+}
+
+/* ── 着せ替え（E05・ROUTE の色）── */
+.tr-root.ev-dress {
+  color: #eafbff;
+  font-family: 'DotGothic16', 'Hiragino Sans', var(--f-jp), sans-serif;
+}
+.ev-dress-glow {
+  position: absolute;
+  left: -40px;
+  right: -40px;
+  top: -40px;
+  height: 220px;
+  background: radial-gradient(ellipse 60% 70% at 50% 0%, rgba(120, 255, 235, 0.2), rgba(120, 255, 235, 0) 70%);
+  pointer-events: none;
+}
+.ev-dress .ev-body {
+  top: calc(var(--tr-top) + 60px);
+  gap: 14px;
+}
+.ev-dress-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+.ev-tile {
+  padding: 2px;
+  border: 0;
+  cursor: pointer;
+  background: rgba(234, 251, 255, 0.35);
+}
+.ev-tile.is-sel {
+  background: #2df4c6;
+}
+.ev-tile.is-lock {
+  background: rgba(234, 251, 255, 0.18);
+  cursor: default;
+}
+.ev-tile-in {
+  position: relative;
+  height: 84px;
+  background: rgba(4, 40, 48, 0.92);
+  color: #8ed4e0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.ev-tile.is-sel .ev-tile-in {
+  background: linear-gradient(180deg, #0c4250, #062530);
+  color: #eafbff;
+}
+.ev-tile.is-lock .ev-tile-in {
+  background: rgba(2, 16, 22, 0.8);
+}
+.ev-tile-ok {
+  position: absolute;
+  right: 3px;
+  top: 3px;
+  font-size: 7px;
+  padding: 2px 3px;
+  background: #2df4c6;
+  color: #04302b;
+}
+
+/* ── ツリーのイベントノード（E01・Nodes。ツリーでは 66px の立方体）── */
+.ev-node {
+  position: absolute;
+  width: 124px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: #eafbff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  z-index: 6;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+div.ev-node {
+  cursor: default;
+}
+.ev-node-cube {
+  position: relative;
+  width: 66px;
+  height: 66px;
+}
+.ev-node-edge {
+  width: 66px;
+  height: 66px;
+  box-sizing: border-box;
+  padding: 1.5px;
+}
+.ev-node-face {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ev-node-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+.ev-node-icon {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  display: block;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.ev-node-badge {
+  position: absolute;
+  left: 70px;
+  top: -8px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
+  border-radius: 9px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  font-size: 7px;
+  background: #ff9a1f;
+  color: #1a0800;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.ev-node-badge.is-soon,
+.ev-node-badge.is-lock {
+  background: rgba(234, 251, 255, 0.3);
+  color: #eafbff;
+}
+.ev-node-badge.is-open {
+  background: #ff7a45;
+  color: #140a05;
+}
+.ev-node-badge.is-test {
+  background: #ffffff;
+  color: #021014;
+}
+.ev-node-badge.is-prog,
+.ev-node-badge.is-clear {
+  box-shadow: 0 0 10px rgba(255, 154, 31, 0.6);
+}
+.ev-node-pips {
+  display: flex;
+  gap: 2px;
+  margin-top: 6px;
+}
+.ev-node-pips > span {
+  width: 7px;
+  height: 5px;
+}
+.ev-node-text {
+  width: 88px;
+  height: auto;
+  display: block;
+  margin-top: 2px;
+}
+.ev-node-days {
+  font-size: 11px;
+  margin-top: -2px;
+  text-shadow: 1px 1px 0 #021014;
+}
+.ev-node.nd:active .ev-node-cube {
+  transform: scale(0.92);
+}
+
+/* 「…」メニューの見出し（選んでいる錨）*/
+.tr-menu > .tr-menu-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 8px;
+  color: var(--tr-accent);
+  font-family: 'Press Start 2P', monospace;
+  border-bottom: 1px solid rgba(var(--tr-text-rgb), 0.12);
+  margin-bottom: 2px;
+}
+
+/* ── 通知（EVENT CLEAR!! / TICKET GET!）の動き（トロフィーの通知の部品に足す分）── */
+@keyframes evGhost { 0% { transform: translate(-26px, 14px); opacity: 0 } 30% { opacity: 0.9 } 100% { transform: none; opacity: 1 } }
+@keyframes evBob { 0% { transform: translateY(0) } 50% { transform: translateY(-3px) } 100% { transform: translateY(0) } }
+@keyframes evSlide { 0% { transform: translateX(-48px) rotate(-14deg); opacity: 0 } 20% { opacity: 1 } 70% { transform: translateX(3px) rotate(2deg) } 100% { transform: rotate(-6deg) } }
+@keyframes evFill { from { width: 0 } to { width: 100% } }
+.tt-toast.is-ev .tt-pop { animation: ttDrop 0.4s steps(5) 0.62s backwards; }
+.tt-toast.is-ev .tt-burst { animation: ttBurst 0.42s steps(6) 1.12s both; }
+.tt-toast.is-ev .tt-blink { animation: ttType 0.4s steps(10) 1s backwards, ttBlink 0.4s steps(1) 1.4s 4; }
+.tt-toast.is-ev .tt-timer { animation: ttTimer 6s steps(12) 0.7s both; }
+.tt-toast.is-ev .tt-spark { animation: ttSpark 0.5s steps(1) 1.3s 6 both; }
+.tt-toast.is-ev .tt-stamp { animation: ttStamp 0.4s steps(6) 1.14s backwards; }
+.ev-tslot .tt-l30bar > .ev-fill {
+  background: repeating-linear-gradient(90deg, #ff9a1f 0 6px, rgba(0, 0, 0, 0) 6px 8px, #ffc872 8px 14px, rgba(0, 0, 0, 0) 14px 16px);
+  animation: evFill 0.4s steps(8) 0.72s backwards;
+}
+.ev-stamp {
+  background: #ff9a1f;
+  color: #1a0800;
+  box-shadow: 3px 3px 0 #7a2c00, 0 0 12px rgba(255, 154, 31, 0.75);
+}
+.ev-stamp.is-ticket {
+  background: #c9a2ff;
+  color: #1a0830;
+  font-size: 9px;
+  box-shadow: 3px 3px 0 #5a2e9a, 0 0 12px rgba(201, 162, 255, 0.75);
+}
+.ev-tghost {
+  position: absolute;
+  right: -24px;
+  bottom: -20px;
+  display: block;
+  pointer-events: none;
+  animation: evGhost 0.4s steps(6) 1.2s backwards;
+}
+.ev-tghost > img {
+  width: 32px;
+  height: auto;
+  display: block;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0 6px rgba(201, 162, 255, 0.7));
+  animation: evBob 0.6s steps(2) 1.6s 3;
+}
+.ev-tk-mini {
+  position: relative;
+  width: 40px;
+  height: 28px;
+  box-sizing: border-box;
+  border-radius: 5px;
+  border: 2px solid #ff9a1f;
+  background: linear-gradient(160deg, #3a1a5a, #140828);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-left: 3px;
+  transform: rotate(-6deg);
+}
+.ev-tk-mini > i {
+  position: absolute;
+  right: 8px;
+  top: 2px;
+  bottom: 2px;
+  border-left: 2px dashed rgba(255, 200, 114, 0.7);
+}
+.ev-slide {
+  animation: evSlide 0.36s steps(6) 0.62s backwards;
+}
+.tt-slot.is-done .ev-tghost,
+.tt-slot.is-done .ev-tghost > img,
+.tt-slot.is-done .ev-slide,
+.tt-slot.is-done .ev-fill {
+  animation: none !important;
+}
+
+/* ── イベントのチケット（チケット画面・Tickets のボード）── */
+.tk.is-event {
+  --tk-gold: #ff9a1f;
+  --tk-perf: rgba(255, 200, 114, 0.6);
+  --tk-notch-bg: #0e0520;
+  --tk-notch-line: #ff9a1f;
+  --tk-notch-line2: #c9a2ff;
+  --tk-arrow: #ff9a1f;
+  color: #fff1e0;
+}
+.tk.is-event .tk-face {
+  background: linear-gradient(160deg, #3a1a5a 0%, #1e0c36 60%, #0a0418 100%);
+}
+.tk.is-event .tk-stub .tk-face {
+  background: linear-gradient(160deg, #2e1650 0%, #0a0418 100%);
+}
+.tk.is-event:not(.is-premium) .tk-main .tk-face {
+  box-shadow: 0 0 24px rgba(255, 154, 31, 0.35);
+}
+.tk.is-event .tk-bonus {
+  color: #ff9a1f;
+}
+.tk.is-event .tk-who,
+.tk.is-event .tk-show,
+.tk.is-event .tk-swipe {
+  color: #cdb4e8;
+}
+.tk.is-event .tk-crown {
+  width: 64px;
+  image-rendering: pixelated;
+}
+.tk--v.is-event .tk-crown {
+  width: 78px;
+}
+.tk.is-event .tk-champion {
+  width: 190px;
+}
+.tk.is-event .tk-evline {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  color: #c9a2ff;
+}
+.tk.is-event .tk-daytag {
+  margin-top: 4px;
+}
+/* 使える日の前・期限切れは半券を出さないので、本体の角を丸め、点線をやめる */
+.tk--v.is-event.no-stub .tk-main .tk-face {
+  border-radius: 22px;
+  border-bottom-style: solid;
+}
+.tk--h.is-event.no-stub .tk-main .tk-face {
+  border-radius: 20px;
+  border-right-style: solid;
+}
+.tk--v.is-event.no-stub {
+  height: auto;
+  min-height: 392px;
+}
+.tk.is-event.is-used .tk-main .tk-face,
+.tk.is-event.is-expired .tk-main .tk-face {
+  border-color: #5a4a72;
+}
+.tk.is-event.is-expired .tk-face {
+  filter: grayscale(0.7) brightness(0.7);
+}
+.tk-expired {
+  position: absolute;
+  right: 18px;
+  top: 18px;
+  padding: 5px 7px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  color: #ffffff;
+  background: rgba(255, 241, 224, 0.25);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ev-tghost,
+  .ev-tghost > img,
+  .ev-slide,
+  .ev-fill {
+    animation: none !important;
+  }
+}

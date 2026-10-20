@@ -8,13 +8,18 @@
  * 使い方: 先生の前で半券（横向きは右端・縦向きは下端の点線から先）を横へスワイプして切り取る →
  * 半券の幅の 60% を超えて離したらサーバに使用を記録（1 回だけ）→ 半券が飛んでいき、以後はギザギザの切り口・グレー・USED。
  * 途中で離した・通信に失敗したら半券は元に戻る。使用済み（409 TICKET_USED）なら使用済みの表示にする。
+ * 季節イベントのチケット（kind = 'event'・2026-10-20・季節イベントのボード Tickets）: ハロウィンの配色・「{科目} CLEAR」・MASTER 100% · TEST n%。
+ * 使える日（usableFrom〜usableUntil・ハロウィンは 10/31 だけ）より前は半券を出さず「10/31 のみ使用可能」の札、過ぎたら期限切れ（判定は Proxy の時刻）
  */
 import { useEffect, useRef, useState } from 'react';
 import type { TreeTicket } from '../../lib/treeApi';
 import { TreeApiError, gradeLabel, redeemTreeTicket } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
 import { rootClass } from './treeTheme';
+import { EV_ASSET } from './event/evTheme';
+import { EvDayTag } from './event/EvParts';
 import '../../styles/tree-ticket.css';
+import '../../styles/tree-event.css';
 
 const BRAND = '/tree/brand/';
 /** 半券をこれ以上引いて離したら切り取る（半券の幅に対する割合）*/
@@ -54,11 +59,17 @@ export function ArenaTicketScreen({ tickets, subjectName, onUsed, onBack, demo =
   // それ以外（総合優勝のチケットがある・混ざっている）はアリーナの画面
   const abyssOnly = tickets.length > 0 && tickets.every((t) => t.kind === 'abyss');
   const lvOnly = tickets.length > 0 && tickets.every((t) => t.kind === 'level30');
+  const evOnly = tickets.length > 0 && tickets.every((t) => t.kind === 'event');
   const subjects = [...new Set(tickets.map((t) => t.subject))];
   return (
-    <div className={rootClass('tk-screen') + (abyssOnly ? ' is-abyss' : lvOnly ? ' is-lv30' : ' is-arena')}>
+    <div className={rootClass('tk-screen') + (abyssOnly ? ' is-abyss' : lvOnly ? ' is-lv30' : evOnly ? ' is-arena is-evtk' : ' is-arena')}>
       <div className="tr-ar-head">
-        {lvOnly ? (
+        {evOnly ? (
+          <>
+            <img className="crown" src={EV_ASSET(tickets[0]!.eventKind ?? 'halloween').icon2x} alt="" style={{ width: 28, imageRendering: 'pixelated' }} />
+            <img className="logo" src={EV_ASSET(tickets[0]!.eventKind ?? 'halloween').text} alt={tickets[0]!.eventName ?? 'EVENT'} style={{ height: 18, width: 'auto' }} />
+          </>
+        ) : lvOnly ? (
           <>
             <img className="crown" src={BRAND + 'icon_trophy_platinum.svg'} alt="" style={{ width: 24 }} />
             <span className="tk-lv30-head">{subjects.length === 1 ? `${subjectName(subjects[0]!)} · TROPHY` : 'TROPHY'}</span>
@@ -85,8 +96,8 @@ export function ArenaTicketScreen({ tickets, subjectName, onUsed, onBack, demo =
             {(tickets.length > 1 || demo) && (
               <div className="tk-cap">
                 {demo
-                  ? t.kind === 'abyss' ? 'ABYSS（見本）' : t.kind === 'level30' ? 'LV.30（見本）' : t.premium ? 'プレミアム（見本）' : '通常（見本）'
-                  : `${subjectName(t.subject)} · ${t.kind === 'abyss' ? 'ABYSS' : t.kind === 'level30' ? 'LV.30' : '総合優勝'}`}
+                  ? t.kind === 'abyss' ? 'ABYSS（見本）' : t.kind === 'level30' ? 'LV.30（見本）' : t.kind === 'event' ? 'イベント（見本）' : t.premium ? 'プレミアム（見本）' : '通常（見本）'
+                  : `${subjectName(t.subject)} · ${t.kind === 'abyss' ? 'ABYSS' : t.kind === 'level30' ? 'LV.30' : t.kind === 'event' ? (t.eventName ?? 'EVENT') : '総合優勝'}`}
               </div>
             )}
             <Ticket ticket={t} wide={wide} onUsed={onUsed} demo={demo} subjectName={subjectName(t.subject)} />
@@ -163,9 +174,21 @@ function Ticket({ ticket, wide, onUsed, demo, subjectName }: { ticket: TreeTicke
   const used = phase === 'used';
   const abyss = ticket.kind === 'abyss';
   const lv30 = ticket.kind === 'level30';
+  const ev = ticket.kind === 'event';
   const premium = ticket.kind === 'grand' && ticket.premium;
   const [s1, s2] = ticket.pair ?? [];
-  const title = abyss ? `${subjectName} ABYSS 開放` : lv30 ? `${subjectName} トロフィーレベル 30 達成` : `SEASON ${s1?.n ?? ''}–${s2?.n ?? ''} 総合チャンピオン`;
+  const title = abyss
+    ? `${subjectName} ABYSS 開放`
+    : lv30
+      ? `${subjectName} トロフィーレベル 30 達成`
+      : ev
+        ? `${subjectName} CLEAR`
+        : `SEASON ${s1?.n ?? ''}–${s2?.n ?? ''} 総合チャンピオン`;
+  // 季節イベント: 使える日だけ半券を出す（表示は目安・使えるかは Proxy の時刻で決まる）
+  const now = Date.now();
+  const evEarly = ev && !used && ticket.usableFrom != null && now < ticket.usableFrom && !demo;
+  const evExpired = ev && !used && ticket.usableUntil != null && now >= ticket.usableUntil && !demo;
+  const evAsset = ev ? EV_ASSET(ticket.eventKind ?? 'halloween') : null;
   const who = `${gradeLabel(ticket.grade)} · ${ticket.nickname}`;
 
   const cut = async () => {
@@ -191,7 +214,11 @@ function Ticket({ ticket, wide, onUsed, demo, subjectName }: { ticket: TreeTicke
       setErr(
         code === 'TICKET_INVALID' || code === 'NO_TICKET'
           ? 'このチケットは使えません。'
-          : '通信できませんでした。もう一度切り取ってください。'
+          : code === 'TICKET_NOT_YET'
+            ? 'このチケットはまだ使えません（使える日だけ切り取れます）。'
+            : code === 'TICKET_EXPIRED'
+              ? 'このチケットは期限切れです。'
+              : '通信できませんでした。もう一度切り取ってください。'
       );
       setDx(0);
       setPhase('snap');
@@ -242,9 +269,9 @@ function Ticket({ ticket, wide, onUsed, demo, subjectName }: { ticket: TreeTicke
   return (
     <>
       <div
-        className={`tk ${wide ? 'tk--h' : 'tk--v'}${premium ? ' is-premium' : ''}${abyss ? ' is-abyss' : ''}${lv30 ? ' is-lv30' : ''}${used ? ' is-used' : ''}`}
+        className={`tk ${wide ? 'tk--h' : 'tk--v'}${premium ? ' is-premium' : ''}${abyss ? ' is-abyss' : ''}${lv30 ? ' is-lv30' : ''}${ev ? ' is-event' : ''}${ev && (evEarly || evExpired) ? ' no-stub' : ''}${used ? ' is-used' : ''}${evExpired ? ' is-expired' : ''}`}
         role="group"
-        aria-label={`${abyss ? 'ABYSS チケット' : lv30 ? 'LV.30 チケット' : 'ボーナスチケット'} ${title}${used ? '（使用済み）' : ''}`}
+        aria-label={`${abyss ? 'ABYSS チケット' : lv30 ? 'LV.30 チケット' : ev ? 'イベントのボーナスチケット' : 'ボーナスチケット'} ${title}${used ? '（使用済み）' : evExpired ? '（期限切れ）' : ''}`}
       >
         <div className="tk-main">
           <div className="tk-face">
@@ -253,12 +280,12 @@ function Ticket({ ticket, wide, onUsed, demo, subjectName }: { ticket: TreeTicke
             {lv30 && !used && <Sparks />}
             <div className="tk-content">
               <div className="tk-brand">
-                <img className="tk-crown" src={BRAND + (abyss ? 'icon_abyss.svg' : lv30 ? 'icon_trophy_platinum.svg' : 'icon_crown.svg')} alt="" />
+                <img className="tk-crown" src={evAsset ? evAsset.icon2x : BRAND + (abyss ? 'icon_abyss.svg' : lv30 ? 'icon_trophy_platinum.svg' : 'icon_crown.svg')} alt="" />
                 <div className="tk-words">
                   <img
                     className="tk-champion"
-                    src={BRAND + (abyss ? 'text_abyss.svg' : lv30 ? 'text_lv30.svg' : 'text_champion.svg')}
-                    alt={abyss ? 'ABYSS' : lv30 ? 'LV.30' : 'CHAMPION'}
+                    src={evAsset ? evAsset.text2 : BRAND + (abyss ? 'text_abyss.svg' : lv30 ? 'text_lv30.svg' : 'text_champion.svg')}
+                    alt={ev ? ticket.eventName ?? 'EVENT' : abyss ? 'ABYSS' : lv30 ? 'LV.30' : 'CHAMPION'}
                   />
                   {premium && <img className="tk-premium" src={BRAND + 'text_premium.svg'} alt="PREMIUM" />}
                   {!used && !(premium && wide) && <div className="tk-bonus">BONUS TICKET</div>}
@@ -266,14 +293,21 @@ function Ticket({ ticket, wide, onUsed, demo, subjectName }: { ticket: TreeTicke
               </div>
               {!used && premium && wide && <div className="tk-bonus">BONUS TICKET</div>}
               <div className="tk-title">{title}</div>
+              {ev && <div className="tk-evline">MASTER 100% · TEST {Math.round((ticket.testRate ?? 0) * 100)}%</div>}
               {lv30 && !used && <Pips />}
               <div className="tk-who">{who}</div>
               {!wide && !used && <div className="tk-show">先生へ提示してください</div>}
+              {ev && !used && !evExpired && ticket.usableFrom != null && (
+                <div className="tk-daytag">
+                  <EvDayTag from={ticket.usableFrom} />
+                </div>
+              )}
             </div>
             {wide && !used && <div className="tk-show">先生へ提示してください</div>}
+            {evExpired && <div className="tk-expired">EXPIRED</div>}
           </div>
         </div>
-        {!used && (
+        {!used && !evEarly && !evExpired && (
           <>
             <div
               ref={stub}

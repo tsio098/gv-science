@@ -6,6 +6,8 @@ LIFF の WebView では Google Fonts が遅い・出ないことがあるので�
   - PressStart2P-subset.woff2 … Latin（ASCII と ▲▼）だけ。見出し（TROPHY GET! など）用
   - DotGothic16-subset.woff2  … 今の subset（アリーナの数字）の字 ＋ トロフィー一覧の名前・条件・出典 ＋ 通知・一覧・詳細の文言
                                  ＋ 分野名 ＋ ASCII・ひらがな・カタカナ・記号。ニックネームの漢字など入っていない字は var(--f-jp) に落ちる
+                                 ＋（2026-10-20 レトロ寄りの見た目）画面全体の文言 = src/ 以下のすべての .ts / .tsx の字（新しい画面を足したら
+                                   もう一度実行すれば拾う）・カニの名前 729 種（gv-science-proxy/src/crabNames.js）
 
 元フォント（OFL）は google/fonts の ofl/dotgothic16・ofl/pressstart2p から取る。必要: pip install fonttools brotli
 使い方:
@@ -24,6 +26,7 @@ ROOT = os.path.dirname(HERE)
 FONTS = os.path.join(ROOT, 'public', 'fonts')
 DEFAULT_LIST = os.path.expanduser('~/Documents/Claude/Projects/大学リサーチ+app/vault/GV Science/進捗チェックツリー/トロフィー一覧.md')
 FIELDS = os.path.join(ROOT, '..', 'gv-science-proxy', 'tools', 'tree-content', 'fields')
+CRABS = os.path.join(ROOT, '..', 'gv-science-proxy', 'src', 'crabNames.js')
 
 RANGES = [
     (0x20, 0x7E),      # ASCII
@@ -80,11 +83,17 @@ def main():
     dot |= chars_of_files(glob.glob(os.path.join(ROOT, 'src', 'screens', 'tree', 'trophy', '*.ts*')))
     dot |= chars_of_files(glob.glob(os.path.join(ROOT, 'src', 'screens', 'tree', 'fx', 'FxLabScreen.tsx')))
     dot |= chars_of_files(glob.glob(os.path.join(FIELDS, '*.json')))
-    dot = {c for c in dot if c >= ' ' and not (0xD800 <= ord(c) <= 0xDFFF)}
+    # 画面全体（2026-10-20）: src/ 以下の全 .ts / .tsx（コメントの字も入るが、ふつうに使う字なので問題ない）・カニの名前
+    dot |= chars_of_files(glob.glob(os.path.join(ROOT, 'src', '**', '*.ts'), recursive=True))
+    dot |= chars_of_files(glob.glob(os.path.join(ROOT, 'src', '**', '*.tsx'), recursive=True))
+    dot |= chars_of_files([p for p in [CRABS] if os.path.exists(p)])
+    # 制御文字・サロゲート・絵文字や私用領域（フォントに無い）は除く
+    dot = {c for c in dot if c >= ' ' and not (0xD800 <= ord(c) <= 0xDFFF) and ord(c) < 0xE000}
     make(os.path.join(a.src, 'DotGothic16-Regular.ttf'), os.path.join(FONTS, 'DotGothic16-subset.woff2'), dot)
 
     # Press Start 2P（Latin だけ）
-    ps = {chr(c) for c in range(0x20, 0x7F)} | set('▲▼·▶')  # ▶ = LEVEL 30 の「TAP ▶」（2026-10-19）
+    # ▶ = LEVEL 30 の「TAP ▶」（2026-10-19）。レトロ寄りの見た目（2026-10-20）で数字・%・/・:・,・+・→ も Press Start 2P（→ は元フォントに無ければ落ちる）
+    ps = {chr(c) for c in range(0x20, 0x7F)} | set('▲▼·▶◀→×')
     make(os.path.join(a.src, 'PressStart2P-Regular.ttf'), os.path.join(FONTS, 'PressStart2P-subset.woff2'), ps)
 
 

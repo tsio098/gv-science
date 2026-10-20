@@ -1,7 +1,7 @@
 /**
  * ANCHOR TREE — 演出の確認（先生用アカウントだけ・2026-10-17 夕方 先生の依頼）。
  * 5 つの演出（＋総合優勝のプレミアム）を見本のデータで何度でも再生する。既読（/tree/events/seen）にはしない。
- * 通知（トロフィー・お知らせ）の確認（2026-10-19 先生の依頼）: 見本 21 種（2026-10-19 残念トロフィー 3・LEVEL 30 2 を追加）・効果音 ON/OFF・ゆっくり再生（1/4）・音だけ鳴らす。
+ * 通知（トロフィー・お知らせ）の確認（2026-10-19 先生の依頼）: 見本 25 種（2026-10-19 残念トロフィー 3・LEVEL 30 2・2026-10-20 季節イベント 4 を追加）・効果音 ON/OFF・ゆっくり再生（1/4）・音だけ鳴らす。
  * 実機（LINE 内ブラウザ・iPhone）でコマ送りと音を確かめるための画面。
  */
 import { useEffect, useRef, useState } from 'react';
@@ -10,7 +10,7 @@ import { setToastSpeed } from '../trophy/labSpeed';
 import { sfxFor } from '../trophy/useToasts';
 import type { ArenaSeason, TreeEvent, TrophyGet } from '../../../lib/treeApi';
 import type { ToastItem } from '../trophy/toastQueue';
-import { level30Toast, noticeToast, trophyToast } from '../trophy/toastItems';
+import { eventClearToast, eventTicketToast, level30Toast, noticeToast, trophyToast } from '../trophy/toastItems';
 import { Ico } from '../TreeIcons';
 import { rootClass } from '../treeTheme';
 import { FxScreen } from './FxScreen';
@@ -55,6 +55,10 @@ const SOUNDS: { name: SfxName; label: string }[] = [
   { name: 'progress', label: '80% に届いた' },
   { name: 'arena', label: 'アリーナ（最終日・順位）' },
   { name: 'teacher', label: '先生の記録' },
+  { name: 'oops', label: '残念トロフィー' },
+  { name: 'level30', label: 'LEVEL 30' },
+  { name: 'evClear', label: 'EVENT CLEAR!!' },
+  { name: 'evTicket', label: 'TICKET GET!' },
 ];
 const SOUND_LABEL = Object.fromEntries(SOUNDS.map((x) => [x.name, x.label])) as Record<SfxName, string>;
 
@@ -82,7 +86,8 @@ export function FxLabScreen({ grade, nickname, subject, subjectName, season, onT
   // 通知の見本（キーを毎回変えて何度でも出す。trophy / noticeKey を外して既読・詳細に行かない）
   const demo = (list: ToastItem[]) => {
     const n = ++demoN.current;
-    onToasts?.(list.map((t) => ({ ...t, key: `demo:${n}:${t.key}`, trophy: undefined, noticeKey: undefined })));
+    // 季節イベントの見本は科目を外す（EVENT CLEAR!! をタップしてもイベント画面へ行かない）
+    onToasts?.(list.map((t) => ({ ...t, key: `demo:${n}:${t.key}`, trophy: undefined, noticeKey: undefined, ...(t.ev ? { ev: { ...t.ev, subject: '' } } : {}) })));
   };
   const tg = (grade: TrophyGet['grade'], name: string, pt: number, note: string | null = null): ToastItem =>
     trophyToast({ subject, id: name, grade, name, pt, first: grade === 'F', desc: '', ...(grade === 'Z' ? { oops: true, note } : {}) }, subjectName);
@@ -116,6 +121,28 @@ export function FxLabScreen({ grade, nickname, subject, subjectName, season, onT
     { label: '残念トロフィー（正答率）', items: () => [tg('Z', '二度あることは三度ある', 0, '直近 3 セットの平均 27%')] },
     { label: 'LEVEL 30（タップでチケット）', items: () => [level30Toast({ subject }, subjectName)] },
     { label: 'トロフィー + 残念 + LEVEL 30（並び）', items: () => [level30Toast({ subject }, subjectName), tg('Z', 'ホメロスも居眠りする', 0), tg('G', '時は金なり', 6)] },
+    // 2026-10-20 季節イベント（ハロウィン）: EVENT CLEAR!!（初めての 100% = トロフィー ＋ アイコン / 2 科目目 = EVENT トロフィー）・TICKET GET!
+    {
+      label: 'EVENT CLEAR!!（初めて・トロフィー ＋ アイコン）',
+      items: () => [eventClearToast({ subject, id: 'ev_halloween', grade: 'E', name: '何か邪悪なものがやって来る', pt: 0, first: false, desc: '', event: true, firstIcon: true }, subjectName)],
+    },
+    {
+      label: 'EVENT CLEAR!!（2 科目目）',
+      items: () => [eventClearToast({ subject, id: 'ev_halloween', grade: 'E', name: '何か邪悪なものがやって来る', pt: 0, first: false, desc: '', event: true, firstIcon: false }, subjectName)],
+    },
+    {
+      label: 'TICKET GET!（10/31 のみ使用可能）',
+      items: () => [eventTicketToast({ subject, eventId: 'halloween-2026', usableFrom: Date.parse('2026-10-31T00:00:00+09:00'), kind: 'halloween' }, subjectName)],
+    },
+    {
+      label: 'トロフィー + LEVEL 30 + EVENT CLEAR!! + TICKET GET!（並び）',
+      items: () => [
+        eventTicketToast({ subject, eventId: 'halloween-2026', usableFrom: Date.parse('2026-10-31T00:00:00+09:00'), kind: 'halloween' }, subjectName),
+        eventClearToast({ subject, id: 'ev_halloween', grade: 'E', name: '何か邪悪なものがやって来る', pt: 0, first: false, desc: '', event: true, firstIcon: true }, subjectName),
+        level30Toast({ subject }, subjectName),
+        tg('G', '時は金なり', 6),
+      ],
+    },
   ];
 
   return (

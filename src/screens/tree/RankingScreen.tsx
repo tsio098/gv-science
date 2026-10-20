@@ -9,7 +9,7 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import type { ArenaRankWhich, ArenaSeason, QType, TreeManifest, TreeRanking, TreeStage } from '../../lib/treeApi';
 import { QTYPES, QTYPE_LABEL, fetchArenaRanking, fetchTreeRanking, gradeLabel } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
-import { ARENA_GOLD, CROWN_MONO, alpha, arenaPeriod, arenaSeasonName, fmtScore, fmtTime, groupColor, rootClass } from './treeTheme';
+import { ARENA_GOLD, CROWN_MONO, RETRO, alpha, arenaPeriod, arenaSeasonName, fmtScore, fmtTime, groupColor, rootClass } from './treeTheme';
 
 export type RankScope = 'subject' | 'field' | 'type' | 'arena';
 
@@ -44,6 +44,15 @@ const ARENA_PODIUM = [
   { top: '#E3A26A', side: '#8A5530', avatar: '#D08BFF', label: '#F0B98A' },
 ];
 const QTYPE_SHORT: Record<QType, string> = { tf: '正誤', calc: '計算', reason: '考察' };
+/**
+ * レトロ寄りの見た目（ボード R01・ROUTE / ABYSS のタブ）: 表彰台は 金 / 銀 / 銅 の枠 ＋ 押し出し ＋「1ST」のクローム。
+ * アリーナタブは順位「1位」のまま（A10r〜A12r）
+ */
+const RETRO_PODIUM = [
+  { edge: '#FFD84A', side: '#A88A14', glow: 'drop-shadow(0 0 12px rgba(255,216,74,.4))', chrome: 'linear-gradient(180deg,#FFFFFF 0%,#FFF4C2 30%,#FFD84A 52%,#A35A00 52%,#C9790A 72%,#FFE38A 100%)', en: '1ST' },
+  { edge: '#C9D3E6', side: '#6E7891', glow: '', chrome: 'linear-gradient(180deg,#FFFFFF 0%,#F4F7FF 30%,#C9D3E6 52%,#4A5470 52%,#6E7891 72%,#E6ECF8 100%)', en: '2ND' },
+  { edge: '#E3A26A', side: '#8A5530', glow: '', chrome: 'linear-gradient(180deg,#FFFFFF 0%,#FFE6CF 30%,#E3A26A 52%,#6B3514 52%,#9A5A2E 72%,#F5C79C 100%)', en: '3RD' },
+];
 
 export function RankingScreen({ manifest, stage = 'front', initial, arena = false, onBack }: Props) {
   const ready = useMemo(() => manifest.fields.filter((f) => f.total > 0), [manifest]);
@@ -152,15 +161,26 @@ export function RankingScreen({ manifest, stage = 'front', initial, arena = fals
     <div className={rootClass(isArena ? 'tr-rank is-arena' : 'tr-rank')}>
       <div className="tr-rank-head">
         <button type="button" className="tr-iconbtn" aria-label="戻る" onClick={onBack}>
-          <Ico id="i-back" size={20} />
+          <Ico id={RETRO ? 'i-px-back' : 'i-back'} size={RETRO ? 14 : 20} />
         </button>
-        <div className="tr-rank-title">
-          <span style={{ color: '#FFD84A', display: 'flex' }}>
-            <Ico id="i-trophy" size={20} />
-          </span>
-          <span>ランキング</span>
-          {stage === 'back' && <span className="ab-pill">ABYSS</span>}
-        </div>
+        {RETRO ? (
+          // ボード R01: 「RANKING」のクローム ＋「ランキング」
+          <div className="tr-rank-title is-retro">
+            <span className="tr-arc tr-chr tr-rank-en">RANKING</span>
+            <span className="tr-rank-ja">
+              ランキング
+              {stage === 'back' && <span className="ab-pill">ABYSS</span>}
+            </span>
+          </div>
+        ) : (
+          <div className="tr-rank-title">
+            <span style={{ color: '#FFD84A', display: 'flex' }}>
+              <Ico id="i-trophy" size={20} />
+            </span>
+            <span>ランキング</span>
+            {stage === 'back' && <span className="ab-pill">ABYSS</span>}
+          </div>
+        )}
       </div>
 
       <div className="tr-rank-body">
@@ -212,6 +232,7 @@ export function RankingScreen({ manifest, stage = 'front', initial, arena = fals
                         borderColor: groupColor(x.group),
                         color: groupColor(x.group),
                         boxShadow: `0 0 10px ${alpha(groupColor(x.group), 0.4)}`,
+                        ['--rf-chip' as string]: groupColor(x.group),
                       }
                     : undefined
                 }
@@ -278,16 +299,31 @@ export function RankingScreen({ manifest, stage = 'front', initial, arena = fals
                 const set = isArena ? ARENA_PODIUM : PODIUM;
                 const c = set[Math.min(p.rank, 3) - 1] ?? set[i]!;
                 const label = 'label' in c ? (c as (typeof ARENA_PODIUM)[number]).label : c.top;
+                const rp = RETRO_PODIUM[Math.min(p.rank, 3) - 1] ?? RETRO_PODIUM[i]!;
+                // レトロ: ROUTE / ABYSS は 金銀銅の枠と「1ST」・アリーナは今の色のまま枠だけドット
+                const edge = isArena ? c.top : rp.edge;
+                const pside = isArena ? c.side : rp.side;
                 return (
                   <div
                     key={i}
-                    className={`tr-podium-card${p.me ? ' is-me' : ''}${isArena && p.rank === 1 ? ' is-first' : ''}`}
-                    style={{ borderColor: c.top, boxShadow: `4px 4px 0 0 ${c.side}` }}
+                    className={`tr-podium-card${p.me ? ' is-me' : ''}${isArena && p.rank === 1 ? ' is-first' : ''} is-rk${Math.min(p.rank, 3)}`}
+                    style={{
+                      borderColor: c.top,
+                      boxShadow: `4px 4px 0 0 ${c.side}`,
+                      ['--pd-edge' as string]: edge,
+                      ['--pd-filter' as string]: `drop-shadow(4px 4px 0 ${pside})${isArena ? (p.rank === 1 ? ' drop-shadow(0 0 12px rgba(255,216,74,.3))' : '') : rp.glow ? ' ' + rp.glow : ''}`,
+                    }}
                   >
-                    <div className={`tr-num tr-podium-rank${champion(p) ? ' is-champ' : ''}`} style={{ color: label }}>
-                      {champion(p) && <img src={CROWN_MONO} alt="" className="tr-ar-chipcrown" />}
-                      {champion(p) ? 'チャンピオン' : `${p.rank}位`}
-                    </div>
+                    {RETRO && !isArena ? (
+                      <div className="tr-arc tr-chr tr-podium-en" style={{ backgroundImage: rp.chrome }}>
+                        {rp.en}
+                      </div>
+                    ) : (
+                      <div className={`tr-num tr-podium-rank${champion(p) ? ' is-champ' : ''}`} style={{ color: label }}>
+                        {champion(p) && <img src={CROWN_MONO} alt="" className="tr-ar-chipcrown" />}
+                        {champion(p) ? 'チャンピオン' : `${p.rank}位`}
+                      </div>
+                    )}
                     <div className="tr-avatar" style={{ background: c.avatar }}>
                       {[...p.nickname][0]}
                     </div>

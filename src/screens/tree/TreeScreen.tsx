@@ -10,7 +10,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePanZoom } from './usePanZoom';
-import type { ArenaInfo, QType, TreeManifest, TreeProgress, TreeStage } from '../../lib/treeApi';
+import type { ArenaInfo, QType, SeasonEventState, TreeManifest, TreeProgress, TreeStage } from '../../lib/treeApi';
 import { TREE_SUBJECT_ICON, TREE_SUBJECT_NAME, type TreeSubject } from '../../lib/treeSubject';
 import { QTYPES } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
@@ -34,7 +34,11 @@ import {
   groupColor,
   groupSide,
   rootClass,
+  RETRO,
+  BRAND,
 } from './treeTheme';
+import { EventNode, eventNodeState } from './event/EventNode';
+import { EV_ASSET, EV_HAS_ART } from './event/evTheme';
 
 interface Props {
   manifest: TreeManifest;
@@ -72,6 +76,12 @@ interface Props {
   /** チャンピオンアリーナ（設計書 §5.7）。ROUTE のツリーの一番下にノードを置く。古い Proxy では null */
   arena?: ArenaInfo | null;
   onArena?: () => void;
+  /** 季節イベント（2026-10-20）: ROUTE のツリーの一番上・根の分野の右にイベントノード。無い・古い Proxy は null */
+  seasonEvent?: SeasonEventState | null;
+  onEvent?: () => void;
+  /** 着せ替えの錨（「…」メニューの見出し）と、着せ替え画面（錨を 1 つでも持っていれば）*/
+  iconSkin?: string | null;
+  onDressUp?: () => void;
   loginId?: string;
   grade: string;
   nickname: string;
@@ -100,6 +110,13 @@ export function TreeScreen(props: Props) {
   // チャンピオンアリーナのノード（ROUTE だけ）は最下層の分野の下
   const showArena = props.stage === 'front' && !!props.arena && props.arena.subject === manifest.subject;
   const arenaY = geom.y(maxLayer) + 170;
+  // イベントノード（ROUTE だけ）: 根の分野（いちばん上の層のいちばん右）の右上。ほかのノードと線でつながない（ボード E01）
+  const showEvent = props.stage === 'front' && !!props.seasonEvent && eventNodeState(props.seasonEvent) != null;
+  const roots = manifest.fields.filter((f) => f.pos.layer === Math.min(...manifest.fields.map((x) => x.pos.layer)));
+  const rootX = roots.length ? Math.max(...roots.map((f) => geom.x(f.pos.x))) : canvasW / 2;
+  const rootY = geom.y(roots[0]?.pos.layer ?? 0);
+  const evX = Math.min(canvasW - 130, rootX + 120 - 62);
+  const evY = Math.max(8, rootY - 28 - 33);
   const canvasH = Math.max(geom.h, showArena ? arenaY + 130 : geom.y(maxLayer) + 170);
 
   const pz = usePanZoom({
@@ -169,7 +186,7 @@ export function TreeScreen(props: Props) {
   const rightCount = (props.tickets && props.onTickets ? 1 : 0) + (props.onTrophies ? 1 : 0) + 2 + (props.onClose ? 1 : 0);
   const chromeCrowd = wide || !props.abyssOpen || rightCount < 4 ? '' : rightCount >= 5 ? ' is-crowded is-packed' : ' is-crowded';
   return (
-    <div className={rootClass(wide ? 'is-wide' : '')}>
+    <div className={rootClass(wide ? 'tr-treeview is-wide' : 'tr-treeview')}>
       <div className="tr-caustic" />
       <div className="tr-pan" ref={pz.viewRef} onClick={() => {
           if (menu) setMenu(false);
@@ -238,6 +255,11 @@ export function TreeScreen(props: Props) {
               if (isSel) {
                 shadow = `${ready ? `5px 5px 0 0 ${open ? side : T.sideDark}, ` : ''}0 0 0 3px ${alpha(T.text, 0.35)}, 0 0 30px 6px ${alpha(col, 0.65)}`;
               }
+              // レトロ寄りの見た目（.is-retro・ボード E01）: 角をドットに切る（clip-path）ので、同じ側面・発光を drop-shadow で
+              const ds = (sd: string, blur = 0, glow = '') => `drop-shadow(5px 5px 0 ${sd})${glow ? ` drop-shadow(0 0 ${blur}px ${glow})` : ''}`;
+              let filter = !ready ? 'none' : !open ? ds(T.sideDark) : !started ? ds(side, 5, alpha(col, 0.4)) : ds(side, 7, alpha(col, 0.55));
+              if (master) filter = `${ds(side, 9, alpha(col, 0.8))} drop-shadow(0 0 16px ${alpha(col, 0.4)})`;
+              if (isSel) filter = `${ready ? ds(open ? side : T.sideDark) + ' ' : ''}drop-shadow(0 0 2px ${alpha(T.text, 0.7)}) drop-shadow(0 0 14px ${alpha(col, 0.65)})`;
               const label = `${f.name}${!ready ? ' 準備中' : open ? ` マスター度 ${Math.round(m * 100)}%` : ' 未解放'}`;
               return (
                 <div key={f.id}>
@@ -264,9 +286,15 @@ export function TreeScreen(props: Props) {
                       boxShadow: shadow,
                       transform: isSel ? 'scale(1.14)' : undefined,
                       zIndex: isSel ? 10 : 2,
+                      ['--tr-cf' as string]: face,
+                      ['--tr-cb' as string]: border,
+                      ['--tr-cfl' as string]: filter,
                     }}
                   >
-                    <span style={{ height: `${started ? m * 100 : 0}%`, background: col }} />
+                    {/* 枠 → 面の 2 重（.is-retro のときだけ角を切る。ふだんは display: contents で今のまま）*/}
+                    <div className="tr-cube-b">
+                    <div className="tr-cube-f">
+                    <span className="tr-cube-fill" style={{ height: `${started ? m * 100 : 0}%`, background: col }} />
                     {/* 合流した生物基礎の分野は左上の角に「基」（2026-10-19 先生決定・印 1）。満ちた面に重なったら濃い文字に */}
                     {f.kiso && (
                       <i
@@ -277,6 +305,8 @@ export function TreeScreen(props: Props) {
                       </i>
                     )}
                     <Ico id={f.icon} size={24} />
+                    </div>
+                    </div>
                   </div>
                   {ready &&
                     QTYPES.map((t, k) => {
@@ -297,9 +327,18 @@ export function TreeScreen(props: Props) {
                               ? `2px 2px 0 0 ${T.sideDark}`
                               : `2px 2px 0 0 ${tStarted ? side : T.sideDark}, 0 0 6px ${alpha(col, tStarted ? 0.6 : 0.33)}`,
                             opacity: has ? 1 : 0.35,
+                            ['--tr-cf' as string]: !open ? T.faceLocked : tStarted ? col : T.face,
+                            ['--tr-cb' as string]: !open ? alpha(col, 0.3) : col,
+                            ['--tr-cfl' as string]: !open
+                              ? `drop-shadow(2px 2px 0 ${T.sideDark})`
+                              : `drop-shadow(2px 2px 0 ${tStarted ? side : T.sideDark}) drop-shadow(0 0 3px ${alpha(col, tStarted ? 0.6 : 0.33)})`,
                           }}
                         >
-                          <Ico id={QTYPE_ICON[t]} size={9} />
+                          <div className="tr-cube-b">
+                            <div className="tr-cube-f">
+                              <Ico id={QTYPE_ICON[t]} size={9} />
+                            </div>
+                          </div>
                         </div>
                       );
                     })}
@@ -340,6 +379,18 @@ export function TreeScreen(props: Props) {
                 </div>
               );
             })}
+            {showEvent && (
+              <EventNode
+                state={props.seasonEvent!}
+                x={evX}
+                y={evY}
+                onOpen={() => {
+                  setMenu(false);
+                  onSelect(null);
+                  props.onEvent?.();
+                }}
+              />
+            )}
             {showArena && (
               <ArenaNode
                 info={props.arena!}
@@ -455,6 +506,28 @@ export function TreeScreen(props: Props) {
 
       {menu && (
         <div className="tr-card tr-menu" role="menu">
+          {/* 見出し: 選んでいる錨（着せ替え・2026-10-20）*/}
+          <div className="tr-menu-head" aria-hidden="true">
+            <img
+              src={props.iconSkin && EV_HAS_ART.has(props.iconSkin) ? EV_ASSET(props.iconSkin).icon2x : BRAND + 'icon_route.svg'}
+              alt=""
+              style={{ width: 26, height: 26, display: 'block', objectFit: 'contain', imageRendering: 'pixelated' }}
+            />
+            <span className="tr-arc" style={{ fontSize: 8 }}>ANCHOR TREE</span>
+          </div>
+          {props.onDressUp && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenu(false);
+                props.onDressUp?.();
+              }}
+            >
+              <Ico id="i-star" size={15} />
+              アイコンの着せ替え
+            </button>
+          )}
           {props.onStaff && (
             <button
               type="button"
@@ -641,7 +714,7 @@ function ArenaNode({ info, x, y, wide, onOpen }: { info: ArenaInfo; x: number; y
           <>
             <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span className="tr-arena-ic">
-                <Ico id="i-lock" size={14} />
+                <Ico id={RETRO ? 'i-px-lock' : 'i-lock'} size={14} />
               </span>
               <img className="tr-arena-logo is-off" src={ARENA_LOGO} alt="" style={{ width: 164 }} />
             </span>

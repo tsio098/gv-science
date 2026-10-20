@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { TreeApiError, treeLogin } from '../../lib/treeApi';
 import { saveTreeSession } from '../../lib/treeAuth';
 import { Ico, TreeSprite } from './TreeIcons';
+import { EV_ASSET, rememberedIconSkin } from './event/evTheme';
 import '../../styles/tree-brand.css';
 
 /**
@@ -23,6 +24,8 @@ function abyssStyle(): boolean {
 
 export function TreeLoginScreen({ onLoggedIn }: { onLoggedIn: () => void }) {
   const [abyss] = useState(abyssStyle);
+  // 着せ替えの錨（季節イベント・2026-10-20）: この端末で前にログインした人が選んでいた錨（ID を入れる前は誰か分からない）
+  const [skin] = useState(rememberedIconSkin);
   const [id, setId] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -54,7 +57,26 @@ export function TreeLoginScreen({ onLoggedIn }: { onLoggedIn: () => void }) {
       {/* 背景 = 実際のツリーと同じ部品のノードツリー（ロゴの後ろの濃い影・下へ向かって暗く、まで SVG に入っている）*/}
       <img className="tl-bg" src={`/tree/brand/login-bg_${abyss ? 'abyss' : 'route'}.svg`} alt="" aria-hidden="true" draggable={false} />
       <div className="tl-inner">
-        <img className="tl-logo" src={`/tree/brand/lockup-stacked_${abyss ? 'abyss' : 'route'}.svg`} alt="ANCHOR TREE" draggable={false} />
+        {skin ? (
+          // 錨（ロゴの上 43%）を隠して、着せ替えのアイコンを同じ位置に
+          <div className="tl-logo" style={{ position: 'relative' }}>
+            <img
+              src={`/tree/brand/lockup-stacked_${abyss ? 'abyss' : 'route'}.svg`}
+              alt="ANCHOR TREE"
+              draggable={false}
+              style={{ width: '100%', height: 'auto', display: 'block', clipPath: 'inset(43% 0 0 0)' }}
+            />
+            <img
+              src={EV_ASSET(skin).icon}
+              alt=""
+              aria-hidden="true"
+              draggable={false}
+              style={{ position: 'absolute', left: '50%', top: '-3%', width: '46%', height: 'auto', transform: 'translateX(-50%)', imageRendering: 'pixelated' }}
+            />
+          </div>
+        ) : (
+          <img className="tl-logo" src={`/tree/brand/lockup-stacked_${abyss ? 'abyss' : 'route'}.svg`} alt="ANCHOR TREE" draggable={false} />
+        )}
         {abyss && <div className="tl-stage">STAGE · ABYSS</div>}
 
         <form className="tl-form" onSubmit={submit}>

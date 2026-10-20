@@ -80,7 +80,7 @@ export function TrophyScreen({ subject: initial, subjects, fieldInfo, onBack, on
   const rows = useMemo(() => {
     if (!data) return [];
     // その科目のプラチナ（全獲得）は上のカードに出す。ほかのプラチナ（範囲のランキング制覇・出藍の誉れ）は行に出す
-    let list = data.items.filter((it) => it.id !== data.platinum?.id && !it.oops);
+    let list = data.items.filter((it) => it.id !== data.platinum?.id && !it.oops && !it.event);
     if (tab === 'got') list = list.filter((it) => it.earnedAt != null);
     if (tab === 'not') list = list.filter((it) => it.earnedAt == null);
     return [...list].sort((a, b) => (recent ? (b.earnedAt ?? 0) - (a.earnedAt ?? 0) : 0) || a.order - b.order);
@@ -89,6 +89,11 @@ export function TrophyScreen({ subject: initial, subjects, fieldInfo, onBack, on
   // 残念トロフィー（獲得したものだけ返る）。並びは新しい順の切り替えに合わせる
   const oops = useMemo(
     () => [...(data?.items ?? []).filter((it) => it.oops)].sort((a, b) => (recent ? (b.earnedAt ?? 0) - (a.earnedAt ?? 0) : 0) || a.order - b.order),
+    [data, recent],
+  );
+  // EVENT トロフィー（季節イベント・2026-10-20）: 獲得したものだけ（先生は全部）・別枠「EVENT n」（タブの数・レベルに入れない）
+  const events = useMemo(
+    () => [...(data?.items ?? []).filter((it) => it.event)].sort((a, b) => (recent ? (b.earnedAt ?? 0) - (a.earnedAt ?? 0) : 0) || a.order - b.order),
     [data, recent],
   );
   const lv = data?.level;
@@ -241,6 +246,22 @@ export function TrophyScreen({ subject: initial, subjects, fieldInfo, onBack, on
                 )}
               </div>
 
+              {/* EVENT トロフィー: 獲得したものだけ・別枠（季節イベントの 100%。期間を逃すと取れないのでレベル・すべて n に数えない）*/}
+              {events.length > 0 && tab !== 'not' && (
+                <div className="tt-rows" style={{ marginTop: 6 }}>
+                  <div className="tt-px2" style={{ padding: 2, background: 'linear-gradient(90deg,#FF9A1F,#C9A2FF)' }}>
+                    <div className="tt-px2" style={{ padding: '8px 12px', background: 'linear-gradient(180deg,#2E1650,#140828)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span className="tt-arc tt-chrome" style={{ fontSize: 8, backgroundImage: CHROME.E }}>EVENT</span>
+                      <span className="tt-dot" style={{ flex: 1, fontSize: 13, color: '#FFF1E0' }}>イベントトロフィー</span>
+                      <span className="tt-arc" style={{ fontSize: 9, color: '#FFFFFF' }}>{data.counts.event?.earned ?? events.filter((it) => it.earnedAt != null).length}</span>
+                    </div>
+                  </div>
+                  {events.map((it) => (
+                    <Row key={it.id} it={it} isNew={it.earnedAt != null && it.earnedAt > seenBefore && seenBefore > 0} onOpen={() => setDetail(it)} holderName={staff ? holderName : undefined} />
+                  ))}
+                </div>
+              )}
+
               {/* 残念トロフィー: 獲得したものだけ・別枠（全部で何個あるかは出さない）。未獲得のタブでは出さない */}
               {oops.length > 0 && tab !== 'not' && (
                 <div className="tt-rows" style={{ marginTop: 6 }}>
@@ -281,6 +302,7 @@ function Row({ it, isNew, onOpen, holderName }: { it: TrophyItem; isNew: boolean
   const holder = it.firstHolder;
   const firstMine = it.first && got;
   const oops = !!it.oops;
+  const ev = !!it.event;
   const frame = firstMine
     ? 'linear-gradient(90deg,#FFD84A 0 10px,#FF5A6E 10px calc(100% - 10px),#FFD84A calc(100% - 10px))'
     : oops
@@ -288,7 +310,13 @@ function Row({ it, isNew, onOpen, holderName }: { it: TrophyItem; isNew: boolean
     : got
       ? g.c
       : `rgba(${g.rgb},${it.first && !holder ? 0.45 : 0.28})`;
-  const bg = firstMine ? 'linear-gradient(180deg,#3A0A18,#14040A)' : oops ? 'linear-gradient(180deg,#2B3026,#14170F)' : got ? 'linear-gradient(180deg,#0C4250,#062530)' : 'rgba(4,40,48,.92)';
+  const bg = firstMine
+    ? 'linear-gradient(180deg,#3A0A18,#14040A)'
+    : oops
+      ? 'linear-gradient(180deg,#2B3026,#14170F)'
+      : ev
+        ? 'linear-gradient(180deg,#2E1650,#140828)'
+        : got ? 'linear-gradient(180deg,#0C4250,#062530)' : 'rgba(4,40,48,.92)';
   const well = oops
     ? 'radial-gradient(circle,rgba(169,176,154,.3),rgba(12,14,9,1) 72%)'
     : got ? `radial-gradient(circle,rgba(${g.rgb},.3),rgba(3,18,24,1) 72%)` : it.first ? 'rgba(20,4,10,.9)' : 'rgba(2,16,22,.8)';
@@ -348,7 +376,7 @@ function Row({ it, isNew, onOpen, holderName }: { it: TrophyItem; isNew: boolean
           ) : oops ? (
             <TrophyIcon grade="Z" size={30} chip style={{ transform: 'rotate(-14deg)' }} />
           ) : (
-            <TrophyIcon grade={it.grade} size={30} style={{ opacity: got ? 1 : it.first ? 0.55 : 0.4, filter: got ? `drop-shadow(0 0 4px rgba(${g.rgb},.6))` : 'saturate(.3)' }} />
+            <TrophyIcon grade={it.grade} size={ev ? 34 : 30} style={{ opacity: got ? 1 : it.first ? 0.55 : 0.4, filter: got ? `drop-shadow(0 0 4px rgba(${g.rgb},.6))` : 'saturate(.3)' }} />
           )}
         </div>
         {it.first && !it.hidden && <span className="tt-mini1 tt-arc" aria-hidden="true" style={{ left: 40, right: 'auto', top: 2 }}>1ST</span>}

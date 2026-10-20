@@ -9,6 +9,8 @@ import { TreeApiError, fetchTreeMe } from '../../lib/treeApi';
 import { openExternal } from '../../lib/liff';
 import { swipeDiag } from './useNoSwipeMinimize';
 import '../../styles/tree.css';
+// レトロ寄りの見た目（2026-10-20）。tree.css と同じチャンクの後ろに入るよう、tree.css を読むところでは続けて読む
+import '../../styles/tree-retro.css';
 
 interface Props {
   /** 分かっていれば渡す（無ければ /tree/me で取る）*/

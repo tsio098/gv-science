@@ -11,7 +11,7 @@ import { gradeLabel, recordArena } from '../../lib/treeApi';
 import { ArenaHead, ArenaSparks } from './ArenaScreen';
 import { Ico } from './TreeIcons';
 import { WrongList } from './ResultScreen';
-import { arenaSeasonName, fmtScore, rootClass } from './treeTheme';
+import { RETRO, arenaSeasonName, fmtScore, rootClass } from './treeTheme';
 
 interface Props {
   result: ArenaResult;
@@ -92,7 +92,7 @@ export function ArenaResultScreen({ result, session, staff, grade, nickname, cra
             </div>
           </div>
           <span style={{ color: 'var(--ar-gold)', display: 'flex' }}>
-            <Ico id="i-chev-right" size={18} />
+            <Ico id={RETRO ? 'i-px-next' : 'i-chev-right'} size={RETRO ? 14 : 18} />
           </span>
         </button>
 

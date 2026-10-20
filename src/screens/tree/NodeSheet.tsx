@@ -8,7 +8,8 @@
 import type { QType, RankInfo, TreeField, TreeManifest, TreeProgress } from '../../lib/treeApi';
 import { QTYPES, QTYPE_LABEL } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
-import { GROUP_NAME, QTYPE_ICON, REVIEW_COLOR, T, alpha, distPct, fmtScore, groupColor, groupSide } from './treeTheme';
+import { GROUP_NAME, QTYPE_ICON, REVIEW_COLOR, RETRO, T, alpha, distPct, fmtScore, groupColor, groupSide, pips20 } from './treeTheme';
+import type { Dist } from '../../lib/treeApi';
 import type { FieldGroup } from '../../lib/treeApi';
 
 interface Props {
@@ -23,6 +24,25 @@ interface Props {
   docked?: boolean;
 }
 
+/**
+ * 出題状況の 20 マス（レトロ寄りの見た目・ボード R02 / R03）。定着 = 系統色・正解済み = 系統色 45%・要復習 = 中空の枠・未着手 = 文字色 10%
+ */
+export function Pips({ dist, total, color, label }: { dist: Dist; total: number; color: string; label?: string }) {
+  const fresh = Math.max(0, total - dist.mastered - dist.solved - dist.review);
+  return (
+    <div
+      className="tr-pips"
+      role="img"
+      aria-label={`${label ? label + ' ' : ''}定着 ${dist.mastered}・正解済み ${dist.solved}・要復習 ${dist.review}・未着手 ${fresh}`}
+      style={{ ['--pip' as string]: color }}
+    >
+      {pips20(dist, total).map((k, i) => (
+        <i key={i} className={`is-${k}`} />
+      ))}
+    </div>
+  );
+}
+
 export function NodeSheet({ field, manifest, progress, starting, onClose, onStart, onRanking, docked }: Props) {
   const box = docked ? 'tr-dock-sec' : 'tr-card tr-pop';
   const rank: RankInfo | undefined = progress.rank?.fields[field.id];
@@ -35,13 +55,14 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
 
   const close = (
     <button type="button" className="tr-pop-close" aria-label="閉じる" onClick={onClose}>
-      <Ico id="i-close" size={14} />
+      <Ico id={RETRO ? 'i-px-close' : 'i-close'} size={RETRO ? 12 : 14} />
     </button>
   );
 
   if (!ready) {
     return (
       <div className={box} role="dialog" aria-label={field.name}>
+        <div className="tr-pop-in">
         <div className="tr-pop-head">
           <div className="tr-pop-tile" style={{ border: `1.5px solid ${alpha(T.text, 0.2)}`, color: alpha(T.text, 0.45) }}>
             <Ico id={field.icon} size={22} />
@@ -57,6 +78,7 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
           </div>
           {close}
         </div>
+        </div>
       </div>
     );
   }
@@ -64,6 +86,7 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
   if (!open) {
     return (
       <div className={box} role="dialog" aria-label={field.name}>
+        <div className="tr-pop-in">
         <div className="tr-pop-head">
           <div
             className="tr-pop-tile"
@@ -120,6 +143,7 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
             );
           })}
         </div>
+        </div>
       </div>
     );
   }
@@ -129,14 +153,27 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
     : {
         borderColor: col,
         boxShadow: `0 0 0 1px rgba(0,0,0,0.3), 0 0 28px ${alpha(col, 0.4)}, 0 24px 60px -16px rgba(0,0,0,0.7)`,
+        // レトロ寄りの見た目（ボード R02）: 上の角がドットのシートの枠と光
+        ['--tr-pop-c' as string]: col,
+        ['--tr-pop-glow' as string]: alpha(col, 0.4),
       };
   return (
     <div className={box} role="dialog" aria-label={field.name} style={glowBox}>
+      <div className="tr-pop-in">
       <div className="tr-pop-head">
         <div
           className="tr-pop-tile"
-          style={{ background: col, color: T.onColor, boxShadow: `4px 4px 0 0 ${side}, 0 0 16px ${alpha(col, 0.4)}` }}
+          style={{
+            background: col,
+            color: T.onColor,
+            boxShadow: `4px 4px 0 0 ${side}, 0 0 16px ${alpha(col, 0.4)}`,
+            ['--tr-cf' as string]: T.face,
+            ['--tr-cb' as string]: col,
+            ['--tr-cfl' as string]: `drop-shadow(4px 4px 0 ${side}) drop-shadow(0 0 8px ${alpha(col, 0.55)})`,
+          }}
         >
+          {/* レトロ寄りの見た目（ボード R02）: 角がドットの立方体・下からマスター度ぶん満ちる */}
+          {RETRO && <span className="tr-pop-tile-fill" style={{ height: `${Math.round(p.mastery * 100)}%`, background: col }} />}
           <Ico id={field.icon} size={22} />
         </div>
         <div className="tr-pop-title">
@@ -148,7 +185,12 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
             </span>
           </div>
           <div className="tr-pop-meta">
-            マスター度 <b className="tr-num">{Math.round(p.mastery * 100)}%</b> · スコア{' '}
+            {!RETRO && (
+              <>
+                マスター度 <b className="tr-num">{Math.round(p.mastery * 100)}%</b> ·{' '}
+              </>
+            )}
+            スコア{' '}
             <b className="tr-num">{fmtScore(p.score)}</b> / <span className="tr-num">{fmtScore(p.max)}</span>
             {rank?.rank != null && (
               <>
@@ -158,6 +200,18 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
             )}
           </div>
         </div>
+        {RETRO && (
+          // MASTER の % のクローム（ボード R02）。分野色のグラデーション
+          <div className="tr-pop-master">
+            <span className="tr-arc">MASTER</span>
+            <span
+              className="tr-arc tr-chr"
+              style={{ backgroundImage: `linear-gradient(180deg,#FFFFFF 0%,${alpha(col, 0.35)} 30%,${col} 52%,${side} 52%,${col} 74%,${alpha(col, 0.4)} 100%)` }}
+            >
+              {Math.round(p.mastery * 100)}%
+            </span>
+          </div>
+        )}
         {close}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -188,13 +242,23 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
                   </span>
                   {nw > 0 && <span className="tr-new">新着 {nw}</span>}
                 </div>
-                <div className="tr-distbar">
-                  <i style={{ width: `${w.mastered}%`, background: col, boxShadow: `0 0 8px ${col}` }} />
-                  <i style={{ width: `${w.solved}%`, background: col, opacity: 0.45 }} />
-                  <i style={{ width: `${w.review}%`, background: REVIEW_COLOR }} />
-                </div>
+                {RETRO && s ? (
+                  <Pips dist={s.dist} total={count} color={col} label={QTYPE_LABEL[t]} />
+                ) : (
+                  <div className="tr-distbar">
+                    <i style={{ width: `${w.mastered}%`, background: col, boxShadow: `0 0 8px ${col}` }} />
+                    <i style={{ width: `${w.solved}%`, background: col, opacity: 0.45 }} />
+                    <i style={{ width: `${w.review}%`, background: REVIEW_COLOR }} />
+                  </div>
+                )}
               </div>
-              <button type="button" className="tr-go" disabled={!count || starting} onClick={() => onStart(t)}>
+              <button
+                type="button"
+                className="tr-go"
+                disabled={!count || starting}
+                onClick={() => onStart(t)}
+                style={{ ['--tr-go' as string]: col, ['--tr-go-side' as string]: side }}
+              >
                 {count ? '挑戦' : 'なし'}
               </button>
             </div>
@@ -209,6 +273,7 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
           </button>
         </div>
       )}
+      </div>
     </div>
   );
 }

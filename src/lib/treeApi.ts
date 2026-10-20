@@ -134,6 +134,8 @@ export interface TreeMe {
   nickname: string;
   /** 自分に割り当てたカニの種名（ニックネーム未記入のときの名前・2026-10-17）。古い Proxy・未割り当ては null / 無し */
   crab?: string | null;
+  /** 着せ替えの錨（季節イベントの kind・'halloween' など。null = いつもの錨・2026-10-20）。古い Proxy は無し */
+  iconSkin?: string | null;
 }
 
 /** ROUTE のマーク式。min: 0 は ⓪〜⑨ の数字マーク（Phase 5 の Proxy から。無ければ 1）*/
@@ -244,6 +246,8 @@ export interface SubmitResult {
   near?: TrophyNear[];
   /** この提出でその科目のトロフィーレベルがはじめて 30 に届いた（LV.30 チケット・2026-10-19）*/
   level30?: Level30Got | null;
+  /** 季節イベントの挑戦のとき（2026-10-20）: イベントのマスター度の前後と、100% に届いたか */
+  event?: SeasonEventSubmit;
 }
 
 /** LV.30 チケットが出た（通知「LEVEL 30 REACHED!!」→ タップでチケット画面）*/
@@ -333,9 +337,37 @@ export const startTreeSession = (subject: string, field: string, qtype: QType, s
  * c=2 = 残念トロフィー・LV.30 チケットに対応した LIFF（2026-10-19）。付けないと Proxy はそれらを返さない
  * （古い LIFF が Z のグレード・level30 のチケットを描けずに壊れないように）
  */
-const C2 = 'c=2';
+/**
+ * c=4 = 季節イベント（EVENT トロフィー・イベントのチケット）に対応した LIFF（2026-10-20）。Proxy は c を数で比べるので、
+ * c=4 でも残念トロフィー・LV.30 は返る（c=3 は MASTER100 の予約）。古い Proxy（c === '2' の完全一致）には c=2 として届かない →
+ * Proxy を先に出すこと（実装手順 §4）
+ */
+const C2 = 'c=4';
+/**
+ * 先生用アカウントの日付の確認（季節イベント・2026-10-20）: LIFF の URL に ?evnow=2026-10-22T09:00+09:00 を付けて開くと、
+ * イベントの API に now= を付ける（Proxy は先生のときだけ使い、生徒は無視する）。evnow= を空にすると消す
+ */
+const EVNOW_KEY = 'gvTree.evnow';
+function evNow(): string | null {
+  try {
+    const q = new URLSearchParams(window.location.search).get('evnow');
+    if (q != null) {
+      if (q) sessionStorage.setItem(EVNOW_KEY, q);
+      else sessionStorage.removeItem(EVNOW_KEY);
+    }
+    return sessionStorage.getItem(EVNOW_KEY);
+  } catch {
+    return null;
+  }
+}
+/** 先生の確認用の日付（?evnow）。画面の「あと n 日」なども合わせる */
+export const seasonEventNowParam = evNow;
+const evQ = () => {
+  const n = evNow();
+  return n ? `&now=${encodeURIComponent(n)}` : '';
+};
 export const submitTreeSession = (sessionId: string, answers: { qid: string; value: PartValue[]; timeMs: number }[]) =>
-  post<SubmitResult>(`/tree/session/submit?${C2}`, { sessionId, answers });
+  post<SubmitResult>(`/tree/session/submit?${C2}${evQ()}`, { sessionId, answers });
 export const saveTreeNickname = (nickname: string) => post<{ nickname: string }>('/tree/profile', { nickname });
 export const fetchTreeRanking = (subject: string, field = '*', qtype: QType | '*' = '*', stage: TreeStage = 'front') => {
   const q = new URLSearchParams({ subject });
@@ -492,6 +524,8 @@ export interface TreeHomeFlags {
   abyssOpen: boolean;
   arenaOpen: boolean;
   season: ArenaSeason;
+  /** 着せ替えの錨（季節イベント・2026-10-20）。古い Proxy は無し */
+  iconSkin?: string | null;
 }
 
 export const fetchArenaTickets = () => get<{ tickets: ArenaTicket[] }>('/tree/arena/tickets');
@@ -500,13 +534,20 @@ export const fetchArenaTickets = () => get<{ tickets: ArenaTicket[] }>('/tree/ar
  * チケット（ABYSS チケットと総合優勝のボーナスチケット）。2026-10-17 夕方〜
  * ABYSS チケット = 全分野マスター度 60% を初めて満たした科目ごとに 1 枚（化学・生物）。使い方はボーナスと同じ（半券を切る・1 回だけ）
  */
-export type TreeTicketKind = 'abyss' | 'grand' | 'level30';
+export type TreeTicketKind = 'abyss' | 'grand' | 'level30' | 'event';
 export interface TreeTicket extends Omit<ArenaTicket, 'pair' | 'score'> {
   kind: TreeTicketKind;
-  /** grand: 組の 2 シーズン / abyss・level30: null */
+  /** grand: 組の 2 シーズン / abyss・level30・event: null */
   pair: ArenaSeason[] | null;
   score: number | null;
   issuedAt?: number;
+  /** 季節イベントのチケット（kind = 'event'・2026-10-20）: イベント・テストの正答率（0〜1）・使える日（usableFrom〜usableUntil だけ）*/
+  eventId?: string;
+  eventKind?: string | null;
+  eventName?: string | null;
+  testRate?: number;
+  usableFrom?: number | null;
+  usableUntil?: number | null;
 }
 /** 両方のチケット。新しい Proxy が無い（404）ときは総合優勝のチケットだけ（/tree/arena/tickets）*/
 export async function fetchTreeTickets(): Promise<TreeTicket[]> {
@@ -530,8 +571,11 @@ export const fetchTreeHome = (subject: string) =>
  * 科目ごとに別に獲得。グレード B / S / G / P（プラチナ）/ F（ファースト = 塾内で最初の 1 人だけ）。
  * 通知は左上のトースト（trophy/TrophyToast）。未通知の獲得と、アリーナ・ファーストのお知らせは /tree/trophies/pending。 */
 
-/** Z = 残念トロフィー（OOPS・pt 0・獲得するまで一覧に何も出さない。2026-10-19）*/
-export type TrophyGrade = 'B' | 'S' | 'G' | 'P' | 'F' | 'Z';
+/**
+ * Z = 残念トロフィー（OOPS・pt 0・獲得するまで一覧に何も出さない。2026-10-19）。
+ * E = 季節イベントの EVENT トロフィー（pt 0・レベル / プラチナに数えない・獲得するまで出さない。2026-10-20）
+ */
+export type TrophyGrade = 'B' | 'S' | 'G' | 'P' | 'F' | 'Z' | 'E';
 
 /** 獲得した 1 件（通知用）*/
 export interface TrophyGet {
@@ -547,6 +591,11 @@ export interface TrophyGet {
   oops?: boolean;
   /** 残念トロフィーの通知の札（何が起きたか。null なら「残念トロフィー」）*/
   note?: string | null;
+  /** EVENT トロフィー（grade = 'E'）。通知は TROPHY GET! でなく EVENT CLEAR!! */
+  event?: boolean;
+  eventId?: string;
+  /** アカウントで初めての 100%（錨のアイコンも一緒に手に入った）*/
+  firstIcon?: boolean;
 }
 
 /** 数えるトロフィーが 80% に届いた（PROGRESS）*/
@@ -577,7 +626,9 @@ export type TreeNotice =
   /** 科目ランキングの順位ダウン（2026-10-19・ほかの人に抜かれた。ツリーを開いたとき 1 回）*/
   | { key: string; type: 'rank_down'; subject: string; rank: number; prevRank: number; of: number }
   /** LV.30 チケット（まだ知らせていないもの・2026-10-19）*/
-  | { key: string; type: 'level30'; subject: string; ticketId: string };
+  | { key: string; type: 'level30'; subject: string; ticketId: string }
+  /** 季節イベントのチケット（TICKET GET! をまだ出していないもの・2026-10-20）*/
+  | { key: string; type: 'event_ticket'; subject: string; eventId: string; ticketId: string; usableFrom: number | null; usableUntil: number | null };
 
 export interface TrophyPending {
   trophies: TrophyGet[];
@@ -606,6 +657,8 @@ export interface TrophyItem {
   repeat?: boolean;
   /** 残念トロフィー（獲得したものだけ items に入る）*/
   oops?: boolean;
+  /** EVENT トロフィー（獲得したものだけ items に入る・2026-10-20）*/
+  event?: boolean;
   /** 関係する分野 ID（詳細のチップ）*/
   fields: string[];
   order: number;
@@ -626,7 +679,7 @@ export interface TrophyList {
   /** 科目ごとのトロフィーレベル Lv1〜max（30）。into = 今のレベルに入ってからの pt、need = 次のレベルまでの幅（max では 0）*/
   level: { lv: number; max?: number; pt: number; into: number; need: number };
   /** all / earned は件数、B〜F は獲得数 */
-  counts: { all: number; earned: number; B: number; S: number; G: number; P: number; F: number; oops?: { earned: number } };
+  counts: { all: number; earned: number; B: number; S: number; G: number; P: number; F: number; oops?: { earned: number }; event?: { earned: number } };
   /** LV.30 チケット（その科目で持っていれば）*/
   level30Ticket?: { id: string; used: boolean } | null;
   /** プラチナは隠し要素（2026-10-19）: 獲得するまで null。ファーストも獲得するまで items に入らない */
@@ -759,6 +812,124 @@ export async function fetchStaffNames(ticket: NonNullable<StaffOverview['names']
     clearTimeout(timer);
   }
 }
+
+/* ── 季節イベント（ハロウィンチャレンジ・2026-10-20・vault 実装手順_季節イベント.md「先生の回答 3」）──────────────
+ * 期間 10/22 0:00〜10/30 5:00（JST）。参加条件 = その科目の分野ノードを半分以上開放。科目ごとに全員共通の 70 題。
+ * マスター度 = イベントの挑戦の解答だけ（2 回続けて正解で定着）。100% で錨（アイコン・アカウントに 1 つ）と EVENT トロフィー（科目ごと）。
+ * 100% の後に 1 回だけテスト（20 問・80% で合格）→ イベント限定チケット（10/31 のみ使用可能）。
+ * パスは /tree/season-event（/tree/events は演出のイベント）。古い Proxy・D1 0016 の前は event: null（ノードを出さない） */
+
+export type SeasonEventPhase = 'soon' | 'open' | 'closed';
+
+export interface SeasonEventInfo {
+  id: string;
+  kind: string;
+  name: string;
+  startAt: number;
+  endAt: number;
+  ticketFrom: number | null;
+  ticketUntil: number | null;
+  phase: SeasonEventPhase;
+  daysLeft: number;
+  /** Proxy の時刻（先生の ?evnow のときはその時刻）*/
+  now: number;
+}
+
+/** 70 題の状態。cells = 0 未着手 / 1 要復習 / 2 正解済み / 3 定着（70 個・全員共通の並び）*/
+export interface SeasonEventProgress {
+  total: number;
+  /** 0〜1（表示は切り捨て）*/
+  mastery: number;
+  settled: number;
+  correct: number;
+  review: number;
+  untouched: number;
+  cells: number[];
+}
+
+export interface SeasonEventTest {
+  status: 'locked' | 'ready' | 'started' | 'done';
+  size: number;
+  passAt: number;
+  correct?: number;
+  total?: number;
+  pass?: boolean;
+}
+
+export interface SeasonEventState {
+  event: SeasonEventInfo | null;
+  /** 参加条件（その科目の分野ノードを半分以上開放）。予告の間は null */
+  eligible?: { met: boolean; open: number; need: number; of: number } | null;
+  progress?: SeasonEventProgress | null;
+  cleared?: boolean;
+  clearedAt?: number | null;
+  rewards?: { icon: boolean; trophy: boolean; ticket: { id: string; usedAt: number | null } | null } | null;
+  test?: SeasonEventTest | null;
+  staff?: boolean;
+}
+
+/** 提出（/tree/session/submit）の event */
+export interface SeasonEventSubmit {
+  id: string;
+  kind: string;
+  name: string;
+  endAt: number;
+  daysLeft: number;
+  before: SeasonEventProgress;
+  after: SeasonEventProgress;
+  settledGain: number;
+  cleared: boolean;
+  clearedNow: boolean;
+  firstIcon?: boolean;
+  /** イベントの記録を付けたか（期間の後の提出・100% の後の復習は false）*/
+  recorded: boolean;
+  rewards: ('icon' | 'trophy')[];
+}
+
+export interface SeasonEventSession extends TreeSession {
+  event: { id: string; kind: string; review?: boolean };
+}
+
+export interface SeasonEventTestSession extends TreeSession {
+  eventTest: true;
+  resumed: boolean;
+  event: { id: string; kind: string };
+  passAt: number;
+}
+
+export interface SeasonEventTestResult {
+  sessionId: string;
+  eventTest: true;
+  results: { qid: string; type: QType; correct: boolean; value: PartValue[]; timeMs: number; bonus: number; gain: number }[];
+  summary: { correct: number; total: number; rate: number; pass: boolean; passAt: number; elapsedMs: number };
+  event: { id: string; kind: string; name: string };
+  ticket: (TreeTicket & { kind: 'event' }) | null;
+}
+
+/** いまのイベント（その科目）。古い Proxy（404）・D1 0016 の前（503）は event: null */
+export async function fetchSeasonEvent(subject: string): Promise<SeasonEventState> {
+  try {
+    return await get<SeasonEventState>(`/tree/season-event?subject=${encodeURIComponent(subject)}${evQ()}`);
+  } catch (e) {
+    if (e instanceof TreeApiError && (e.status === 404 || e.status === 503)) return { event: null };
+    throw e;
+  }
+}
+export const startSeasonEventSession = (subject: string, eventId: string) =>
+  post<SeasonEventSession>(`/tree/season-event/session/start?${C2}${evQ()}`, { subject, eventId });
+export const startSeasonEventTest = (subject: string, eventId: string) =>
+  post<SeasonEventTestSession>(`/tree/season-event/test/start?${C2}${evQ()}`, { subject, eventId });
+export const submitSeasonEventTest = (sessionId: string, answers: { qid: string; value: PartValue[]; timeMs: number }[]) =>
+  post<SeasonEventTestResult>(`/tree/season-event/test/submit?${C2}${evQ()}`, { sessionId, answers });
+
+/** 着せ替え（錨のアイコンだけ・フレームは作らない）。kinds = 着せ替えの並び（いつもの + この順）*/
+export interface TreeCosmetics {
+  kinds: string[];
+  icons: { item: string; eventId: string; awardedAt: number }[];
+  selected: string | null;
+}
+export const fetchCosmetics = () => get<TreeCosmetics>('/tree/cosmetics');
+export const saveIconSkin = (icon: string | null) => post<{ selected: string | null }>('/tree/cosmetics', { icon });
 
 const imageCache = new Map<string, Promise<string>>();
 

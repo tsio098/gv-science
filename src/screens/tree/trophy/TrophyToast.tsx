@@ -7,6 +7,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { toastSpeed } from './labSpeed';
 import { CHROME, GRADE_COLOR, LV30_BAND, PRISM, PX_ICON, PxIcon, TrophyIcon } from './TrophyIcon';
 import { toastNameSize, toastWidth, type ToastItem, type ToastKind } from './toastQueue';
+import { EventToastCard } from './EventToast';
 
 const ROUTE_BG = 'linear-gradient(180deg,#0C4250,#062530)';
 const ABYSS_BG = 'linear-gradient(180deg,#111E3E,#050B1C)';
@@ -14,6 +15,7 @@ const ARENA_BG = 'linear-gradient(180deg,#2A1C45,#120B22)';
 /** 残念トロフィー（くすんだブリキ）・LEVEL 30（プラチナの面）の地（2026-10-19）*/
 const OOPS_BG = 'linear-gradient(180deg,#2B3026,#14170F)';
 const LV30_BG = 'linear-gradient(180deg,#1E1A4A,#0A0820)';
+const EV_BG = 'linear-gradient(180deg,#2E1650,#0E0520)';
 
 interface Look {
   c: string;
@@ -38,6 +40,9 @@ const NOTE_LOOK: Record<Exclude<ToastKind, 'trophy'>, Look> = {
   teacher: { c: '#2DF4C6', d: '#0E9C9A', rgb: '45,244,198', chrome: CHROME.aqua, bg: ARENA_BG, subc: '#CBBB93', icon: PX_ICON.cap },
   firstOther: { c: '#FF5A6E', d: '#5A0A1C', rgb: '255,90,110', chrome: CHROME.F, bg: ROUTE_BG, subc: '#8ED4E0' },
   level30: { c: '#4FC3FF', d: '#1C1236', rgb: '79,195,255', chrome: CHROME.P30, bg: LV30_BG, subc: '#B6E9FF' },
+  // 季節イベント（2026-10-20）: 絵は EventToast.tsx。ここは下にのぞく次の通知の色だけ
+  evClear: { c: '#FF9A1F', d: '#3A1458', rgb: '255,154,31', chrome: CHROME.E, bg: EV_BG, subc: '#E6D2FF' },
+  evTicket: { c: '#C9A2FF', d: '#3A1458', rgb: '201,162,255', chrome: CHROME.evPurple, bg: EV_BG, subc: '#E6D2FF' },
 };
 
 export function toastLook(t: ToastItem): Look {
@@ -375,7 +380,11 @@ export function ToastLayer({
         if (swiped.current) e.stopPropagation();
       }}
     >
-      <ToastCard key={item.key} item={item} more={more} peek={peek} wide={wide} out={out} onTap={onTap} />
+      {item.kind === 'evClear' || item.kind === 'evTicket' ? (
+        <EventToastCard key={item.key} item={item} wide={wide} out={out} onTap={onTap} />
+      ) : (
+        <ToastCard key={item.key} item={item} more={more} peek={peek} wide={wide} out={out} onTap={onTap} />
+      )}
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { prefetch } from '../lib/swrCache';
 import { importTreeShareModal, preloadScoresScreen, preloadTreeRoot } from '../lib/lazyImports';
 import { fetchTreeHome } from '../lib/treeApi';
 import { TreeBanner, treeBannerKind } from '../components/TreeBanner';
+import { rememberedIconSkin } from './tree/event/evTheme';
 import { TREE_SUBJECT_NAME, pickTreeSubject, treeSubjectsFor } from '../lib/treeSubject';
 import { useScores } from '../lib/scoresStore';
 import type { NavFn, ScheduleSubject } from '../lib/types';
@@ -82,6 +83,7 @@ function AnchorTreeCard({ onOpen, subjects, staff }: { onOpen: () => void; subje
         <TreeBanner
           kind={treeBannerKind(p?.home)}
           season={p?.home?.season}
+          iconSkin={p?.home?.iconSkin ?? rememberedIconSkin()}
           onOpen={() => {
             if (longPressed.current) {
               longPressed.current = false;

@@ -1,0 +1,1410 @@
+/* ============================================================
+   ANCHOR TREE — レトロ寄りの見た目（2026-10-20 先生決定・ClaudeCode指示_ハロウィン実装.md §7・実装手順_季節イベント §2-2 / §2-3）
+   正本: 季節イベントのボード R01（ランキング）・R02（ノードの詳細）・R03（結果）・R04（出題）・R05（イベントの挑戦の結果）・E01（ノードの角）・Fonts、
+        ロゴのボード「CHAMPION ARENA — レトロ版」A01r〜A15r。
+   配色・レイアウト・表示する項目は今のまま（先生 18:46「ややピクセル風にするだけ」）。変えるのは 角・押し出し・走査線・フォント・部品の形。
+   ツリーのヘッダー（丸ボタン・科目チップ）は今のまま（先生の回答 18:25「ヘッダーの丸ボタンと科目チップは今のまま」・§2-2 の 3 は取りやめ）。
+
+   切り替え: すべて `.tr-root.is-retro …` の下（treeTheme.ts の RETRO = false で全部戻る）。
+   ROUTE / ABYSS / アリーナ / イベント（.is-ev-halloween）の色は CSS 変数のまま。
+
+   部品の作り（clip-path で border と box-shadow が切れるため）:
+     - 枠つきの箱 = 要素そのものは切らず、::before = 枠の色（角をドットに切る）・::after = 地（枠の幅だけ内側・同じ形に切る・走査線を重ねる）。
+       z-index: -1 + isolation: isolate で中身の後ろに置く。押し出しと発光は要素の filter: drop-shadow（切っていないので影が切れない）。
+       変数: --rf-edge（枠の色）/ --rf-face（地）/ --rf-w（枠の幅）/ --rf-clip（形）/ --rf-filter（押し出し・発光）/ --rf-scan（走査線）
+     - <input> は疑似要素を持てないので border + background-clip で 2 重にして clip-path で切る
+   LIFF の WebView はアニメーションが止まることがある → ここでは動きを足さない（:active の scale だけ）。
+   重いとき（LINE 内ブラウザで drop-shadow が多い画面）は、走査線 → 発光の順に外す。
+   ============================================================ */
+
+.tr-root.is-retro {
+  --tr-font-ui: 'DotGothic16', 'Hiragino Sans', 'ヒラギノ角ゴシック', sans-serif;
+  /* 数字・英字の見出し。Press Start 2P に無い字（日本語）は DotGothic16 に落とす */
+  --tr-font-num: 'Press Start 2P', 'DotGothic16', monospace;
+  /* 角の形（ボードの .px / .px2 / .pxtop / .pxs）*/
+  --px: polygon(8px 0, calc(100% - 8px) 0, calc(100% - 8px) 4px, calc(100% - 4px) 4px, calc(100% - 4px) 8px, 100% 8px, 100% calc(100% - 8px), calc(100% - 4px) calc(100% - 8px), calc(100% - 4px) calc(100% - 4px), calc(100% - 8px) calc(100% - 4px), calc(100% - 8px) 100%, 8px 100%, 8px calc(100% - 4px), 4px calc(100% - 4px), 4px calc(100% - 8px), 0 calc(100% - 8px), 0 8px, 4px 8px, 4px 4px, 8px 4px);
+  --px2: polygon(4px 0, calc(100% - 4px) 0, calc(100% - 4px) 2px, calc(100% - 2px) 2px, calc(100% - 2px) 4px, 100% 4px, 100% calc(100% - 4px), calc(100% - 2px) calc(100% - 4px), calc(100% - 2px) calc(100% - 2px), calc(100% - 4px) calc(100% - 2px), calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 2px), 2px calc(100% - 2px), 2px calc(100% - 4px), 0 calc(100% - 4px), 0 4px, 2px 4px, 2px 2px, 4px 2px);
+  --pxtop: polygon(12px 0, calc(100% - 12px) 0, calc(100% - 12px) 4px, calc(100% - 8px) 4px, calc(100% - 8px) 8px, calc(100% - 4px) 8px, calc(100% - 4px) 12px, 100% 12px, 100% 100%, 0 100%, 0 12px, 4px 12px, 4px 8px, 8px 8px, 8px 4px, 12px 4px);
+  --pxs: polygon(2px 0, calc(100% - 2px) 0, calc(100% - 2px) 1px, calc(100% - 1px) 1px, calc(100% - 1px) 2px, 100% 2px, 100% calc(100% - 2px), calc(100% - 1px) calc(100% - 2px), calc(100% - 1px) calc(100% - 1px), calc(100% - 2px) calc(100% - 1px), calc(100% - 2px) 100%, 2px 100%, 2px calc(100% - 1px), 1px calc(100% - 1px), 1px calc(100% - 2px), 0 calc(100% - 2px), 0 2px, 1px 2px, 1px 1px, 2px 1px);
+  /* 走査線（ボードの .scan を opacity .45 ほどで重ねた色）*/
+  --rx-scan: repeating-linear-gradient(180deg, rgba(0, 8, 12, 0.13) 0 1px, rgba(0, 0, 0, 0) 1px 3px);
+  /* ROUTE（浅い海）の部品の色 */
+  --rx-face: #062530;
+  --rx-card: linear-gradient(180deg, #0c4250, #062530);
+  --rx-side: #0e9c9a;
+  --rx-edge: rgba(var(--tr-accent-rgb), 0.45);
+  --rx-row: rgba(4, 40, 48, 0.92);
+  --rx-chrome: linear-gradient(180deg, #ffffff 0%, #b6ffef 30%, #2df4c6 52%, #0e9c9a 52%, #17b5a8 72%, #9bebff 100%);
+  --rx-ink: #021014;
+  font-family: var(--tr-font-ui);
+  font-synthesis: none;
+}
+.tr-root.is-retro.is-abyss {
+  --rx-face: #050b1c;
+  --rx-card: linear-gradient(180deg, #0e1a3a, #050b1c);
+  --rx-side: #00869c;
+  --rx-row: rgba(5, 11, 28, 0.92);
+  --rx-chrome: linear-gradient(180deg, #ffffff 0%, #c6f8ff 30%, #00e5ff 52%, #00869c 52%, #00a7c2 72%, #a8f3ff 100%);
+  --rx-ink: #01030a;
+}
+.tr-root.is-retro.is-arena {
+  --rx-face: #1a1130;
+  --rx-card: linear-gradient(180deg, #2a1c45, #140d26);
+  --rx-side: #a88a14;
+  --rx-edge: rgba(255, 216, 74, 0.45);
+  --rx-row: rgba(26, 17, 48, 0.92);
+  --rx-chrome: linear-gradient(180deg, #ffffff 0%, #fff4c2 30%, #ffd84a 52%, #a35a00 52%, #c9790a 72%, #ffe38a 100%);
+  --rx-ink: #05030c;
+  --rx-scan: repeating-linear-gradient(180deg, rgba(5, 3, 12, 0.15) 0 1px, rgba(0, 0, 0, 0) 1px 3px);
+}
+/* 先生用の画面（進捗一覧・問題の確認）は表の読みやすさを優先して今のまま（本名などヒラギノの字が多い）*/
+.tr-root.is-retro.st-root {
+  font-family: var(--f-jp);
+}
+
+/* ── 季節イベント: ハロウィンの配色（出題・結果画面の root に .is-ev-halloween。実装手順 §0-3・ボード R05）──
+ * レトロの有無に関係なくイベントの色にするので .is-retro は付けない */
+.tr-root.is-ev-halloween {
+  --tr-text: #fff1e0;
+  --tr-text-rgb: 255, 241, 224;
+  --tr-sub: #cdb4e8;
+  --tr-accent: #ff9a1f;
+  --tr-accent-rgb: 255, 154, 31;
+  --tr-on: #1a0800;
+  --tr-accent-deep: #7a2c00;
+  --tr-card: #2e1650;
+  --tr-well: #140828;
+  --tr-ground: #0a0418;
+  --tr-ground-rgb: 10, 4, 24;
+  --tr-shadow-dark: #0a0418;
+  --tr-line: rgba(255, 154, 31, 0.5);
+  --tr-line-soft: rgba(255, 241, 224, 0.25);
+  --tr-glow: 0 0 20px rgba(255, 154, 31, 0.14);
+  --tr-cta-glow: 0 0 12px rgba(255, 154, 31, 0.5);
+  --tr-page: linear-gradient(180deg, #3a1a5a 0%, #1e0c36 45%, #0a0418 100%);
+  --tr-caustic: none;
+  --tr-fade-top: #3a1a5a;
+  --tr-fade-top-0: rgba(58, 26, 90, 0);
+  --tr-fade-bot: #0a0418;
+  --tr-fade-bot-0: rgba(10, 4, 24, 0);
+  /* イベントの差し色（紫）・明るい色（増えた分）*/
+  --ev-lilac: #c9a2ff;
+  --ev-light: #ffe6c2;
+}
+.tr-root.is-retro.is-ev-halloween {
+  --rx-face: #140828;
+  --rx-card: linear-gradient(180deg, #2e1650, #140828);
+  --rx-side: #7a2c00;
+  --rx-edge: rgba(255, 154, 31, 0.45);
+  --rx-row: rgba(20, 8, 40, 0.92);
+  --rx-chrome: linear-gradient(180deg, #ffffff 0%, #ffe6c2 30%, #ff9a1f 52%, #b8480a 52%, #ff9a1f 74%, #ffc872 100%);
+  --rx-ink: #140600;
+}
+
+/* ── 共通の字 ──────────────────────────────────────────── */
+
+.tr-root.is-retro .tr-arc {
+  font-family: var(--tr-font-num);
+  font-weight: 400;
+  letter-spacing: 0;
+  font-variant-numeric: normal;
+}
+/* クロームの文字: background の一括指定は使わない（clip が消えて四角になる環境がある）。グラデは background-image で */
+.tr-root.is-retro .tr-chr {
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  background-image: var(--rx-chrome);
+  filter: drop-shadow(2px 2px 0 var(--rx-ink));
+  line-height: 1.15;
+}
+/* 数字（スコア・%・順位・時間）= Press Start 2P（ボードの .num = 0.72em）。アリーナの数字は今の DotGothic16 のまま（先生 22:08）*/
+.tr-root.is-retro:not(.is-arena):not(.st-root) .tr-num {
+  font-family: var(--tr-font-num);
+  font-size: 0.72em;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+/* ヒラギノのまま: 問題の転記テキスト・必要な値のチップ・改善要望の入力欄・ログイン ID（Fonts の WHERE）*/
+.tr-root.is-retro .tr-qtext,
+.tr-root.is-retro .tr-given > span,
+.tr-root.is-retro .tr-report-text,
+.tr-root.is-retro .tr-login-id,
+.tr-root.is-retro .tr-imgph {
+  font-family: var(--f-jp);
+}
+/* アリーナの「0% / 70%」とタイマーは IBM Plex Mono のまま（ボード A03r・A07r）*/
+.tr-root.is-retro .tr-mono {
+  font-family: var(--f-mono);
+}
+
+/* 出題状況の 20 マス（NodeSheet の Pips・R02 / R03）。--pip = 主色・系統色 */
+.tr-root .tr-pips {
+  display: flex;
+  gap: 2px;
+}
+.tr-root .tr-pips > i {
+  flex: 1;
+  height: 7px;
+  display: block;
+  box-sizing: border-box;
+}
+.tr-root .tr-pips > i.is-mastered,
+.tr-root .tr-dist-legend i.is-mastered {
+  background: var(--pip, var(--tr-accent));
+}
+.tr-root .tr-pips > i.is-solved,
+.tr-root .tr-dist-legend i.is-solved {
+  background: var(--pip, var(--tr-accent));
+  opacity: 0.45;
+}
+.tr-root .tr-pips > i.is-review,
+.tr-root .tr-dist-legend i.is-review {
+  border: 2px solid var(--tr-review);
+}
+.tr-root .tr-pips > i.is-fresh,
+.tr-root .tr-dist-legend i.is-fresh {
+  background: rgba(var(--tr-text-rgb), 0.1);
+}
+
+/* ── 枠つきの箱（2 重の枠 = ::before 枠・::after 地）────────────
+ * 対象: 下で --rf-* を決める部品。ここで形だけそろえる */
+.tr-root.is-retro .tr-overlay > .tr-card,
+.tr-root.is-retro .tr-hero,
+.tr-root.is-retro.tr-result .tr-stat,
+.tr-root.is-retro.tr-result .tr-panel,
+.tr-root.is-retro .tr-wrong,
+.tr-root.is-retro .tr-frame,
+.tr-root.is-retro .tr-paper,
+.tr-root.is-retro .tr-timer > div,
+.tr-root.is-retro .tr-given > span,
+.tr-root.is-retro .tr-ch,
+.tr-root.is-retro .tr-cta,
+.tr-root.is-retro .tr-ghost,
+.tr-root.is-retro .tr-pop .tr-row,
+.tr-root.is-retro .tr-go,
+.tr-root.is-retro .tr-pop-tile,
+.tr-root.is-retro .tr-result-tile,
+.tr-root.is-retro .tr-gradebox,
+.tr-root.is-retro:not(.tr-treeview) .tr-iconbtn,
+.tr-root.is-retro .tr-pop-close,
+.tr-root.is-retro .tr-rank:not(.st-root) .tr-seg,
+.tr-root.is-retro.tr-rank:not(.st-root) .tr-seg,
+.tr-root.is-retro.tr-rank:not(.st-root) .tr-chips > button,
+.tr-root.is-retro.tr-rank:not(.st-root) .tr-podium-card,
+.tr-root.is-retro.tr-rank:not(.st-root) .tr-rank-row,
+.tr-root.is-retro .tr-arena-gate,
+.tr-root.is-retro .tr-ar-hero,
+.tr-root.is-retro .tr-ar-card,
+.tr-root.is-retro .tr-ar-stat,
+.tr-root.is-retro .tr-ar-staff,
+.tr-root.is-retro .tr-ar-cond,
+.tr-root.is-retro .tr-ar-btn,
+.tr-root.is-retro .tr-ar-btn2,
+.tr-root.is-retro .tr-ar-dialog,
+.tr-root.is-retro .tr-ar-close,
+.tr-root.is-retro .tr-ar-gradebox {
+  position: relative;
+  isolation: isolate;
+  border-style: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  filter: var(--rf-filter, none);
+}
+.tr-root.is-retro .tr-overlay > .tr-card::before,
+.tr-root.is-retro .tr-hero::before,
+.tr-root.is-retro.tr-result .tr-stat::before,
+.tr-root.is-retro.tr-result .tr-panel::before,
+.tr-root.is-retro .tr-wrong::before,
+.tr-root.is-retro .tr-frame::before,
+.tr-root.is-retro .tr-paper::before,
+.tr-root.is-retro .tr-timer > div::before,
+.tr-root.is-retro .tr-given > span::before,
+.tr-root.is-retro .tr-ch::before,
+.tr-root.is-retro .tr-cta::before,
+.tr-root.is-retro .tr-ghost::before,
+.tr-root.is-retro .tr-pop .tr-row::before,
+.tr-root.is-retro .tr-go::before,
+.tr-root.is-retro .tr-pop-tile::before,
+.tr-root.is-retro .tr-result-tile::before,
+.tr-root.is-retro .tr-gradebox::before,
+.tr-root.is-retro:not(.tr-treeview) .tr-iconbtn::before,
+.tr-root.is-retro .tr-pop-close::before,
+.tr-root.is-retro .tr-rank:not(.st-root) .tr-seg::before,
+.tr-root.is-retro.tr-rank:not(.st-root) .tr-seg::before,
+.tr-root.is-retro.tr-rank:not(.st-root) .tr-chips > button::before,
+.tr-root.is-retro.tr-rank:not(.st-root) .tr-podium-card::before,
+.tr-root.is-retro.tr-rank:not(.st-root) .tr-rank-row::before,
+.tr-root.is-retro .tr-arena-gate::before,
+.tr-root.is-retro .tr-ar-hero::before,
+.tr-root.is-retro .tr-ar-card::before,
+.tr-root.is-retro .tr-ar-stat::before,
+.tr-root.is-retro .tr-ar-staff::before,
+.tr-root.is-retro .tr-ar-cond::before,
+.tr-root.is-retro .tr-ar-btn::before,
+.tr-root.is-retro .tr-ar-btn2::before,
+.tr-root.is-retro .tr-ar-dialog::before,
+.tr-root.is-retro .tr-ar-close::before,
+.tr-root.is-retro .tr-ar-gradebox::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--rf-edge, var(--rx-edge));
+  clip-path: var(--rf-clip, var(--px2));
+}
+.tr-root.is-retro .tr-overlay > .tr-card::after,
+.tr-root.is-retro .tr-hero::after,
+.tr-root.is-retro.tr-result .tr-stat::after,
+.tr-root.is-retro.tr-result .tr-panel::after,
+.tr-root.is-retro .tr-wrong::after,
+.tr-root.is-retro .tr-frame::after,
+.tr-root.is-retro .tr-paper::after,
+.tr-root.is-retro .tr-timer > div::after,
+.tr-root.is-retro .tr-given > span::after,
+.tr-root.is-retro .tr-ch::after,
+.tr-root.is-retro .tr-cta::after,
+.tr-root.is-retro .tr-ghost::after,
+.tr-root.is-retro .tr-pop .tr-row::after,
+.tr-root.is-retro .tr-go::after,
+.tr-root.is-retro .tr-pop-tile::after,
+.tr-root.is-retro .tr-result-tile::after,
+.tr-root.is-retro .tr-gradebox::after,
+.tr-root.is-retro:not(.tr-treeview) .tr-iconbtn::after,
+.tr-root.is-retro .tr-pop-close::after,
+.tr-root.is-retro .tr-rank:not(.st-root) .tr-seg::after,
+.tr-root.is-retro.tr-rank:not(.st-root) .tr-seg::after,
+.tr-root.is-retro.tr-rank:not(.st-root) .tr-chips > button::after,
+.tr-root.is-retro.tr-rank:not(.st-root) .tr-podium-card::after,
+.tr-root.is-retro.tr-rank:not(.st-root) .tr-rank-row::after,
+.tr-root.is-retro .tr-arena-gate::after,
+.tr-root.is-retro .tr-ar-hero::after,
+.tr-root.is-retro .tr-ar-card::after,
+.tr-root.is-retro .tr-ar-stat::after,
+.tr-root.is-retro .tr-ar-staff::after,
+.tr-root.is-retro .tr-ar-cond::after,
+.tr-root.is-retro .tr-ar-btn::after,
+.tr-root.is-retro .tr-ar-btn2::after,
+.tr-root.is-retro .tr-ar-dialog::after,
+.tr-root.is-retro .tr-ar-close::after,
+.tr-root.is-retro .tr-ar-gradebox::after {
+  content: '';
+  position: absolute;
+  inset: var(--rf-w, 2px);
+  z-index: -1;
+  pointer-events: none;
+  background: var(--rf-scan, none), var(--rf-face, var(--rx-face));
+  clip-path: var(--rf-clip, var(--px2));
+}
+/* 塗りのボタン（主ボタン）: 枠なし = 枠と地を同じ色に */
+.tr-root.is-retro .tr-cta,
+.tr-root.is-retro .tr-ar-btn,
+.tr-root.is-retro .tr-go {
+  --rf-w: 0px;
+}
+
+/* 主ボタン（決定・挑戦する・ランキング）: 主色の塗り ＋ 押し出し 4px（側面）＋ 発光 */
+.tr-root.is-retro .tr-cta {
+  --rf-edge: var(--tr-accent);
+  --rf-face: var(--tr-accent);
+  --rf-filter: drop-shadow(4px 4px 0 var(--rx-side)) drop-shadow(0 0 10px rgba(var(--tr-accent-rgb), 0.45));
+  font-weight: 400;
+  font-size: 17px;
+}
+.tr-root.is-retro .tr-cta:disabled {
+  --rf-edge: rgba(var(--tr-text-rgb), 0.16);
+  --rf-face: rgba(var(--tr-text-rgb), 0.16);
+  --rf-filter: none;
+}
+/* 副ボタン（ツリーへ・もう一度）: 主色 50% の枠 ＋ 地 */
+.tr-root.is-retro .tr-ghost {
+  --rf-edge: rgba(var(--tr-accent-rgb), 0.5);
+  --rf-face: var(--rx-face);
+  font-weight: 400;
+  font-size: 15px;
+}
+.tr-root.is-retro .tr-ghost:disabled {
+  opacity: 0.55;
+}
+/* 丸ボタン → ドットの角の四角（44px・外 = 文字色 30%・内 = カード色）。ツリーのヘッダーは今のまま */
+.tr-root.is-retro:not(.tr-treeview) .tr-iconbtn,
+.tr-root.is-retro .tr-ar-close {
+  --rf-edge: rgba(var(--tr-text-rgb), 0.3);
+  --rf-face: var(--tr-card);
+  width: 44px;
+  height: 44px;
+  color: var(--tr-text);
+}
+.tr-root.is-retro .tr-pop-close {
+  --rf-edge: rgba(var(--tr-text-rgb), 0.3);
+  --rf-face: var(--rx-face);
+  width: 34px;
+  height: 34px;
+}
+/* 確認のダイアログ（中断しますか？ など）*/
+.tr-root.is-retro .tr-overlay > .tr-card {
+  --rf-clip: var(--px);
+  --rf-w: 3px;
+  --rf-edge: var(--tr-accent);
+  --rf-face: var(--rx-card);
+  --rf-scan: var(--rx-scan);
+  --rf-filter: drop-shadow(5px 5px 0 var(--rx-side)) drop-shadow(0 0 20px rgba(var(--tr-accent-rgb), 0.25));
+}
+
+/* ── ツリーのノード（ボード E01）: 角だけドット・面・枠・色・満ち方・発光は今のまま ──
+ * 立方体（46px）= 4px を 2px 刻み 2 段（.pxc = .px2 と同じ形）・種別の正方形（15px）= 2px を 1px 刻み（.pxs）。box-shadow → 同じ値の drop-shadow（TreeScreen が --tr-cfl で渡す）*/
+.tr-root.is-retro .tr-cube,
+.tr-root.is-retro .tr-sq {
+  border-style: none;
+  border-radius: 0;
+  background: none !important;
+  box-shadow: none !important;
+  overflow: visible;
+  filter: var(--tr-cfl, none);
+  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.tr-root.is-retro .tr-cube-b {
+  display: block;
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  padding: 1.5px;
+  background: var(--tr-cb);
+  clip-path: var(--px2);
+}
+.tr-root.is-retro .tr-cube-f {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--tr-cf);
+  clip-path: var(--px2);
+}
+.tr-root.is-retro .tr-sq .tr-cube-b {
+  padding: 1.2px;
+  clip-path: var(--pxs);
+}
+.tr-root.is-retro .tr-sq .tr-cube-f {
+  clip-path: var(--pxs);
+}
+/* 分野名は DotGothic16 11px（10px はつぶれる）*/
+.tr-root.is-retro .tr-label {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.tr-root.is-retro .tr-badge {
+  font-weight: 400;
+}
+.tr-root.is-retro .tr-badge.tr-num {
+  font-size: 7px;
+}
+.tr-root.is-retro .tr-stagemark {
+  font-family: var(--tr-font-num);
+  font-size: 8px;
+  font-weight: 400;
+}
+
+/* チャンピオンアリーナのノード（A01r / A02r / A02sr）: .px の金の枠 ＋ drop-shadow(5px 5px 0 #A88A14)・未開放は 2px の淡い実線の枠（点線はやめる）*/
+.tr-root.is-retro .tr-arena-gate {
+  --rf-clip: var(--px);
+  --rf-edge: rgba(var(--tr-text-rgb), 0.3);
+  --rf-face: #06404c;
+  --rf-scan: var(--rx-scan);
+}
+.tr-root.is-retro .tr-arena-gate.is-open {
+  --rf-edge: #ffd84a;
+  --rf-face: #073e4b;
+  --rf-filter: drop-shadow(5px 5px 0 #a88a14) drop-shadow(0 0 12px rgba(255, 216, 74, 0.45));
+}
+.tr-root.is-retro .tr-arena-gate.is-open.is-lit {
+  --rf-face: linear-gradient(180deg, #2a1c45 0%, #120b22 100%);
+  --rf-filter: drop-shadow(5px 5px 0 #a88a14) drop-shadow(0 0 2px rgba(234, 251, 255, 0.7)) drop-shadow(0 0 28px rgba(255, 216, 74, 0.6));
+}
+.tr-root.is-retro .tr-arena-meta {
+  font-family: var(--tr-font-ui);
+}
+
+/* ── ノードの詳細（ボード R02）: 上の角がドットのシート・枠は分野色（NodeSheet が --tr-pop-c で渡す）──── */
+.tr-root.is-retro .tr-pop {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 3px 3px 0;
+  border-style: none;
+  border-radius: 0;
+  background: var(--tr-pop-c, var(--tr-line)) !important;
+  box-shadow: none !important;
+  clip-path: var(--pxtop);
+  overflow: hidden;
+  gap: 0;
+  max-height: calc(100% - var(--tr-top) - 60px);
+}
+.tr-root.is-retro .tr-pop > .tr-pop-in {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 10px 16px calc(var(--tr-bottom) + 22px);
+  background: var(--rx-scan), var(--rx-card);
+  clip-path: var(--pxtop);
+}
+/* つまみ（3 本のドット）*/
+.tr-root.is-retro .tr-pop > .tr-pop-in::before {
+  content: '';
+  flex: none;
+  align-self: center;
+  width: 32px;
+  height: 4px;
+  background: repeating-linear-gradient(90deg, rgba(var(--tr-text-rgb), 0.3) 0 8px, rgba(0, 0, 0, 0) 8px 12px);
+}
+.tr-root.is-retro .tr-pop-tile {
+  --rf-edge: var(--tr-cb, var(--tr-accent));
+  --rf-face: var(--tr-cf, var(--rx-face));
+  --rf-filter: var(--tr-cfl, none);
+  width: 46px;
+  height: 46px;
+}
+.tr-root.is-retro .tr-pop-tile > svg {
+  position: relative;
+}
+/* 満ちた面（マスター度）: 枠の内側だけ */
+.tr-root.is-retro .tr-pop-tile-fill {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
+  max-height: calc(100% - 4px);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 2px), calc(100% - 2px) calc(100% - 2px), calc(100% - 2px) 100%, 2px 100%, 2px calc(100% - 2px), 0 calc(100% - 2px));
+}
+/* 満ちた面の上のアイコンは濃い色（今の塗りのタイルと同じ）*/
+.tr-root.is-retro .tr-pop-tile:has(.tr-pop-tile-fill) {
+  color: var(--tr-on) !important;
+}
+.tr-root.is-retro .tr-pop-name {
+  font-size: 20px;
+  font-weight: 400;
+  color: #ffffff;
+  text-shadow: 2px 2px 0 var(--rx-ink);
+}
+.tr-root.is-retro .tr-pop-master {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.tr-root.is-retro .tr-pop-master > span:first-child {
+  font-size: 7px;
+  color: var(--tr-sub);
+}
+.tr-root.is-retro .tr-pop-master .tr-chr {
+  font-size: 20px;
+}
+.tr-root.is-retro .tr-tag {
+  border-radius: 0;
+  font-weight: 400;
+  box-shadow: none !important;
+}
+.tr-root.is-retro .tr-pop .tr-row {
+  --rf-edge: var(--tr-pop-glow, rgba(var(--tr-text-rgb), 0.2));
+  --rf-face: rgba(2, 16, 22, 0.85);
+  --rf-scan: var(--rx-scan);
+  padding: 9px 10px;
+}
+.tr-root.is-retro .tr-pop .tr-row-tile {
+  border-radius: 0;
+  clip-path: var(--px2);
+  box-shadow: none !important;
+}
+.tr-root.is-retro .tr-row-label {
+  align-items: center;
+}
+.tr-root.is-retro .tr-row-label b {
+  font-size: 15px;
+  font-weight: 400;
+}
+.tr-root.is-retro .tr-row-body {
+  gap: 7px;
+}
+.tr-root.is-retro .tr-new {
+  border-radius: 0;
+  clip-path: var(--px2);
+  font-weight: 400;
+}
+/* 「挑戦」: 分野色の塗り ＋ 押し出し 3px（NodeSheet が --tr-go / --tr-go-side で渡す）*/
+.tr-root.is-retro .tr-go {
+  --rf-edge: var(--tr-go, var(--tr-accent));
+  --rf-face: var(--tr-go, var(--tr-accent));
+  --rf-filter: drop-shadow(3px 3px 0 var(--tr-go-side, var(--rx-side)));
+  height: 40px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--tr-on);
+}
+.tr-root.is-retro .tr-go:disabled {
+  --rf-edge: rgba(var(--tr-text-rgb), 0.12);
+  --rf-face: rgba(var(--tr-text-rgb), 0.12);
+  --rf-filter: none;
+}
+.tr-root.is-retro .tr-link {
+  font-weight: 400;
+}
+
+/* ── ランキング（ボード R01・アリーナタブは A10r〜A12r）──────────── */
+.tr-root.is-retro .tr-rank-title.is-retro {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  flex: 1;
+  min-width: 0;
+}
+.tr-root.is-retro .tr-rank-en {
+  font-size: 13px;
+  filter: drop-shadow(1px 1px 0 var(--rx-ink));
+}
+.tr-root.is-retro .tr-rank-ja {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--tr-sub);
+}
+.tr-root.is-retro.tr-rank:not(.st-root) .tr-seg {
+  --rf-w: 0px;
+  --rf-edge: rgba(var(--tr-ground-rgb), 0.85);
+  --rf-face: rgba(var(--tr-ground-rgb), 0.85);
+  padding: 3px;
+}
+.tr-root.is-retro.tr-rank:not(.st-root) .tr-seg > button {
+  border-radius: 0;
+  height: 34px;
+  font-weight: 400 !important;
+  clip-path: var(--px2);
+}
+.tr-root.is-retro.tr-rank:not(.st-root) .tr-seg > button.is-on {
+  box-shadow: none;
+}
+.tr-root.is-retro.tr-rank:not(.st-root) .tr-chips > button {
+  --rf-edge: rgba(var(--tr-text-rgb), 0.25);
+  --rf-face: rgba(var(--tr-ground-rgb), 0.6);
+  border-radius: 0;
+  font-weight: 400;
+}
+.tr-root.is-retro.tr-rank:not(.st-root) .tr-chips > button.is-on {
+  --rf-edge: var(--rf-chip, var(--tr-text));
+  --rf-face: rgba(var(--tr-text-rgb), 0.1);
+  box-shadow: none !important;
+}
+/* 表彰台: .px の枠（金 / 銀 / 銅）＋ 押し出し 4px ＋ 走査線（RankingScreen が --pd-edge / --pd-filter で渡す）*/
+.tr-root.is-retro.tr-rank:not(.st-root) .tr-podium-card {
+  --rf-clip: var(--px);
+  --rf-w: 3px;
+  --rf-edge: var(--pd-edge, var(--tr-accent));
+  --rf-face: var(--rx-card);
+  --rf-scan: var(--rx-scan);
+  --rf-filter: var(--pd-filter, none);
+  padding: 12px 6px 12px;
+  gap: 6px;
+}
+.tr-root.is-retro.tr-rank:not(.st-root) .tr-podium-card.is-me {
+  --rf-face: linear-gradient(180deg, rgba(var(--tr-text-rgb), 0.16), rgba(var(--tr-text-rgb), 0.06)), var(--rx-card);
+}
+/* ROUTE / ABYSS: 2 位・1 位・3 位の並び（ボード R01）。アリーナは 1 位が左のまま（A10r）*/
+.tr-root.is-retro.tr-rank:not(.is-arena):not(.st-root) .tr-podium-card.is-rk1 {
+  order: 2;
+  min-height: 196px;
+}
+.tr-root.is-retro.tr-rank:not(.is-arena):not(.st-root) .tr-podium-card.is-rk2 {
+  order: 1;
+  min-height: 178px;
+}
+.tr-root.is-retro.tr-rank:not(.is-arena):not(.st-root) .tr-podium-card.is-rk3 {
+  order: 3;
+  min-height: 170px;
+}
+.tr-root.is-retro .tr-podium-en {
+  font-size: 11px;
+}
+.tr-root.is-retro.tr-rank:not(.st-root) .tr-avatar {
+  border-radius: 0;
+  clip-path: var(--px2);
+  font-weight: 400;
+  margin: 6px 0;
+}
+.tr-root.is-retro.tr-rank:not(.is-arena):not(.st-root) .is-rk1 .tr-avatar {
+  width: 52px;
+  height: 52px;
+  font-size: 26px;
+}
+.tr-root.is-retro.tr-rank:not(.is-arena):not(.st-root) .is-rk2 .tr-avatar {
+  width: 46px;
+  height: 46px;
+  font-size: 23px;
+}
+.tr-root.is-retro.tr-rank:not(.is-arena):not(.st-root) .is-rk3 .tr-avatar {
+  width: 42px;
+  height: 42px;
+  font-size: 21px;
+}
+.tr-root.is-retro.tr-rank.is-arena .tr-avatar {
+  font-size: 21px;
+}
+.tr-root.is-retro .tr-podium-name {
+  font-weight: 400;
+  color: #ffffff;
+  text-shadow: 1px 1px 0 var(--rx-ink);
+}
+.tr-root.is-retro.tr-rank:not(.is-arena):not(.st-root) .tr-podium-score {
+  font-size: 13px;
+  color: #ffffff;
+}
+.tr-root.is-retro.tr-rank:not(.st-root) .tr-podium-rank {
+  font-weight: 400;
+}
+/* 行 = .px2 の枠（主色 28%）＋ 走査線・順位と点は Press Start 2P・学年は小さな札 */
+.tr-root.is-retro.tr-rank:not(.st-root) .tr-rank-list {
+  border-style: none;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tr-root.is-retro.tr-rank:not(.st-root) .tr-rank-row {
+  --rf-edge: rgba(var(--tr-accent-rgb), 0.28);
+  --rf-face: var(--rx-row);
+  --rf-scan: var(--rx-scan);
+  height: 46px;
+  gap: 10px;
+  padding: 0 12px 0 10px;
+  font-weight: 400;
+}
+.tr-root.is-retro.tr-rank:not(.st-root) .tr-rank-row.is-me {
+  --rf-edge: rgba(var(--tr-accent-rgb), 0.6);
+  --rf-face: linear-gradient(180deg, rgba(var(--tr-accent-rgb), 0.2), rgba(var(--tr-accent-rgb), 0.1)), var(--rx-row);
+}
+.tr-root.is-retro.tr-rank:not(.is-arena):not(.st-root) .tr-rank-n {
+  font-size: 10px;
+  text-align: center;
+  width: 26px;
+}
+.tr-root.is-retro.tr-rank:not(.is-arena):not(.st-root) .tr-rank-row > .tr-num:last-child {
+  font-size: 9px;
+}
+.tr-root.is-retro.tr-rank:not(.st-root) .tr-grade {
+  min-width: 0;
+  border-style: none !important;
+  border-radius: 0;
+  clip-path: var(--px2);
+  background: rgba(var(--tr-accent-rgb), 0.16);
+  font-weight: 400;
+  padding: 3px 6px;
+}
+.tr-root.is-retro.tr-rank.is-arena .tr-grade {
+  background: rgba(45, 244, 198, 0.16);
+}
+.tr-root.is-retro.tr-rank:not(.st-root) .tr-rank-name {
+  font-weight: 400;
+  font-size: 13px;
+}
+/* 自分の行（下に固定）: 主色の塗り ＋ 押し出し 4px ＋ 発光 */
+.tr-root.is-retro.tr-rank:not(.st-root) .tr-rank-row.is-pinned {
+  --rf-w: 0px;
+  --rf-edge: var(--tr-accent);
+  --rf-face: var(--tr-accent);
+  --rf-scan: none;
+  --rf-filter: drop-shadow(4px 4px 0 var(--rx-side)) drop-shadow(0 0 12px rgba(var(--tr-accent-rgb), 0.5));
+  height: 54px;
+}
+.tr-root.is-retro.tr-rank:not(.st-root) .tr-rank-row.is-pinned .tr-grade {
+  background: rgba(var(--tr-ground-rgb), 0.18);
+  color: var(--tr-on);
+}
+.tr-root.is-retro.tr-rank:not(.st-root) .tr-rank-row.is-pinned .tr-rank-name {
+  font-weight: 400;
+  font-size: 14px;
+}
+.tr-root.is-retro.tr-rank:not(.is-arena):not(.st-root) .tr-rank-row.is-pinned > .tr-num:last-child {
+  font-size: 10px;
+}
+/* アリーナタブ: 自分の行は金の塗り（A10r）・先生の行は点線のまま */
+.tr-root.is-retro.tr-rank.is-arena .tr-rank-list .tr-rank-row.is-me {
+  --rf-edge: var(--ar-gold);
+  --rf-face: var(--ar-gold);
+}
+.tr-root.is-retro.tr-rank.is-arena .tr-rank-list .tr-rank-row.is-staff {
+  --rf-edge: rgba(45, 244, 198, 0.6);
+  --rf-face: linear-gradient(rgba(45, 244, 198, 0.08), rgba(45, 244, 198, 0.08)), var(--rx-row);
+}
+/* アリーナタブのシーズンの切り替え（A10r）: ドットの角のバーに入れる */
+.tr-root.is-retro.tr-rank.is-arena .tr-chips {
+  align-self: flex-start;
+  width: auto;
+  gap: 2px;
+  padding: 3px;
+  background: rgba(13, 8, 32, 0.85);
+  clip-path: var(--px2);
+}
+.tr-root.is-retro.tr-rank.is-arena .tr-chips > button {
+  --rf-edge: transparent;
+  --rf-face: transparent;
+  --rf-w: 0px;
+  height: 34px;
+  color: var(--tr-sub);
+}
+.tr-root.is-retro.tr-rank.is-arena .tr-chips > button.is-on {
+  --rf-edge: rgba(255, 216, 74, 0.2);
+  --rf-face: rgba(255, 216, 74, 0.2);
+  color: var(--ar-gold);
+}
+
+/* ── 出題（ボード R04・アリーナは A07r）────────────────────── */
+.tr-root.is-retro .tr-crumb {
+  font-size: 12px;
+}
+.tr-root.is-retro .tr-crumb span {
+  font-weight: 400 !important;
+}
+/* 進捗 = 問題数ぶんのマス（済み = 主色・今 = 白・まだ = 14%）*/
+.tr-root.is-retro .tr-qpips {
+  flex: 1;
+  display: flex;
+  gap: 3px;
+  filter: drop-shadow(0 0 4px rgba(var(--tr-accent-rgb), 0.45));
+}
+.tr-root.is-retro .tr-qpips > i {
+  flex: 1;
+  height: 8px;
+  display: block;
+  background: rgba(var(--tr-text-rgb), 0.14);
+}
+.tr-root.is-retro .tr-qpips > i.is-done {
+  background: var(--pip, var(--tr-accent));
+}
+.tr-root.is-retro .tr-qpips > i.is-now {
+  background: #ffffff;
+}
+.tr-root.is-retro.is-arena .tr-qpips {
+  gap: 2px;
+}
+.tr-root.is-retro.is-arena .tr-qpips > i {
+  height: 6px;
+}
+.tr-root.is-retro:not(.is-arena) .tr-progress > .tr-num {
+  font-size: 9px !important;
+}
+.tr-root.is-retro .tr-progress > .tr-num span {
+  font-weight: 400 !important;
+}
+/* 「経過 / 制限」= .px2 の枠に Press Start 2P 7px（アリーナは IBM Plex Mono のまま）*/
+.tr-root.is-retro .tr-timer > div {
+  --rf-edge: rgba(var(--tr-accent-rgb), 0.45);
+  --rf-face: var(--rx-face);
+  height: auto;
+  padding: 7px 8px;
+  gap: 5px;
+  font-weight: 400;
+}
+.tr-root.is-retro:not(.is-arena) .tr-timer > div.tr-num {
+  font-size: 7px;
+}
+.tr-root.is-retro:not(.is-arena) .tr-timer > div svg {
+  width: 9px;
+  height: 9px;
+}
+.tr-root.is-retro .tr-timer > div span {
+  font-weight: 400;
+}
+.tr-root.is-retro.is-arena .tr-timer > div {
+  --rf-edge: rgba(255, 216, 74, 0.45);
+  --rf-face: #140d26;
+  font-family: var(--f-mono);
+  font-size: 13px;
+  padding: 4px 10px;
+}
+.tr-root.is-retro .tr-timer > small {
+  font-family: var(--tr-font-ui);
+  font-size: 11px;
+  font-weight: 400;
+}
+/* 問題の紙面の外枠 = .px（主色 45% の枠・地）・紙 = .px2 */
+.tr-root.is-retro .tr-frame {
+  --rf-clip: var(--px);
+  --rf-edge: rgba(var(--tr-accent-rgb), 0.45);
+  --rf-face: var(--rx-face);
+  padding: 8px;
+}
+.tr-root.is-retro .tr-paper {
+  --rf-w: 0px;
+  --rf-edge: #fbf8f1;
+  --rf-face: #fbf8f1;
+}
+.tr-root.is-retro .tr-paper img {
+  border-radius: 0;
+}
+.tr-root.is-retro .tr-imgscroll {
+  border-radius: 0;
+}
+.tr-root.is-retro .tr-member-head {
+  font-weight: 400;
+}
+.tr-root.is-retro .tr-expand {
+  border-radius: 0;
+  clip-path: var(--px2);
+}
+/* 必要な値: 紙面の下に GIVEN の札 ＋ .px2 のチップ（字はヒラギノのまま）。単問だけ紙面の下へ（セットは今の位置）*/
+.tr-root.is-retro .tr-qarea.is-fill > .tr-given {
+  order: 2;
+}
+.tr-root.is-retro .tr-given-k {
+  flex: none;
+  font-family: var(--tr-font-num);
+  font-size: 7px;
+  font-weight: 400;
+  color: var(--tr-sub);
+}
+.tr-root.is-retro .tr-given > span,
+.tr-root.is-retro:not(.is-arena):not(.st-root) .tr-given > span.tr-num {
+  font-family: var(--f-jp);
+  letter-spacing: 0;
+  --rf-edge: rgba(var(--tr-accent-rgb), 0.35);
+  --rf-face: var(--rx-face);
+  font-size: 12px;
+  padding: 5px 10px;
+}
+.tr-root.is-retro.is-arena .tr-given > span {
+  --rf-edge: rgba(255, 216, 74, 0.35);
+  --rf-face: #140d26;
+  font-size: 11px;
+}
+/* 解答のパッド（下から出るシート）= 上の角がドット */
+.tr-root.is-retro .tr-pad {
+  border-top-style: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--rx-scan), var(--rx-card);
+  clip-path: var(--pxtop);
+  padding-top: 14px;
+}
+/* .tr-pad の clip-path でスクショのボタン（パッドの上に浮かせている）が切れないように、ボタンの分だけ上に余白を足さず、ボタンを中に入れる */
+.tr-root.is-retro.tr-play .tr-pad > .tr-shot {
+  top: 10px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 0;
+  clip-path: var(--px2);
+}
+.tr-root.is-retro.tr-play .tr-pad:has(> .tr-shot) > .tr-pad-head {
+  padding-right: 46px;
+}
+.tr-root.is-retro.is-arena .tr-pad,
+.tr-root.is-retro.is-arena.tr-play .tr-pad {
+  clip-path: none;
+  background: rgba(13, 8, 32, 0.9);
+  border-top: 2px solid rgba(255, 216, 74, 0.25);
+}
+.tr-root.is-retro .tr-pad-head {
+  font-size: 12px;
+}
+.tr-root.is-retro:not(.is-arena) .tr-pad-head b.tr-num {
+  font-size: 8px;
+  color: var(--tr-accent);
+}
+/* 番号ボタン = .px2（選択中は主色の塗り ＋ 押し出し 3px）*/
+.tr-root.is-retro .tr-ch {
+  --rf-edge: rgba(var(--tr-accent-rgb), 0.45);
+  --rf-face: var(--rx-face);
+  height: 54px;
+  font-weight: 400;
+  transform: none;
+}
+.tr-root.is-retro:not(.is-arena) .tr-ch {
+  font-family: var(--tr-font-num);
+  font-size: 16px;
+}
+.tr-root.is-retro:not(.is-arena) .tr-ch.is-sm {
+  height: 46px;
+  font-size: 13px;
+}
+.tr-root.is-retro .tr-ch.is-sel {
+  --rf-edge: var(--tr-accent);
+  --rf-face: var(--tr-accent);
+  --rf-filter: drop-shadow(3px 3px 0 var(--rx-side)) drop-shadow(0 0 8px rgba(var(--tr-accent-rgb), 0.5));
+  color: var(--tr-on);
+  transform: none;
+}
+.tr-root.is-retro .tr-ch:active {
+  transform: scale(0.94);
+}
+.tr-root.is-retro.is-arena .tr-ch {
+  --rf-edge: rgba(255, 216, 74, 0.45);
+  --rf-face: #1a1130;
+}
+.tr-root.is-retro.is-arena .tr-ch.is-sel {
+  --rf-edge: var(--ar-gold);
+  --rf-face: var(--ar-gold);
+  --rf-filter: drop-shadow(3px 3px 0 #a88a14) drop-shadow(0 0 8px rgba(255, 216, 74, 0.5));
+}
+/* 「あとで復習」: 平たい札のまま角だけ四角に */
+.tr-root.is-retro .tr-mark {
+  border-radius: 0;
+  font-weight: 400;
+}
+.tr-root.is-retro .tr-mark-box {
+  border-radius: 0;
+}
+.tr-root.is-retro .tr-boxlabel {
+  font-size: 11px;
+}
+/* iPad 横: パッドは右の縦長パネル（.px の枠）*/
+@media (min-width: 900px) {
+  .tr-root.is-retro.tr-play > .tr-pad {
+    clip-path: var(--px);
+    border-style: none;
+  }
+  .tr-root.is-retro:not(.is-arena).tr-play > .tr-pad .tr-ch {
+    height: 64px;
+    font-size: 18px;
+  }
+}
+
+/* ── 結果（ボード R03・イベントの挑戦は R05）──────────────────── */
+.tr-root.is-retro .tr-result-head {
+  font-size: 14px;
+  text-shadow: 1px 1px 0 var(--rx-ink);
+}
+.tr-root.is-retro .tr-result-head b {
+  font-weight: 400;
+}
+.tr-root.is-retro .tr-result-tile {
+  --rf-edge: var(--tr-text);
+  --rf-face: var(--tr-cf, var(--tr-accent));
+  --rf-filter: var(--tr-cfl, none);
+  width: 32px !important;
+  height: 32px !important;
+}
+.tr-root.is-retro .tr-result-tile > svg {
+  position: relative;
+}
+/* 今回の加算 = .px の主色の枠 ＋ 押し出し ＋ 走査線 */
+.tr-root.is-retro .tr-hero {
+  --rf-clip: var(--px);
+  --rf-w: 3px;
+  --rf-edge: var(--tr-accent);
+  --rf-face: var(--rx-card);
+  --rf-scan: var(--rx-scan);
+  --rf-filter: drop-shadow(4px 4px 0 var(--rx-side)) drop-shadow(0 0 14px rgba(var(--tr-accent-rgb), 0.3));
+  padding: 16px 18px 18px;
+  gap: 12px;
+}
+.tr-root.is-retro .tr-hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--tr-sub);
+}
+.tr-root.is-retro .tr-hero-top .tr-arc {
+  font-size: 7px;
+}
+.tr-root.is-retro .tr-hero-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.tr-root.is-retro .tr-hero-big {
+  font-size: 36px;
+  line-height: 1;
+}
+.tr-root.is-retro .tr-hero-max {
+  font-size: 11px;
+  color: var(--tr-sub);
+}
+.tr-root.is-retro .tr-hero-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+/* 内訳 = .px2 のチップ（数字は Press Start 2P 8px 主色。±0 の行は薄く）*/
+.tr-root.is-retro .tr-hero .tr-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 0;
+  clip-path: var(--px2);
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 400;
+  background: rgba(var(--tr-accent-rgb), 0.16);
+  color: var(--tr-text);
+}
+.tr-root.is-retro .tr-hero .tr-pill .tr-arc {
+  font-size: 8px;
+  color: var(--tr-accent);
+}
+.tr-root.is-retro .tr-hero .tr-pill.is-zero {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--tr-sub);
+}
+.tr-root.is-retro .tr-hero .tr-pill.is-zero .tr-arc {
+  color: var(--tr-sub);
+}
+.tr-root.is-retro .tr-hero-sub {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--tr-sub);
+}
+.tr-root.is-retro .tr-hero-sub b {
+  font-size: 9px;
+  color: var(--tr-text);
+}
+/* 3 枚のタイル = 前の値 7px → 後の値 11px（上がったら主色 ＋ ドットの ▲）*/
+.tr-root.is-retro.tr-result .tr-stat {
+  --rf-edge: rgba(var(--tr-accent-rgb), 0.35);
+  --rf-face: var(--rx-face);
+  --rf-scan: var(--rx-scan);
+  padding: 10px 10px 11px;
+  gap: 0;
+  color: var(--tr-text);
+  text-align: left;
+}
+.tr-root.is-retro .tr-stat3.is-retro .tr-stat > div:first-child {
+  font-size: 11px;
+  color: var(--tr-sub);
+}
+.tr-root.is-retro .tr-stat3.is-retro .tr-stat-from {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px !important;
+  font-weight: 400 !important;
+  color: var(--tr-sub) !important;
+}
+.tr-root.is-retro .tr-stat3.is-retro .tr-stat-from .tr-arc {
+  font-size: 7px;
+}
+.tr-root.is-retro .tr-stat3.is-retro .tr-stat-from .tr-arc:last-child {
+  font-size: 8px;
+}
+.tr-root.is-retro .tr-stat3.is-retro .tr-stat-to {
+  margin-top: 7px;
+  min-height: 16px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  color: var(--tr-text) !important;
+}
+.tr-root.is-retro .tr-stat3.is-retro .tr-stat-to .tr-arc {
+  font-size: 11px;
+}
+.tr-root.is-retro .tr-stat3.is-retro .tr-stat-to.is-up {
+  color: var(--tr-accent) !important;
+}
+.tr-root.is-retro .tr-stat3.is-retro .tr-stat-to.is-up .tr-arc {
+  font-size: 12px;
+}
+.tr-root.is-retro .tr-stat3.is-retro .tr-stat-to.is-down {
+  color: var(--tr-review) !important;
+}
+.tr-root.is-retro .tr-stat3.is-retro .tr-stat-note {
+  margin-top: 5px;
+  font-size: 10px;
+  color: var(--tr-sub);
+}
+/* 出題状況（R02 と同じ 20 マス）*/
+.tr-root.is-retro.tr-result .tr-panel {
+  --rf-edge: rgba(var(--tr-accent-rgb), 0.35);
+  --rf-face: var(--rx-face);
+  --rf-scan: var(--rx-scan);
+}
+.tr-root.is-retro .tr-dist-card {
+  padding: 11px 14px 12px;
+  gap: 9px;
+}
+.tr-root.is-retro .tr-dist-card .tr-pips > i {
+  height: 8px;
+}
+.tr-root.is-retro .tr-dist-title {
+  font-size: 12px;
+  color: var(--tr-sub);
+}
+.tr-root.is-retro .tr-dist-title .tr-arc {
+  font-size: 8px;
+  color: var(--tr-text);
+}
+.tr-root .tr-dist-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 11px;
+  color: var(--tr-sub);
+}
+.tr-root .tr-dist-legend > span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.tr-root .tr-dist-legend i {
+  width: 8px;
+  height: 8px;
+  display: block;
+  box-sizing: border-box;
+}
+.tr-root.is-retro .tr-dist-legend b {
+  font-size: 7px;
+  color: var(--tr-text);
+  font-weight: 400;
+}
+.tr-root.is-retro .tr-note {
+  font-size: 11px;
+}
+/* 間違えた問題 / チェックした問題の一覧（今のまま・部品だけ）: 見出しの札 MISS / CHECK・行の枠 .px2 */
+.tr-root.is-retro .tr-wrong-title {
+  font-weight: 400 !important;
+}
+.tr-root .tr-wrong-tag {
+  flex: none;
+  padding: 4px 5px;
+  font-size: 7px;
+  line-height: 1;
+  color: #2a0e00;
+  clip-path: var(--px2);
+}
+.tr-root .tr-wrong-tag[style*='B9A6FF'],
+.tr-root .tr-wrong-tag[style*='b9a6ff'] {
+  color: #14082e;
+}
+.tr-root.is-retro .tr-wrong {
+  --rf-edge: rgba(var(--tr-text-rgb), 0.22);
+  --rf-face: var(--rx-face);
+  --rf-scan: var(--rx-scan);
+  padding: 10px 12px 11px;
+}
+.tr-root.is-retro .tr-wrong-head b.tr-num {
+  font-family: var(--tr-font-ui);
+  font-size: 1em;
+}
+.tr-root.is-retro .tr-checktag {
+  border-radius: 0;
+  clip-path: var(--px2);
+  font-weight: 400;
+}
+.tr-root.is-retro .tr-report {
+  border-radius: 0;
+}
+.tr-root.is-retro .tr-report-text {
+  border-radius: 0;
+}
+.tr-root.is-retro .tr-report-cancel,
+.tr-root.is-retro .tr-report-send {
+  border-radius: 0;
+  clip-path: var(--px2);
+  font-weight: 400;
+}
+/* 下のシート（ニックネーム）= 上の角がドット */
+.tr-root.is-retro .tr-foot {
+  border-top-style: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: linear-gradient(rgba(var(--tr-accent-rgb), 0.45), rgba(var(--tr-accent-rgb), 0.45)) top / 100% 2px no-repeat, var(--tr-card);
+  clip-path: var(--pxtop);
+  padding-top: 16px;
+}
+.tr-root.is-retro .tr-gradebox {
+  --rf-edge: rgba(255, 255, 255, 0.22);
+  --rf-face: var(--rx-face);
+  width: 56px;
+  justify-content: center;
+  padding: 0 !important;
+  font-size: 15px !important;
+  font-weight: 400 !important;
+}
+/* 入力欄（疑似要素を持てないので border + background-clip の 2 重）*/
+.tr-root.is-retro .tr-input {
+  border: 2px solid transparent;
+  border-radius: 0;
+  background: linear-gradient(var(--rx-face), var(--rx-face)) padding-box, rgba(255, 255, 255, 0.22) border-box;
+  clip-path: var(--px2);
+  font-family: var(--tr-font-ui);
+}
+.tr-root.is-retro .tr-input:focus {
+  outline: none;
+  background: linear-gradient(var(--rx-face), var(--rx-face)) padding-box, rgba(var(--tr-accent-rgb), 0.6) border-box;
+}
+.tr-root.is-retro .tr-foot-btns > button {
+  height: 48px !important;
+  font-size: 15px !important;
+}
+.tr-root.is-retro .tr-alert {
+  border-radius: 0;
+}
+
+/* イベントの挑戦の結果（R05・.is-ev-halloween）: 「EVENT MASTER 64% → 70%」の行と「定着 +4 題 · あと 6 日」（行そのものは ResultScreen が足す）
+ *   <div class="tr-ev-master">
+ *     <div class="tr-ev-master-top"><span class="tr-arc">EVENT MASTER</span><span>64% → <b class="tr-arc tr-chr">70%</b></span></div>
+ *     <div class="tr-ev-master-bar"><i class="is-before" style="width:64%"></i><i class="is-gain" style="width:6%"></i></div>
+ *     <div class="tr-ev-master-note">定着 +4 題 · あと 6 日</div>
+ *   </div> */
+.tr-root .tr-ev-master {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 11px 14px 12px;
+  color: var(--tr-text);
+}
+.tr-root .tr-ev-master::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: rgba(var(--tr-accent-rgb), 0.5);
+  clip-path: var(--px2, none);
+}
+.tr-root .tr-ev-master::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  z-index: -1;
+  background: var(--rx-scan, none), var(--rx-face, var(--tr-card));
+  clip-path: var(--px2, none);
+}
+.tr-root .tr-ev-master-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--tr-sub);
+}
+.tr-root .tr-ev-master-top > .tr-arc {
+  font-size: 7px;
+  color: var(--tr-sub);
+}
+.tr-root .tr-ev-master-top b {
+  font-size: 16px;
+  font-weight: 400;
+}
+.tr-root .tr-ev-master-top .tr-arc:not(b) {
+  font-size: 9px;
+}
+.tr-root .tr-ev-master-bar {
+  display: flex;
+  height: 8px;
+  background: rgba(var(--tr-text-rgb), 0.1);
+}
+.tr-root .tr-ev-master-bar > i {
+  display: block;
+  height: 100%;
+}
+.tr-root .tr-ev-master-bar > i.is-before {
+  background: repeating-linear-gradient(90deg, var(--tr-accent) 0 6px, rgba(0, 0, 0, 0) 6px 8px);
+}
+.tr-root .tr-ev-master-bar > i.is-gain {
+  background: repeating-linear-gradient(90deg, var(--ev-light, #ffe6c2) 0 6px, rgba(0, 0, 0, 0) 6px 8px);
+}
+.tr-root .tr-ev-master-note {
+  font-size: 11px;
+  color: var(--tr-sub);
+}
+.tr-root .tr-ev-master-note .tr-arc {
+  font-size: 8px;
+  color: var(--tr-text);
+}
+
+/* ── チャンピオンアリーナ（A03r〜A15r）: 夜の紫 ＋ 金のまま・角だけドット・数字は今の DotGothic16 のまま ── */
+.tr-root.is-retro .tr-ar-hero,
+.tr-root.is-retro .tr-ar-dialog {
+  --rf-clip: var(--px);
+  --rf-w: 3px;
+  --rf-edge: var(--ar-gold);
+  --rf-face: var(--rx-card);
+  --rf-scan: var(--rx-scan);
+  --rf-filter: drop-shadow(4px 4px 0 #a88a14) drop-shadow(0 0 14px rgba(255, 216, 74, 0.25));
+}
+.tr-root.is-retro .tr-ar-dialog {
+  --rf-filter: drop-shadow(5px 5px 0 #a88a14) drop-shadow(0 0 24px rgba(255, 216, 74, 0.3));
+}
+.tr-root.is-retro .tr-ar-card,
+.tr-root.is-retro .tr-ar-stat {
+  --rf-edge: rgba(255, 216, 74, 0.4);
+  --rf-face: #1a1130;
+  --rf-scan: var(--rx-scan);
+}
+.tr-root.is-retro .tr-ar-staff {
+  --rf-edge: rgba(255, 246, 221, 0.2);
+  --rf-face: rgba(26, 17, 48, 0.92);
+  --rf-scan: var(--rx-scan);
+}
+.tr-root.is-retro .tr-ar-cond {
+  --rf-w: 0px;
+  --rf-edge: rgba(255, 246, 221, 0.07);
+  --rf-face: rgba(255, 246, 221, 0.07);
+}
+.tr-root.is-retro .tr-ar-btn {
+  --rf-edge: var(--ar-gold);
+  --rf-face: var(--ar-gold);
+  --rf-filter: drop-shadow(4px 4px 0 #a88a14) drop-shadow(0 0 10px rgba(255, 216, 74, 0.45));
+  font-weight: 400;
+}
+.tr-root.is-retro .tr-ar-btn:disabled {
+  --rf-edge: rgba(255, 216, 74, 0.16);
+  --rf-face: rgba(255, 216, 74, 0.16);
+  --rf-filter: none;
+}
+.tr-root.is-retro .tr-ar-btn2 {
+  --rf-edge: rgba(255, 216, 74, 0.45);
+  --rf-face: #140d26;
+  font-weight: 400;
+}
+.tr-root.is-retro .tr-ar-close {
+  --rf-edge: rgba(255, 246, 221, 0.3);
+  --rf-face: #1a1130;
+}
+.tr-root.is-retro .tr-ar-gradebox {
+  --rf-edge: rgba(45, 244, 198, 0.45);
+  --rf-face: #140d26;
+  font-weight: 400;
+}
+.tr-root.is-retro .tr-ar-input {
+  border: 2px solid transparent;
+  background: linear-gradient(#1a1130, #1a1130) padding-box, rgba(255, 216, 74, 0.45) border-box;
+}
+.tr-root.is-retro .tr-ar-foot {
+  border-top: 2px solid rgba(255, 216, 74, 0.25);
+  border-radius: 0;
+  background: rgba(13, 8, 32, 0.9);
+}
+.tr-root.is-retro .tr-ar-grade,
+.tr-root.is-retro .tr-ar-head .sub {
+  font-weight: 400;
+}
+.tr-root.is-retro.is-arena .tr-ar-grade {
+  padding: 3px 6px;
+  font-size: 11px;
+  background: rgba(45, 244, 198, 0.16);
+  clip-path: var(--px2);
+}
+/* 太字の指定（600 / 700）は DotGothic16 では効かないので、字の太さで差をつけない（font-synthesis: none）*/
+.tr-root.is-retro b,
+.tr-root.is-retro strong {
+  font-weight: 400;
+}

@@ -10,6 +10,9 @@ import type {
   ArenaSession,
   TreeTicket,
   QType,
+  SeasonEventState,
+  SeasonEventTestResult,
+  SeasonEventTestSession,
   SubmitResult,
   TreeManifest,
   TreeMe,
@@ -34,7 +37,14 @@ import {
   saveTreeNickname,
   startArena,
   startTreeSession,
+  fetchSeasonEvent,
+  startSeasonEventSession,
+  startSeasonEventTest,
 } from '../../lib/treeApi';
+import { EventScreen } from './event/EventScreen';
+import { EventTestResult } from './event/EventTestResult';
+import { DressUpScreen } from './event/DressUpScreen';
+import { rememberIconSkin } from './event/evTheme';
 import { ArenaScreen } from './ArenaScreen';
 import { useNoSwipeMinimize } from './useNoSwipeMinimize';
 import { ArenaResultScreen } from './ArenaResultScreen';
@@ -59,7 +69,7 @@ import { TrophyScreen } from './trophy/TrophyScreen';
 import { TrophyDetailSheet, fieldInfoFrom } from './trophy/TrophyDetailSheet';
 import { TrophySprite, GRADE_COLOR } from './trophy/TrophyIcon';
 import { useToasts } from './trophy/useToasts';
-import { level30Toast, newsToast, noticeToast, submitToasts, trophyToast } from './trophy/toastItems';
+import { eventTicketToast, level30Toast, newsToast, noticeToast, submitToasts, trophyToast } from './trophy/toastItems';
 import { dropTrophyMemo, loadTrophies } from './trophy/trophyData';
 import type { ToastItem } from './trophy/toastQueue';
 import '../../styles/tree.css';
@@ -67,6 +77,8 @@ import '../../styles/tree-trophy.css';
 
 /** 科目キー → 表示名（トロフィーの通知は今開いていない科目のこともある）*/
 const subjectJa = (s: string) => TREE_SUBJECT_NAME[s as TreeSubject] ?? SUBJECT_JA[s as ScheduleSubject] ?? s;
+/** 季節イベントの挑戦（field = '_event'）か */
+const isEventSession = (s: TreeSession) => s.field === '_event' || !!(s as { event?: unknown }).event;
 
 /**
  * LINE 内で開いたときの自分の LINE の ID（userId）。「塾生専用です」画面に出し、
@@ -103,7 +115,13 @@ type View =
   /** 先生用: 演出の確認（2026-10-17 夕方）*/
   | { kind: 'fxlab' }
   /** トロフィー一覧（2026-10-19）*/
-  | { kind: 'trophies'; back: View };
+  | { kind: 'trophies'; back: View }
+  /** 季節イベント（2026-10-20）: イベント画面 → 挑戦（play）→ 結果（result）／テスト（eventTest）→ テストの結果 */
+  | { kind: 'event' }
+  | { kind: 'eventTest'; session: SeasonEventTestSession }
+  | { kind: 'eventTestResult'; result: SeasonEventTestResult }
+  /** 錨のアイコンの着せ替え（「…」メニュー・イベント画面・テストの結果から）*/
+  | { kind: 'dressUp'; back: View };
 
 /**
  * 演出を止めるフラグ（LIFF WebView でアニメーションが固まったとき用）。
@@ -133,6 +151,11 @@ function demoTickets(me: TreeMe, arena: ArenaInfo | null, subject: string): Tree
     { ...base, kind: 'grand', id: 'demo-normal', pair, premium: false },
     { ...base, kind: 'grand', id: 'demo-premium', pair, premium: true },
     { ...base, kind: 'level30', id: 'demo-level30', pair: null, premium: false },
+    // 季節イベントのチケット（見本は使える日の制限なし）
+    {
+      ...base, kind: 'event', id: 'demo-event', pair: null, premium: false, eventId: 'halloween-2026', eventKind: 'halloween', eventName: 'HALLOWEEN CHALLENGE',
+      testRate: 0.85, usableFrom: Date.parse('2026-10-31T00:00:00+09:00'), usableUntil: Date.parse('2026-11-01T00:00:00+09:00'),
+    },
   ];
 }
 
@@ -180,6 +203,9 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   const [tickets, setTickets] = useState<TreeTicket[]>([]);
   /** まだ見ていない演出（順に 1 つずつ全画面で出す）*/
   const [events, setEvents] = useState<MergedTreeEvent[]>([]);
+  /** 季節イベント（いま開いている科目・2026-10-20）。古い Proxy・イベントの無い時期は event: null */
+  const [seasonEvent, setSeasonEvent] = useState<SeasonEventState | null>(null);
+  const [eventMessage, setEventMessage] = useState<string | null>(null);
   setTreeStage(stage);
   /** 通知のコールバック（先に作る）から呼ぶ loadTickets */
   const loadTicketsRef = useRef<() => void>(() => {});
@@ -194,7 +220,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   /** トロフィー一覧の分野チップ用（今の科目以外の manifest）*/
   const [otherManifests, setOtherManifests] = useState<Record<string, TreeManifest>>({});
   // 読み込み中（manifest / progress が無い間）は通知の層を描かないので止める（2026-10-19 レビューで修正）
-  const toastPaused = view.kind === 'play' || view.kind === 'arenaPlay' || !!events[0] || !manifest || !progress;
+  const toastPaused = view.kind === 'play' || view.kind === 'arenaPlay' || view.kind === 'eventTest' || !!events[0] || !manifest || !progress;
   const onToastShown = useCallback((items: ToastItem[]) => {
     const trophies = items.filter((t) => t.trophy).map((t) => t.trophy!);
     const keys = items.filter((t) => t.noticeKey).map((t) => t.noticeKey!);
@@ -207,8 +233,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       setTrophyDot(GRADE_COLOR[best.grade].c);
       dropTrophyMemo();
     }
-    // LV.30 チケットが出た → ヘッダーのチケットの枚数を取り直す（一覧の「LV.30 チケットを見る」も）
-    if (items.some((t) => t.kind === 'level30')) {
+    // LV.30 チケット・イベントのチケットが出た → ヘッダーのチケットの枚数を取り直す（一覧の「LV.30 チケットを見る」も）
+    if (items.some((t) => t.kind === 'level30' || t.kind === 'evTicket')) {
       dropTrophyMemo();
       loadTicketsRef.current();
     }
@@ -228,7 +254,10 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       })
       .catch(() => {});
   }, []);
-  const toasts = useToasts({ paused: toastPaused, onShown: onToastShown, onOpenTrophy: onToastOpen, onOpenTickets: onToastTickets });
+  /** EVENT CLEAR!! の通知をタップ → その科目のイベント画面（科目が違えば切り替えてから）*/
+  const openEventRef = useRef<(subject: string) => void>(() => {});
+  const onToastEvent = useCallback((s: string) => openEventRef.current(s), []);
+  const toasts = useToasts({ paused: toastPaused, onShown: onToastShown, onOpenTrophy: onToastOpen, onOpenTickets: onToastTickets, onOpenEvent: onToastEvent });
   const pushToasts = toasts.push;
   /** 未通知の獲得とお知らせ（ツリーを開いた・科目を切り替えたとき）。古い Proxy は空 */
   const loadPending = useCallback(() => {
@@ -258,6 +287,19 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       })
       .catch(() => {
         if (arenaFor.current === s) setArena(null);
+      });
+  }, []);
+
+  // 季節イベント（科目ごと）。遅れて返った前の科目の分で上書きしない
+  const seasonEventFor = useRef<string | null>(null);
+  const loadSeasonEvent = useCallback((s: string) => {
+    seasonEventFor.current = s;
+    fetchSeasonEvent(s)
+      .then((st) => {
+        if (seasonEventFor.current === s) setSeasonEvent(st.event ? st : null);
+      })
+      .catch(() => {
+        if (seasonEventFor.current === s) setSeasonEvent(null);
       });
   }, []);
 
@@ -303,6 +345,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           setProgress(pg);
           setArena(null);
           loadArena(s);
+          setSeasonEvent(null);
+          loadSeasonEvent(s);
           const news = newsToast(mf, pg, subjectJa(s));
           if (news) pushToasts([news]);
           return;
@@ -314,7 +358,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       }
       throw new TreeApiError('NO_CONTENT', 404);
     },
-    [loadArena, pushToasts]
+    [loadArena, loadSeasonEvent, pushToasts]
   );
 
   const load = useCallback(() => {
@@ -322,6 +366,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
     fetchTreeMe()
       .then(async (m) => {
         setMe(m);
+        // 着せ替えの錨を端末にも覚える（ログイン画面・GV Science のホームのタイルは誰か分かる前に描くので）
+        if (m.iconSkin !== undefined) rememberIconSkin(m.iconSkin);
         const list = treeSubjectsFor(m.subjects, m.grade === '先生');
         const want = pickTreeSubject(list);
         if (!want) throw new TreeApiError('NO_CONTENT', 404); // 選択科目にツリーが無い（2026-10-16 先生決定: 他の科目は開けない）
@@ -355,6 +401,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       setManifest(null);
       setProgress(null);
       setArena(null);
+      setSeasonEvent(null);
       setSelected(null);
       setMessage(null);
       setView({ kind: 'tree' });
@@ -434,7 +481,82 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       })
       .catch(() => {});
     loadArena(subject);
-  }, [manifest, subject, stage, loadArena, loadTickets, abyssOpen]);
+    // 季節イベントは開催中・予告のときだけ取り直す（イベントの無い時期に D1 を読まない。科目を開いたときには必ず取る）
+    if (seasonEvent?.event) loadSeasonEvent(subject);
+  }, [manifest, subject, stage, loadArena, loadSeasonEvent, loadTickets, abyssOpen, seasonEvent]);
+
+  /** 季節イベントの挑戦（5 問）を始める。100% の後は復習（マスター度は下がらない）*/
+  const beginEvent = async () => {
+    if (!subject || !seasonEvent?.event) return;
+    setStarting(true);
+    setEventMessage(null);
+    try {
+      const s = await startSeasonEventSession(subject, seasonEvent.event.id);
+      setView({ kind: 'play', session: s });
+    } catch (e) {
+      const code = e instanceof TreeApiError ? e.code : '';
+      if (code === 'UNAUTHORIZED' && mode === 'external') return onLogout?.();
+      setEventMessage(
+        code === 'EVENT_CLOSED'
+          ? 'イベントの期間が終わりました。'
+          : code === 'EVENT_LOCKED'
+            ? 'まだ参加できません。'
+            : code === 'NO_QUESTIONS'
+              ? 'イベントの問題を用意できませんでした。先生に知らせてください。'
+              : '問題を読み込めませんでした。通信状況を確かめてもう一度お試しください。'
+      );
+      loadSeasonEvent(subject);
+      setView({ kind: 'event' });
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  /** 季節イベントのテスト（20 問・1 回だけ・途中なら再開）*/
+  const beginEventTest = async () => {
+    if (!subject || !seasonEvent?.event) return;
+    setStarting(true);
+    setEventMessage(null);
+    try {
+      const s = await startSeasonEventTest(subject, seasonEvent.event.id);
+      setView({ kind: 'eventTest', session: s });
+    } catch (e) {
+      const code = e instanceof TreeApiError ? e.code : '';
+      if (code === 'UNAUTHORIZED' && mode === 'external') return onLogout?.();
+      setEventMessage(
+        code === 'TEST_LOCKED'
+          ? 'テストは MASTER 100% で受けられます。'
+          : code === 'TEST_DONE'
+            ? 'テストはもう受けました（1 回だけです）。'
+            : code === 'EVENT_CLOSED'
+              ? 'イベントの期間が終わりました。'
+              : 'テストを読み込めませんでした。通信状況を確かめてもう一度お試しください。'
+      );
+      loadSeasonEvent(subject);
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  /** EVENT CLEAR!! の通知 → その科目のイベント画面 */
+  openEventRef.current = (s: string) => {
+    setEventMessage(null);
+    if (s === subject) {
+      loadSeasonEvent(s);
+      setView({ kind: 'event' });
+      return;
+    }
+    if (!subjects.includes(s as TreeSubject)) return;
+    rememberTreeSubject(s as TreeSubject);
+    setManifest(null);
+    setProgress(null);
+    setArena(null);
+    setSeasonEvent(null);
+    setSelected(null);
+    openSubject(subjects, s as TreeSubject)
+      .then(() => setView({ kind: 'event' }))
+      .catch(fail);
+  };
 
   /** アリーナの挑戦を始める（途中なら再開）。開始で今シーズンの 1 回を使う */
   const beginArena = async () => {
@@ -660,6 +782,14 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
             setView({ kind: 'trophies', back: { kind: 'tree' } });
           }}
           trophyDot={trophyDot}
+          seasonEvent={seasonEvent && seasonEvent.event ? seasonEvent : null}
+          onEvent={() => {
+            setEventMessage(null);
+            if (subject) loadSeasonEvent(subject);
+            setView({ kind: 'event' });
+          }}
+          iconSkin={me.iconSkin ?? null}
+          onDressUp={() => setView({ kind: 'dressUp', back: { kind: 'tree' } })}
           arena={arena}
           onArena={() => {
             setArenaMessage(null);
@@ -681,7 +811,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           group={fieldOf(view.session.field)?.group ?? 'basic'}
           onExit={() => {
             refreshProgress();
-            setView({ kind: 'tree' });
+            // 季節イベントの挑戦はイベント画面へ戻る
+            setView(isEventSession(view.session) ? { kind: 'event' } : { kind: 'tree' });
           }}
           onDone={(result, marked) => {
             // トロフィー・分野の解放・マスター・順位アップは結果画面に入ってから出す
@@ -704,15 +835,116 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           onReport={(qid, message, label, img) => report(view.session.sessionId, qid, message, label, img)}
           onRetry={() => {
             refreshProgress();
-            void start(view.session.field, view.session.qtype);
+            if (isEventSession(view.session)) void beginEvent();
+            else void start(view.session.field, view.session.qtype);
           }}
           onBack={() => {
             refreshProgress();
             setView({ kind: 'tree' });
           }}
+          onEvent={
+            isEventSession(view.session)
+              ? () => {
+                  refreshProgress();
+                  setView({ kind: 'event' });
+                }
+              : undefined
+          }
           onRanking={() => {
             refreshProgress();
-            setView({ kind: 'ranking', scope: 'field', field: view.session.field, qtype: view.session.qtype, back: view });
+            // 季節イベントの挑戦は分野をまたぐので科目のランキング
+            setView(
+              isEventSession(view.session)
+                ? { kind: 'ranking', scope: 'subject', field: null, qtype: 'tf', back: view }
+                : { kind: 'ranking', scope: 'field', field: view.session.field, qtype: view.session.qtype, back: view }
+            );
+          }}
+        />
+      )}
+      {view.kind === 'event' && seasonEvent?.event && (
+        <EventScreen
+          state={seasonEvent}
+          subjectName={manifest.name}
+          starting={starting}
+          message={eventMessage}
+          onBack={() => {
+            setEventMessage(null);
+            setView({ kind: 'tree' });
+          }}
+          onChallenge={() => void beginEvent()}
+          onTest={() => void beginEventTest()}
+          onDressUp={seasonEvent.rewards?.icon ? () => setView({ kind: 'dressUp', back: { kind: 'event' } }) : undefined}
+          onTickets={
+            seasonEvent.rewards?.ticket
+              ? () => {
+                  loadTickets();
+                  setView({ kind: 'tickets', back: { kind: 'event' } });
+                }
+              : undefined
+          }
+        />
+      )}
+      {view.kind === 'event' && !seasonEvent?.event && (
+        <div className={rootClass()}>
+          <div className="tr-center">
+            <div>イベントは開催されていません。</div>
+            <button type="button" className="tr-ghost" style={{ width: 240 }} onClick={() => setView({ kind: 'tree' })}>
+              ツリーへ戻る
+            </button>
+          </div>
+        </div>
+      )}
+      {view.kind === 'eventTest' && (
+        <PlayScreen
+          session={view.session}
+          subjectName={manifest.name}
+          fieldName="TEST"
+          group="basic"
+          onExit={() => {
+            if (subject) loadSeasonEvent(subject);
+            setView({ kind: 'event' });
+          }}
+          onDone={() => {}}
+          onEventTestDone={(result) => {
+            if (subject) loadSeasonEvent(subject);
+            if (result.ticket) {
+              loadTickets();
+              // TICKET GET! はテストの結果画面に入ってから（キューの最後・畳まない）
+              pushToasts([eventTicketToast({ subject: result.ticket.subject, eventId: result.ticket.eventId ?? result.event.id, usableFrom: result.ticket.usableFrom ?? null, kind: result.event.kind }, subjectJa(result.ticket.subject))]);
+            }
+            setView({ kind: 'eventTestResult', result });
+          }}
+        />
+      )}
+      {view.kind === 'eventTestResult' && (
+        <EventTestResult
+          result={view.result}
+          subjectName={manifest.name}
+          grade={me.grade}
+          nickname={me.nickname}
+          staff={me.grade === '先生'}
+          onBack={() => {
+            refreshProgress();
+            setView({ kind: 'tree' });
+          }}
+          onEvent={() => {
+            if (subject) loadSeasonEvent(subject);
+            setView({ kind: 'event' });
+          }}
+          onDressUp={seasonEvent?.rewards?.icon ? () => setView({ kind: 'dressUp', back: { kind: 'tree' } }) : undefined}
+          onTickets={() => {
+            loadTickets();
+            setView({ kind: 'tickets', back: { kind: 'tree' } });
+          }}
+        />
+      )}
+      {view.kind === 'dressUp' && (
+        <DressUpScreen
+          onBack={() => setView(view.back)}
+          onSaved={(skin) => {
+            setMe((m) => (m ? { ...m, iconSkin: skin } : m));
+            rememberIconSkin(skin);
+            setView(view.back);
           }}
         />
       )}

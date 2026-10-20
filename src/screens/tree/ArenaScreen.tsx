@@ -8,7 +8,10 @@ import { useState } from 'react';
 import type { ArenaInfo, TreeManifest } from '../../lib/treeApi';
 import { arenaIsStaffSelf, arenaStaffScore, gradeLabel } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
-import { ARENA_LOGO, CROWN, CROWN_MONO, arenaLeft, arenaPeriod, arenaSeasonName, fmtScore, fmtTime, rootClass } from './treeTheme';
+import { ARENA_LOGO, CROWN, CROWN_MONO, RETRO, arenaLeft, arenaPeriod, arenaSeasonName, fmtScore, fmtTime, rootClass } from './treeTheme';
+import '../../styles/tree.css';
+// レトロ寄りの見た目（2026-10-20）。tree.css の後に読む（TreeRoot はこの画面を tree.css より先に import するので、ここで順番を決める）
+import '../../styles/tree-retro.css';
 
 interface Props {
   info: ArenaInfo;
@@ -34,7 +37,7 @@ export function ArenaHead({ sub, onClose, closeLabel = '閉じる', disabled, co
       <span className="sub">· {sub}</span>
       {onClose && (
         <button type="button" className="tr-ar-close" aria-label={closeLabel} disabled={disabled} onClick={onClose}>
-          <Ico id="i-close" size={16} />
+          <Ico id={RETRO ? 'i-px-close' : 'i-close'} size={RETRO ? 14 : 16} />
         </button>
       )}
     </div>
@@ -91,7 +94,7 @@ export function ArenaScreen({ info, manifest, starting, message, tickets = 0, ti
         {!info.open ? (
           <div className="tr-ar-card" style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600 }}>
-              <Ico id="i-lock" size={14} />
+              <Ico id={RETRO ? 'i-px-lock' : 'i-lock'} size={14} />
               開放条件 · 全分野それぞれ{byRate ? '正答率' : 'マスター度'} {info.cond.need}% 以上
             </div>
             <div style={{ fontSize: 12, color: 'var(--tr-sub)' }}>

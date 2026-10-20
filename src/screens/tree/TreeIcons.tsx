@@ -109,6 +109,12 @@ export function TreeSprite() {
         {/* 効果音 ON / OFF（トロフィーの通知・2026-10-19）*/}
         <symbol id="i-sound" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></g></symbol>
         <symbol id="i-sound-off" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></g></symbol>
+        {/* レトロ寄りの見た目（2026-10-20・ボード R01〜R05・A03r〜）: ドットの × / ◀ / ▶ / 鍵（crispEdges）*/}
+        <symbol id="i-px-close" viewBox="0 0 7 7"><path shapeRendering="crispEdges" fill="currentColor" d="M0 0h2v1H0zM5 0h2v1H5zM1 1h2v1H1zM4 1h2v1H4zM2 2h3v3H2zM1 5h2v1H1zM4 5h2v1H4zM0 6h2v1H0zM5 6h2v1H5z"/></symbol>
+        <symbol id="i-px-back" viewBox="0 0 8 8"><path shapeRendering="crispEdges" fill="currentColor" d="M5 1h1v1H5v1H4v2h1v1h1v1H5V6H4V5H3V3h1V2h1z"/></symbol>
+        <symbol id="i-px-next" viewBox="0 0 8 8"><path shapeRendering="crispEdges" fill="currentColor" d="M3 1h1v1h1v1h1v2H5v1H4v1H3V6h1V5h1V3H4V2H3z"/></symbol>
+        <symbol id="i-px-lock" viewBox="0 0 8 8"><path shapeRendering="crispEdges" fill="currentColor" fillRule="evenodd" d="M2 3V2h1V1h2v1h1v1h1v5H1V3zM3 3h2V2H3zM3 5v2h2V5z"/></symbol>
+        <symbol id="i-px-up" viewBox="0 0 7 4"><path shapeRendering="crispEdges" fill="currentColor" d="M3 0h1v1h1v1h1v1h1v1H0V3h1V2h1V1h1z"/></symbol>
         <symbol id="i-anchor" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="2"/><path d="M12 7v14M8 10h8M4 14a8 8 0 0 0 16 0M4 14l2-2M20 14l-2-2"/></g></symbol>
       </defs>
     </svg>

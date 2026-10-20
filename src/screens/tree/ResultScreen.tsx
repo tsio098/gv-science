@@ -7,13 +7,18 @@
  * 2026-10-19 先生の指示: 間違えた問題にリード文も出す（設問の上）・スクショ（そのカードだけを画像に・PlayShot）・「質問・報告」→「改善要望」。
  * 2026-10-19 先生の要望: 出題中に「あとで復習」を付けた問題も結果に出す。間違いと見分けられるよう一覧を 2 つに分ける（同日 先生の指示）:
  * 「間違えた問題」（チェックも付けた問題は「チェック」の印）と「チェックした問題」（正解したがチェックを付けた問題・ラベンダー）。
+ * 季節イベントの挑戦（result.event・ボード R05・2026-10-20）: ハロウィンの色（is-ev-halloween）・見出しは「HALLOWEEN · 科目 · 結果」・
+ * 加算のカードの下に「EVENT MASTER 64% → 70%」の行と「定着 +4 題 · あと 6 日」・3 枚のタイルは科目の値（累積スコア・マスター度・順位）・
+ * 左下のボタンは「イベントへ」（イベント画面に戻る）
  */
 import { useRef, useState, type RefObject } from 'react';
 import type { FieldGroup, PartValue, PlayQuestion, SubmitResult, TreeManifest, TreeSession } from '../../lib/treeApi';
 import { QTYPE_LABEL, circled, examLabel, gradeLabel, treeImage } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
 import { PlayShot, SHOT_SKIP } from './PlayShot';
-import { CHECK_COLOR, REVIEW_COLOR, T, alpha, fmtScore, fmtTime, groupColor, groupSide, rootClass } from './treeTheme';
+import { CHECK_COLOR, REVIEW_COLOR, RETRO, T, alpha, fmtScore, fmtTime, groupColor, groupSide, rootClass } from './treeTheme';
+import { Pips } from './NodeSheet';
+import { EV_ASSET, EV_NAME, evPct } from './event/evTheme';
 
 interface Props {
   result: SubmitResult;
@@ -32,6 +37,8 @@ interface Props {
   onRanking: () => void;
   onReport: (qid: string, message: string, label: string, img: string | null) => Promise<'sent' | 'already' | 'error'>;
   busy: boolean;
+  /** 季節イベントの挑戦の結果: イベント画面へ（左下の「イベントへ」）*/
+  onEvent?: () => void;
 }
 
 type ReportState = 'idle' | 'open' | 'sending' | 'sent' | 'already' | 'error';
@@ -230,8 +237,15 @@ export function WrongList({
     );
   };
   const head = (color: string, text: string) => (
-    <div style={{ fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-      <i style={{ width: 8, height: 8, borderRadius: 2, background: color, display: 'block' }} />
+    <div className="tr-wrong-title" style={{ fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+      {RETRO ? (
+        // レトロ寄りの見た目（ボード R03）: 見出しの札 MISS / CHECK
+        <span className="tr-arc tr-wrong-tag" style={{ background: color }}>
+          {color === CHECK_COLOR ? 'CHECK' : 'MISS'}
+        </span>
+      ) : (
+        <i style={{ width: 8, height: 8, borderRadius: 2, background: color, display: 'block' }} />
+      )}
       {text}
     </div>
   );
@@ -257,7 +271,8 @@ function rankDelta(b: number | null, a: number | null, of: number) {
   return `${of} 人中`;
 }
 
-export function ResultScreen({ result, session, marked, manifest, grade, nickname, crab, onSaveNick, onRetry, onBack, onRanking, onReport, busy }: Props) {
+export function ResultScreen({ result, session, marked, manifest, grade, nickname, crab, onSaveNick, onRetry, onBack, onRanking, onReport, busy, onEvent }: Props) {
+  const ev = result.event ?? null;
   const field = manifest.fields.find((f) => f.id === session.field);
   const group = (field?.group ?? 'basic') as FieldGroup;
   const col = groupColor(group);
@@ -290,9 +305,13 @@ export function ResultScreen({ result, session, marked, manifest, grade, nicknam
   const rootRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className={rootClass('tr-result')} ref={rootRef}>
+    <div className={rootClass('tr-result' + (ev ? ` is-ev-${ev.kind}` : ''))} ref={rootRef}>
       <div className="tr-result-head">
+        {ev ? (
+          <img src={EV_ASSET(ev.kind).icon2x} alt="" aria-hidden="true" style={{ width: 30, height: 30, flex: 'none', display: 'block', imageRendering: 'pixelated' }} />
+        ) : (
         <div
+          className="tr-result-tile"
           style={{
             width: 30,
             height: 30,
@@ -303,15 +322,26 @@ export function ResultScreen({ result, session, marked, manifest, grade, nicknam
             alignItems: 'center',
             justifyContent: 'center',
             boxShadow: `3px 3px 0 0 ${side}`,
+            ['--tr-cf' as string]: col,
+            ['--tr-cfl' as string]: `drop-shadow(3px 3px 0 ${side}) drop-shadow(0 0 6px ${alpha(col, 0.5)})`,
           }}
         >
           {field && <Ico id={field.icon} size={16} />}
         </div>
+        )}
         <span style={{ flex: 1 }}>
-          {field?.name ?? session.field} › <b>{QTYPE_LABEL[session.qtype]}</b> · 結果
+          {ev ? (
+            <>
+              <b>{EV_NAME[ev.kind] ?? ev.name}</b> · {manifest.name} · 結果
+            </>
+          ) : (
+            <>
+              {field?.name ?? session.field} › <b>{QTYPE_LABEL[session.qtype]}</b> · 結果
+            </>
+          )}
         </span>
         <button type="button" className="tr-iconbtn" aria-label="ツリーへ戻る" disabled={saving} onClick={() => void leave(onBack)}>
-          <Ico id="i-close" size={16} />
+          <Ico id={RETRO ? 'i-px-close' : 'i-close'} size={RETRO ? 14 : 16} />
         </button>
       </div>
 
@@ -325,76 +355,196 @@ export function ResultScreen({ result, session, marked, manifest, grade, nicknam
           </div>
         )}
 
-        <div className="tr-card tr-hero" style={{ boxShadow: `6px 6px 0 0 ${col}, 0 0 20px ${alpha(T.accent, 0.14)}` }}>
-          <div style={{ fontSize: 12, color: T.sub }}>今回の加算</div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-            <span className="tr-num tr-hero-num">+{fmtScore(summary.gain)}</span>
-            <span style={{ fontSize: 13, color: T.sub }}>/ {summary.total * 100}</span>
-          </div>
-          <div style={{ display: 'flex', gap: 16, fontSize: 13, color: T.sub, flexWrap: 'wrap' }}>
-            <span>
-              正答 <b className="tr-num" style={{ fontSize: 16, color: T.text }}>{summary.correct}</b> / {summary.total}
-            </span>
-            <span>
-              時間 <b className="tr-num" style={{ fontSize: 16, color: T.text }}>{fmtTime(summary.elapsedMs)}</b>
-            </span>
-          </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
-            {summary.newCorrect > 0 && (
-              <span className="tr-pill tr-num" style={{ background: alpha(T.accent, 0.18), color: T.accent }}>
-                新規正解 {summary.newCorrect} 問 +{fmtScore(summary.newCorrectPoints)}
-              </span>
+        {RETRO ? (
+          // レトロ寄りの見た目（ボード R03）: 主色の枠 ＋ 押し出し ＋ 走査線・「+256」のクローム・内訳はチップ（数字は Press Start 2P）
+          <div className="tr-card tr-hero is-retro">
+            <div className="tr-hero-top">
+              <span>今回の加算</span>
+              <span className="tr-arc">SCORE</span>
+            </div>
+            <div className="tr-hero-line">
+              <span className="tr-arc tr-chr tr-hero-big">+{fmtScore(summary.gain)}</span>
+              <span className="tr-arc tr-hero-max">/{summary.total * 100}</span>
+            </div>
+            {(summary.newCorrect > 0 || summary.bonusPoints > 0 || keep > 0) && (
+              <div className="tr-hero-chips">
+                {summary.newCorrect > 0 && (
+                  <span className="tr-pill">
+                    新規正解 {summary.newCorrect} 問<span className="tr-arc">+{fmtScore(summary.newCorrectPoints)}</span>
+                  </span>
+                )}
+                {summary.bonusPoints > 0 && (
+                  <span className="tr-pill">
+                    タイムボーナス<span className="tr-arc">+{fmtScore(summary.bonusPoints)}</span>
+                  </span>
+                )}
+                {keep > 0 && (
+                  <span className="tr-pill is-zero">
+                    正解済み {keep} 問<span className="tr-arc">±0</span>
+                  </span>
+                )}
+              </div>
             )}
-            {summary.bonusPoints > 0 && (
-              <span className="tr-pill tr-num" style={{ background: alpha(T.accent, 0.18), color: T.accent }}>
-                タイムボーナス +{fmtScore(summary.bonusPoints)}
+            <div className="tr-hero-sub">
+              <span>
+                正答 <b className="tr-arc">{summary.correct}/{summary.total}</b>
               </span>
-            )}
-            {keep > 0 && (
-              <span className="tr-pill tr-num" style={{ border: `1px solid ${alpha(T.text, 0.25)}`, color: T.sub, fontWeight: 500 }}>
-                正解済み {keep} 問 ±0
+              <span>
+                時間 <b className="tr-arc">{fmtTime(summary.elapsedMs)}</b>
               </span>
-            )}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="tr-card tr-hero" style={{ boxShadow: `6px 6px 0 0 ${col}, 0 0 20px ${alpha(T.accent, 0.14)}` }}>
+            <div style={{ fontSize: 12, color: T.sub }}>今回の加算</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+              <span className="tr-num tr-hero-num">+{fmtScore(summary.gain)}</span>
+              <span style={{ fontSize: 13, color: T.sub }}>/ {summary.total * 100}</span>
+            </div>
+            <div style={{ display: 'flex', gap: 16, fontSize: 13, color: T.sub, flexWrap: 'wrap' }}>
+              <span>
+                正答 <b className="tr-num" style={{ fontSize: 16, color: T.text }}>{summary.correct}</b> / {summary.total}
+              </span>
+              <span>
+                時間 <b className="tr-num" style={{ fontSize: 16, color: T.text }}>{fmtTime(summary.elapsedMs)}</b>
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
+              {summary.newCorrect > 0 && (
+                <span className="tr-pill tr-num" style={{ background: alpha(T.accent, 0.18), color: T.accent }}>
+                  新規正解 {summary.newCorrect} 問 +{fmtScore(summary.newCorrectPoints)}
+                </span>
+              )}
+              {summary.bonusPoints > 0 && (
+                <span className="tr-pill tr-num" style={{ background: alpha(T.accent, 0.18), color: T.accent }}>
+                  タイムボーナス +{fmtScore(summary.bonusPoints)}
+                </span>
+              )}
+              {keep > 0 && (
+                <span className="tr-pill tr-num" style={{ border: `1px solid ${alpha(T.text, 0.25)}`, color: T.sub, fontWeight: 500 }}>
+                  正解済み {keep} 問 ±0
+                </span>
+              )}
+            </div>
+          </div>
+        )}
 
-        <div className="tr-stat3">
-          <div className="tr-stat">
-            <div>分野スコア</div>
-            <div className="tr-num">{fmtScore(fs.after?.score ?? 0)}</div>
-            <div className="tr-num">{summary.gain > 0 ? `▲${fmtScore(summary.gain)}` : '±0'}</div>
-          </div>
-          <div className="tr-stat">
-            <div>マスター度</div>
-            <div className="tr-num">{mAfter}%</div>
-            <div className="tr-num" style={{ color: mAfter >= mBefore ? T.accent : REVIEW_COLOR }}>
-              {mBefore}% → {mAfter >= mBefore ? '▲' : '▼'}
-              {Math.abs(mAfter - mBefore)}
-            </div>
-          </div>
-          {rank ? (
-            <button type="button" className="tr-stat" onClick={() => void leave(onRanking)} aria-label="ランキングを見る">
-              <div>分野の順位</div>
-              <div className="tr-num">{rank.after.rank != null ? `${rank.after.rank}位` : '—'}</div>
-              <div className="tr-num" style={{ color: rankUp(rank.before.rank, rank.after.rank) ? T.accent : T.sub, fontWeight: rankUp(rank.before.rank, rank.after.rank) ? 700 : 500 }}>
-                {rankDelta(rank.before.rank, rank.after.rank, rank.after.of)}
-              </div>
-            </button>
-          ) : (
+        {ev && <EventMasterRow ev={ev} />}
+
+        {RETRO ? (
+          // ボード R03: 3 枚のタイル = 前の値（小）→ 後の値（大）。順位が上がったら主色 ＋ ドットの ▲
+          <div className="tr-stat3 is-retro">
             <div className="tr-stat">
-              <div>この分野の正答率</div>
-              <div className="tr-num">{play ? `${Math.round(play.rate)}%` : '—'}</div>
-              <div className="tr-num" style={{ color: T.sub, fontWeight: 500 }}>
-                {play ? `挑戦 ${play.count} 回` : ''}
+              <div>{ev ? '累積スコア' : '分野スコア'}</div>
+              <div className="tr-stat-from">
+                <span className="tr-arc">{fmtScore((fs.before?.score ?? Math.max(0, (fs.after?.score ?? 0) - summary.gain)))}</span>
+                <span className="tr-arc">→</span>
+              </div>
+              <div className="tr-stat-to">
+                <span className="tr-arc">{fmtScore(fs.after?.score ?? 0)}</span>
               </div>
             </div>
-          )}
-        </div>
+            <div className="tr-stat">
+              <div>マスター度</div>
+              <div className="tr-stat-from">
+                <span className="tr-arc">{mBefore}%</span>
+                <span className="tr-arc">→</span>
+              </div>
+              <div className={`tr-stat-to${mAfter > mBefore ? ' is-up' : mAfter < mBefore ? ' is-down' : ''}`}>
+                <span className="tr-arc">{mAfter}%</span>
+              </div>
+            </div>
+            {rank ? (
+              <button type="button" className="tr-stat" onClick={() => void leave(onRanking)} aria-label="ランキングを見る">
+                <div>{ev ? '順位' : '分野の順位'}</div>
+                <div className="tr-stat-from">
+                  {rank.before.rank != null ? (
+                    <>
+                      <span className="tr-arc">{rank.before.rank}</span>位
+                    </>
+                  ) : (
+                    '—'
+                  )}
+                  <span className="tr-arc">→</span>
+                </div>
+                <div className={`tr-stat-to${rankUp(rank.before.rank, rank.after.rank) ? ' is-up' : ''}`}>
+                  {rank.after.rank != null ? (
+                    <>
+                      <span className="tr-arc">{rank.after.rank}</span>
+                      <span>位</span>
+                      {rankUp(rank.before.rank, rank.after.rank) && <Ico id="i-px-up" size={10} />}
+                    </>
+                  ) : (
+                    <span>—</span>
+                  )}
+                </div>
+                <div className="tr-stat-note">{rank.after.rank == null ? '1 問正解で掲載' : rank.before.rank == null ? `初ランクイン · ${rank.after.of} 人中` : `${rank.after.of} 人中`}</div>
+              </button>
+            ) : (
+              <div className="tr-stat">
+                <div>この分野の正答率</div>
+                <div className="tr-stat-from">{play ? <>挑戦 <span className="tr-arc">{play.count}</span> 回</> : ''}</div>
+                <div className="tr-stat-to">
+                  <span className="tr-arc">{play ? `${Math.round(play.rate)}%` : '—'}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="tr-stat3">
+            <div className="tr-stat">
+              <div>{ev ? '累積スコア' : '分野スコア'}</div>
+              <div className="tr-num">{fmtScore(fs.after?.score ?? 0)}</div>
+              <div className="tr-num">{summary.gain > 0 ? `▲${fmtScore(summary.gain)}` : '±0'}</div>
+            </div>
+            <div className="tr-stat">
+              <div>マスター度</div>
+              <div className="tr-num">{mAfter}%</div>
+              <div className="tr-num" style={{ color: mAfter >= mBefore ? T.accent : REVIEW_COLOR }}>
+                {mBefore}% → {mAfter >= mBefore ? '▲' : '▼'}
+                {Math.abs(mAfter - mBefore)}
+              </div>
+            </div>
+            {rank ? (
+              <button type="button" className="tr-stat" onClick={() => void leave(onRanking)} aria-label="ランキングを見る">
+                <div>{ev ? '順位' : '分野の順位'}</div>
+                <div className="tr-num">{rank.after.rank != null ? `${rank.after.rank}位` : '—'}</div>
+                <div className="tr-num" style={{ color: rankUp(rank.before.rank, rank.after.rank) ? T.accent : T.sub, fontWeight: rankUp(rank.before.rank, rank.after.rank) ? 700 : 500 }}>
+                  {rankDelta(rank.before.rank, rank.after.rank, rank.after.of)}
+                </div>
+              </button>
+            ) : (
+              <div className="tr-stat">
+                <div>この分野の正答率</div>
+                <div className="tr-num">{play ? `${Math.round(play.rate)}%` : '—'}</div>
+                <div className="tr-num" style={{ color: T.sub, fontWeight: 500 }}>
+                  {play ? `挑戦 ${play.count} 回` : ''}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
         {play && (
           <div className="tr-note" style={{ textAlign: 'right' }}>
             この分野 挑戦 <b className="tr-num" style={{ color: T.text }}>{play.count}</b> 回 · 正答率{' '}
             <b className="tr-num" style={{ color: T.text }}>{Math.round(play.rate)}%</b>（次の分野の解放: {unlockPlays} 回以上・
             {manifest.unlockPct}% 以上）
+          </div>
+        )}
+
+        {RETRO && after && (
+          // ボード R03: 出題状況（R02 と同じ 20 マス・要復習は中空の枠）
+          <div className="tr-panel tr-dist-card">
+            <div className="tr-dist-title">
+              出題状況（{ev ? manifest.name : QTYPE_LABEL[session.qtype]} <span className="tr-arc">{after.total}</span> 問）
+            </div>
+            <Pips dist={after.dist} total={after.total} color={ev ? '#FF9A1F' : T.accent} />
+            <div className="tr-dist-legend">
+              <span><i className="is-mastered" />定着 <b className="tr-arc">{after.dist.mastered}</b></span>
+              <span><i className="is-solved" />正解済み <b className="tr-arc">{after.dist.solved}</b></span>
+              <span><i className="is-review" />要復習 <b className="tr-arc">{after.dist.review}</b></span>
+              <span><i className="is-fresh" />未着手 <b className="tr-arc">{Math.max(0, after.total - after.dist.mastered - after.dist.solved - after.dist.review)}</b></span>
+            </div>
           </div>
         )}
 
@@ -408,6 +558,7 @@ export function ResultScreen({ result, session, marked, manifest, grade, nicknam
         <div style={{ display: 'flex', gap: 8 }}>
           {grade && (
             <span
+              className="tr-gradebox"
               style={{
                 height: 48,
                 padding: '0 12px',
@@ -443,14 +594,64 @@ export function ResultScreen({ result, session, marked, manifest, grade, nicknam
             {nickError}
           </div>
         )}
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="tr-foot-btns" style={{ display: 'flex', gap: 8 }}>
+          {ev && onEvent ? (
+            // ボード R05: 左下は「イベントへ」（イベント画面に戻る）
+            <button type="button" className="tr-ghost" style={{ flex: 1 }} disabled={saving} onClick={() => void leave(onEvent)}>
+              イベントへ
+            </button>
+          ) : (
+            RETRO && (
+              // ボード R03: ツリーへ / もう一度（副）・ランキング（主）
+              <button type="button" className="tr-ghost" style={{ flex: 1 }} disabled={saving} onClick={() => void leave(onBack)}>
+                ツリーへ
+              </button>
+            )
+          )}
           <button type="button" className="tr-ghost" style={{ flex: 1 }} disabled={busy || saving} onClick={() => void leave(onRetry)}>
             {busy ? '準備中…' : 'もう一度'}
           </button>
           <button type="button" className="tr-cta" style={{ flex: 1.4, height: 50, fontSize: 14 }} disabled={busy || saving} onClick={() => void leave(onRanking)}>
-            ランキングを見る
+            {RETRO ? 'ランキング' : 'ランキングを見る'}
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/** 季節イベントの挑戦の結果: 「EVENT MASTER 64% → 70%」（後の % はクローム・バーは前の分を主色・増えた分を淡い色）と「定着 +4 題 · あと 6 日」*/
+function EventMasterRow({ ev }: { ev: NonNullable<SubmitResult['event']> }) {
+  const b = ev.cleared && !ev.clearedNow ? 100 : evPct(ev.before.mastery);
+  const a = ev.cleared ? 100 : evPct(ev.after.mastery);
+  return (
+    <div className="tr-ev-master" role="group" aria-label={`EVENT MASTER ${b}% から ${a}%`}>
+      <div className="tr-ev-master-top">
+        <span className="tr-arc">EVENT MASTER</span>
+        <span>
+          {b === a ? (
+            <b className="tr-arc tr-chr">{a}%</b>
+          ) : (
+            <>
+              <span className="tr-arc">{b}%</span> → <b className="tr-arc tr-chr">{a}%</b>
+            </>
+          )}
+        </span>
+      </div>
+      <div className="tr-ev-master-bar" aria-hidden="true">
+        <i className="is-before" style={{ width: `${Math.min(b, a)}%` }} />
+        <i className="is-gain" style={{ width: `${Math.max(0, a - b)}%` }} />
+      </div>
+      <div className="tr-ev-master-note">
+        {ev.clearedNow ? (
+          <>MASTER 100% 達成 · テストを受けられます</>
+        ) : !ev.recorded ? (
+          <>{ev.cleared ? '復習（マスター度は下がりません）' : 'イベントの期間の後の提出（ふだんの記録には入りました）'}</>
+        ) : (
+          <>
+            定着 <span className="tr-arc">{ev.settledGain >= 0 ? `+${ev.settledGain}` : ev.settledGain}</span> 題 · あと <span className="tr-arc">{ev.daysLeft}</span> 日
+          </>
+        )}
       </div>
     </div>
   );

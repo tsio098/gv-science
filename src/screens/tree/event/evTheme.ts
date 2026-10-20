@@ -1,0 +1,106 @@
+/**
+ * 季節イベントの見た目（素材・配色・文言）。実装手順_季節イベント.md §0-3 の配色・public/tree/brand/ev/ の素材。
+ * 今はハロウィンだけ素材がある（クリスマス以降は期間と一緒に足す。無い kind はハロウィンの絵で代用しない＝「?」）
+ */
+const EV = '/tree/brand/ev/';
+
+export interface EvAsset {
+  /** 錨のかぼちゃ（透過・4px ドット）*/
+  icon: string;
+  icon2x: string;
+  /** アプリアイコン（地つき角丸）。ホームのタイル・ログイン・着せ替えのプレビュー */
+  appicon: string;
+  appicon512: string;
+  /** EVENT トロフィーの杯 */
+  trophy: string;
+  /** ドット文字 HALLOWEEN / 2 行（＋CHALLENGE）/ CLEAR!! */
+  text: string;
+  text2: string;
+  clearText: string;
+  ghost: string;
+  star: string;
+  moon: string;
+  banner: string;
+}
+
+export const EV_ASSET = (kind: string): EvAsset => {
+  const k = kind || 'halloween';
+  return {
+    icon: `${EV}icon_ev_${k}.svg`,
+    icon2x: `${EV}icon_ev_${k}@2x.png`,
+    appicon: `${EV}appicon_ev_${k}_192.png`,
+    appicon512: `${EV}appicon_ev_${k}_512.png`,
+    trophy: `${EV}icon_trophy_ev_${k}.svg`,
+    text: `${EV}text_ev_${k}.svg`,
+    text2: `${EV}text_ev_${k}_2line.svg`,
+    clearText: `${EV}text_ev_clear.svg`,
+    ghost: `${EV}deco_ev_${k}_ghost@2x.png`,
+    star: `${EV}deco_ev_${k}_star@2x.png`,
+    moon: `${EV}deco_ev_${k}_moon@2x.png`,
+    banner: `${EV}banner-bg_ev_${k}@2x.png`,
+  };
+};
+
+/** 素材のあるイベント（着せ替えで絵を出せるもの）*/
+export const EV_HAS_ART = new Set(['halloween']);
+
+/** 表示名（英語・ローマ字。先生の回答 v2 の 5）*/
+export const EV_NAME: Record<string, string> = {
+  halloween: 'HALLOWEEN',
+  xmas: 'CHRISTMAS',
+  newyear: 'OTOSHIDAMA',
+  setsubun: 'ONIWASOTO',
+};
+
+/** 配色（§0-3）: 地・カード・主色 / 主色の上の文字・側面・文字 / サブ・差し色・rgb */
+export const EV_COLOR: Record<string, { bg: string; card: string; main: string; onMain: string; side: string; text: string; sub: string; accent: string; rgb: string; chrome: string }> = {
+  halloween: {
+    bg: 'linear-gradient(180deg,#3A1A5A 0%,#1E0C36 45%,#0A0418 100%)',
+    card: 'linear-gradient(180deg,#2E1650,#140828)',
+    main: '#FF9A1F',
+    onMain: '#1A0800',
+    side: '#7A2C00',
+    text: '#FFF1E0',
+    sub: '#CDB4E8',
+    accent: '#C9A2FF',
+    rgb: '255,154,31',
+    chrome: 'linear-gradient(180deg,#FFFFFF 0%,#FFE6C2 30%,#FF9A1F 52%,#B8480A 52%,#FF9A1F 74%,#FFC872 100%)',
+  },
+};
+export const evColor = (kind: string) => EV_COLOR[kind] ?? EV_COLOR.halloween!;
+
+const JST = 9 * 3600_000;
+/** 'M/D'（JST）*/
+export const evMd = (ms: number) => {
+  const d = new Date(ms + JST);
+  return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
+};
+/** 'M/D H:MM'（JST）。締め切り「10/30 5:00」*/
+export const evMdHm = (ms: number) => {
+  const d = new Date(ms + JST);
+  return `${d.getUTCMonth() + 1}/${d.getUTCDate()} ${d.getUTCHours()}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
+};
+/** 期間「10/22-10/30」（終わりは含まないので 1 ms 戻す）*/
+export const evPeriod = (start: number, end: number) => `${evMd(start)}-${evMd(end - 1)}`;
+
+/** マスター度の表示は切り捨て（99.x% を 100% と出さない）*/
+export const evPct = (mastery: number) => Math.floor(Math.max(0, Math.min(1, mastery)) * 100 + 1e-9);
+
+/** 着せ替えの錨を端末にも覚える（ログイン画面は誰か分かる前に出すので）*/
+const SKIN_KEY = 'gvTree.iconSkin';
+export function rememberIconSkin(skin: string | null | undefined) {
+  try {
+    if (skin) localStorage.setItem(SKIN_KEY, skin);
+    else localStorage.removeItem(SKIN_KEY);
+  } catch {
+    /* 覚えられない端末はいつもの錨 */
+  }
+}
+export function rememberedIconSkin(): string | null {
+  try {
+    const v = localStorage.getItem(SKIN_KEY);
+    return v && EV_HAS_ART.has(v) ? v : null;
+  } catch {
+    return null;
+  }
+}

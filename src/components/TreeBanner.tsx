@@ -6,6 +6,8 @@
  *   arenaStart = アリーナ開放済みで、新シーズン開始日（月）だけ「SEASON n START」＋期間
  *   arenaLast  = アリーナ開放済みで、シーズン最終日（日）だけ「LAST DAY」＋「SEASON n · 月/日（日）まで」
  * 日付は JST。発光は SVG フィルタ（静止）でアニメーションなし。
+ * 着せ替えの錨（季節イベント・2026-10-20）: iconSkin があれば、ロゴの錨の部分だけを隠してそのアイコン（ハロウィン = かぼちゃの錨）を重ねる
+ * （route / abyss のバナーだけ。アリーナのバナーは王冠なのでそのまま）。ホーム画面に追加したアイコンは人ごとに変えられないので対象外
  */
 import type { ButtonHTMLAttributes } from 'react';
 import type { ArenaSeason } from '../lib/treeApi';
@@ -44,9 +46,14 @@ export function treeBannerKind(
   return home.abyssOpen ? 'abyss' : 'route';
 }
 
+/** 着せ替えの錨（素材のあるものだけ）*/
+const SKIN_ICON: Record<string, string> = { halloween: BRAND + 'ev/icon_ev_halloween.svg' };
+
 interface Props {
   kind: TreeBannerKind;
   season?: ArenaSeason;
+  /** 着せ替えの錨（'halloween' など）。null / 無し = いつもの錨 */
+  iconSkin?: string | null;
   onOpen: () => void;
   /** 長押し（別のブラウザで使う）などをホームから足す */
   buttonProps?: Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onClick' | 'type' | 'className'>;
@@ -59,7 +66,8 @@ const LABEL: Record<TreeBannerKind, string> = {
   arenaLast: 'CHAMPION ARENA のシーズン最終日。ANCHOR TREE をひらく',
 };
 
-export function TreeBanner({ kind, season, onOpen, buttonProps }: Props) {
+export function TreeBanner({ kind, season, iconSkin, onOpen, buttonProps }: Props) {
+  const skin = iconSkin ? SKIN_ICON[iconSkin] ?? null : null;
   const arena = kind === 'arenaStart' || kind === 'arenaLast';
   // アリーナの日でもシーズンが分からなければ通常へ
   const k: TreeBannerKind = arena && !season ? 'route' : kind;
@@ -71,7 +79,20 @@ export function TreeBanner({ kind, season, onOpen, buttonProps }: Props) {
         {k === 'route' || k === 'abyss' ? (
           <>
             {/* lockup-horizontal 580 幅（646.1×216.4）を縦中央に・その下に案内 */}
-            <image href={BRAND + `lockup-horizontal_${k}.svg`} x={50} y={79.9} width={580} height={194.3} />
+            {skin ? (
+              <>
+                {/* 錨（ロゴの左 26%）を隠して、着せ替えのアイコンを同じ位置に（文字・5 色の立方体はそのまま）*/}
+                <defs>
+                  <clipPath id="tb-noanchor">
+                    <rect x={202} y={0} width={998} height={400} />
+                  </clipPath>
+                </defs>
+                <image href={BRAND + `lockup-horizontal_${k}.svg`} x={50} y={79.9} width={580} height={194.3} clipPath="url(#tb-noanchor)" />
+                <image href={skin} x={36} y={84} width={180} height={180} style={{ imageRendering: 'pixelated' }} />
+              </>
+            ) : (
+              <image href={BRAND + `lockup-horizontal_${k}.svg`} x={50} y={79.9} width={580} height={194.3} />
+            )}
             <text x={82} y={314.2} fontFamily={MONO} fontSize={18} fill={k === 'route' ? '#2DF4C6' : '#00E5FF'} letterSpacing={5}>
               {k === 'route' ? 'TAP TO START ▶' : 'DIVE IN ▶'}
             </text>

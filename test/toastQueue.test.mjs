@@ -59,3 +59,17 @@ test('残念トロフィー（Z）はブロンズと RANK DOWN の後・その�
   assert.deepEqual([two.item.key, two.peek, two.rest.map((t) => t.key)], ['b', null, ['lv']], 'LEVEL 30 はのぞかせない');
   assert.deepEqual([toastMs(lv), toastWidth(lv), toastMs(tr('z', 'Z')), toastWidth(tr('z', 'Z'))], [6000, 272, 4500, 248]);
 });
+
+test('季節イベント: EVENT CLEAR!! と TICKET GET! は畳まず最後に（LEVEL 30 → EVENT CLEAR!! → TICKET GET!）・6 秒・幅 272', () => {
+  const ev = { key: 'evclear:chemistry', kind: 'evClear', head: 'EVENT', main: '何か邪悪なものがやって来る', ev: { kind: 'halloween', subject: 'chemistry', stamp: '100%' } };
+  const tk = { key: 'evticket:chemistry', kind: 'evTicket', head: 'TICKET GET!', main: '化学 · ボーナスチケット', ticket: true };
+  const l30 = { key: 'level30:chemistry', kind: 'level30', head: 'LEVEL 30 REACHED!!', main: 'トロフィーレベル 30' };
+  let q = [tk, ev, l30, tr('a', 'B'), tr('b', 'S'), tr('c', 'G')];
+  const order = [];
+  for (let p = pickToast(q); p; p = pickToast(q)) {
+    order.push(p.item.key);
+    q = p.rest;
+  }
+  assert.deepEqual(order, ['c', 'level30:chemistry', 'evclear:chemistry', 'evticket:chemistry'], '3 件のトロフィーは畳み、イベントは畳まない');
+  assert.deepEqual([toastMs(ev), toastMs(tk), toastWidth(ev), toastWidth(tk), toastNameSize(ev), toastNameSize(tk)], [6000, 6000, 272, 272, 13, 14]);
+});

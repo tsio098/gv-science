@@ -155,8 +155,13 @@ export const T: StageTheme = { ...STAGE.front };
 export function setTreeStage(stage: 'front' | 'back') {
   Object.assign(T, STAGE[stage]);
 }
-/** 画面の外枠の class（ABYSS は .is-abyss で CSS 変数を深海に）*/
-export const rootClass = (extra = '') => `tr-root${T.name === 'ABYSS' ? ' is-abyss' : ''}${extra ? ' ' + extra : ''}`;
+/**
+ * レトロ寄りの見た目（2026-10-20 先生決定・季節イベントのボード R01〜R05・アリーナ A01r〜A15r）。
+ * CSS は src/styles/tree-retro.css の `.tr-root.is-retro …` だけ。LINE 内ブラウザで重いなどで戻すときはここを false に
+ */
+export const RETRO = true;
+/** 画面の外枠の class（ABYSS は .is-abyss で CSS 変数を深海に・レトロ寄りの見た目は .is-retro）*/
+export const rootClass = (extra = '') => `tr-root${RETRO ? ' is-retro' : ''}${T.name === 'ABYSS' ? ' is-abyss' : ''}${extra ? ' ' + extra : ''}`;
 
 /** 役割色（ROUTE / ABYSS 共通）*/
 export const NEW_COLOR = '#FF7A45';
@@ -215,6 +220,32 @@ export function distPct(d: Dist, total: number) {
     solved: (d.solved / t) * 100,
     review: (d.review / t) * 100,
   };
+}
+
+/**
+ * 出題状況の 20 マス（レトロ寄りの見た目・ボード R02 / R03）: 定着 → 正解済み → 要復習 → 未着手 の順に、問題数を 20 マスに換算（最大剰余）。
+ * 問題が 1 問以上ある状態は 0 マスにしない（要復習 1 問が見えなくならないように）
+ */
+export type PipKind = 'mastered' | 'solved' | 'review' | 'fresh';
+export function pips20(d: Dist, total: number, n = 20): PipKind[] {
+  const keys: PipKind[] = ['mastered', 'solved', 'review', 'fresh'];
+  const fresh = Math.max(0, total - d.mastered - d.solved - d.review);
+  const raw = { mastered: d.mastered, solved: d.solved, review: d.review, fresh };
+  if (!total) return Array.from({ length: n }, () => 'fresh' as const);
+  const cnt = Object.fromEntries(keys.map((k) => [k, raw[k] > 0 ? Math.max(1, Math.floor((raw[k] / total) * n)) : 0])) as Record<PipKind, number>;
+  let sum = keys.reduce((a, k) => a + cnt[k], 0);
+  const rem = (k: PipKind) => (raw[k] / total) * n - cnt[k];
+  while (sum < n) {
+    const k = [...keys].sort((a, b) => rem(b) - rem(a))[0]!;
+    cnt[k]++;
+    sum++;
+  }
+  while (sum > n) {
+    const k = [...keys].filter((x) => cnt[x] > 1).sort((a, b) => rem(a) - rem(b))[0]!;
+    cnt[k]--;
+    sum--;
+  }
+  return keys.flatMap((k) => Array.from({ length: cnt[k] }, () => k));
 }
 
 export const fmtTime = (ms: number) => {
