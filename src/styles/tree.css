@@ -3500,3 +3500,113 @@ button.tr-stat {
   color: var(--tr-sub);
   overflow-wrap: anywhere;
 }
+
+/* 問題集ごと（2026-10-20 先生 OK のモック）*/
+.sq-grp {
+  border-radius: 14px;
+  border: 1px solid rgba(var(--tr-text-rgb), 0.2);
+  background: var(--tr-card);
+  overflow: hidden;
+}
+.sq-grp.is-new {
+  border-color: rgba(255, 122, 69, 0.55);
+}
+.sq-gh {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--tr-text);
+  text-align: left;
+}
+.sq-pub {
+  font-size: 11px;
+  color: var(--tr-sub);
+}
+.sq-exam-main small {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px 4px;
+}
+.sq-kind {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--tr-line-soft);
+  color: var(--tr-text);
+}
+.sq-kind.is-basic {
+  color: var(--tr-check);
+  border-color: rgba(185, 166, 255, 0.5);
+}
+.sq-newtxt {
+  color: var(--tr-orange);
+}
+.sq-grp .sq-new,
+.sq-exam .sq-new {
+  background: var(--tr-orange);
+  color: var(--tr-new-fg);
+}
+.sq-count {
+  text-align: right;
+  line-height: 1.4;
+}
+.sq-count b {
+  font-size: 13px;
+  color: var(--tr-text);
+}
+.sq-chev {
+  flex: none;
+  display: flex;
+  color: var(--tr-sub);
+  transition: transform 0.15s;
+}
+.sq-grp.is-open .sq-chev {
+  transform: rotate(90deg);
+}
+.sq-rounds {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 6px;
+  padding: 0 12px 12px;
+}
+.sq-rd {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--tr-line-soft);
+  background: var(--tr-well);
+  color: var(--tr-text);
+  text-align: left;
+}
+.sq-rounds.is-single .sq-rd {
+  grid-column: 1 / -1;
+}
+.sq-rd b {
+  font-size: 13px;
+}
+.sq-rd small {
+  font-size: 10.5px;
+  color: var(--tr-sub);
+}
+.sq-dot {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--tr-orange);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sq-chev {
+    transition: none;
+  }
+}

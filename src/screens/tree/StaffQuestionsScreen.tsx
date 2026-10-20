@@ -35,6 +35,35 @@ const EXAM_FILTERS: { key: ExamFilter; label: string }[] = [
 /** Proxy の新着と同じ（addedAt から 14 日・manifest.newDays で変わる）*/
 const NEW_DAYS = 14;
 
+/**
+ * 試験名 → 問題集と回（2026-10-20 先生 OK のモック）。最後の科目名と「第N回」を外したものが問題集（年・出版社・名前）。
+ * 年度が違えば別の問題集。回の無い試験（K-パック・ABYSS の大学別など）は 1 試験で 1 つ
+ */
+function parseExam(exam: string) {
+  const p = exam.split('_');
+  p.pop();
+  const i = p.findIndex((x) => /^第\d+回$/.test(x));
+  const round = i >= 0 ? Number(p.splice(i, 1)[0]!.replace(/\D/g, '')) : null;
+  const [year = '', pub = '', ...rest] = p;
+  return { key: p.join('_'), year, pub, name: rest.join(' ') || pub, round };
+}
+
+type ExamRow = TreeManifest['exams'][number] & { isNew: boolean } & ReturnType<typeof parseExam>;
+interface ExamGroup {
+  key: string;
+  rows: ExamRow[];
+  added: string;
+  isNew: boolean;
+  count: number;
+  kinds: string[];
+}
+
+const fmtMd = (s: string | null | undefined) => {
+  if (!s) return '—';
+  const [, m, d] = s.split('-');
+  return `${Number(m)}/${Number(d)}`;
+};
+
 const fmtYmd = (s: string | undefined) => {
   if (!s) return '—';
   const [y, m, d] = s.split('-');
@@ -80,6 +109,9 @@ export function StaffQuestionsScreen({ onBack }: Props) {
   const [exam, setExam] = useState<string | null>(null);
   const [filter, setFilter] = useState<ExamFilter>('all');
   const [query, setQuery] = useState('');
+  const [mode, setMode] = useState<'group' | 'flat'>('group');
+  /** 開いている問題集（科目ごと）。null = まだ触っていない → いちばん新しい問題集を開いておく */
+  const [openGroups, setOpenGroups] = useState<Record<string, Set<string>>>({});
 
   const mf = manifests[ds];
   useEffect(() => {
@@ -94,16 +126,47 @@ export function StaffQuestionsScreen({ onBack }: Props) {
     if (!mf || mf === 'error') return [];
     const days = (mf as TreeManifest & { newDays?: number }).newDays || NEW_DAYS;
     const now = Date.now();
-    const q = query.trim().replace(/\s+/g, '_');
+    const words = query.trim().split(/\s+/).filter(Boolean);
     return [...mf.exams]
-      .map((e) => {
+      .map((e): ExamRow => {
         const t = Date.parse(e.addedAt ?? '');
-        return { ...e, isNew: Number.isFinite(t) && now - t < days * 86400_000 };
+        return { ...e, isNew: Number.isFinite(t) && now - t < days * 86400_000, ...parseExam(e.exam) };
       })
       .filter((e) => (filter === 'new' ? e.isNew : filter === 'exam' ? e.kind !== 'basic' : filter === 'basic' ? e.kind === 'basic' : true))
-      .filter((e) => !q || e.exam.includes(q))
+      .filter((e) => words.every((w) => examLabel(e.exam).includes(w)))
       .sort((a, b) => (b.addedAt ?? '').localeCompare(a.addedAt ?? '') || b.exam.localeCompare(a.exam, 'ja'));
   }, [mf, filter, query]);
+
+  // 問題集ごと: 新しく入った順（問題集の中は回の順）
+  const groups = useMemo<ExamGroup[]>(() => {
+    const m = new Map<string, ExamRow[]>();
+    for (const e of exams) {
+      if (!m.has(e.key)) m.set(e.key, []);
+      m.get(e.key)!.push(e);
+    }
+    return [...m.values()]
+      .map((rows) => {
+        rows.sort((a, b) => (a.round ?? 0) - (b.round ?? 0));
+        return {
+          key: rows[0]!.key,
+          rows,
+          added: rows.map((x) => x.addedAt ?? '').sort().pop() ?? '',
+          isNew: rows.some((x) => x.isNew),
+          count: rows.reduce((a, x) => a + x.count, 0),
+          kinds: [...new Set(rows.map((x) => (x.kind === 'basic' ? 'basic' : 'exam')))],
+        };
+      })
+      .sort((a, b) => b.added.localeCompare(a.added) || b.key.localeCompare(a.key, 'ja'));
+  }, [exams]);
+  const opened = openGroups[ds] ?? new Set(groups[0] ? [groups[0].key] : []);
+  const toggleGroup = (key: string) =>
+    setOpenGroups((o) => {
+      const n = new Set(opened);
+      if (n.has(key)) n.delete(key);
+      else n.add(key);
+      return { ...o, [ds]: n };
+    });
+  const searching = query.trim() !== '';
 
   if (exam && mf && mf !== 'error') {
     return <ExamView ds={ds} exam={exam} manifest={mf} onBack={() => setExam(null)} />;
@@ -140,11 +203,23 @@ export function StaffQuestionsScreen({ onBack }: Props) {
             ))}
           </div>
         </div>
+        <div className="tr-seg" role="radiogroup" aria-label="並べ方">
+          {(
+            [
+              ['group', '問題集ごと'],
+              ['flat', '試験ごと'],
+            ] as const
+          ).map(([k, label]) => (
+            <button key={k} type="button" role="radio" aria-checked={mode === k} className={mode === k ? 'is-on' : ''} onClick={() => setMode(k)}>
+              {label}
+            </button>
+          ))}
+        </div>
         <input
           className="sq-search"
           type="search"
           value={query}
-          placeholder="試験名で探す（例: 河合 第3回）"
+          placeholder="問題集・試験名で探す（例: 駿台）"
           onChange={(e) => setQuery(e.target.value)}
         />
 
@@ -159,11 +234,20 @@ export function StaffQuestionsScreen({ onBack }: Props) {
         ) : (
           <>
             <div className="sq-note">
-              {dsLabel(ds)}: {total} 試験・{mf.exams.reduce((a, e) => a + e.count, 0)} 問。新しく入った順。
+              {mode === 'group'
+                ? `${groups.length} 問題集・${exams.length} 試験・${exams.reduce((a, e) => a + e.count, 0)} 問。新しく入った順（問題集の中は回の順）。`
+                : `${exams.length} 試験・${exams.reduce((a, e) => a + e.count, 0)} 問。新しく入った順。`}
+              {exams.length < total && `（${dsLabel(ds)} 全体は ${total} 試験）`}
             </div>
             {exams.length === 0 ? (
               <div className="tr-panel" style={{ textAlign: 'center', fontSize: 13, padding: '28px 16px' }}>
                 該当する試験はありません。
+              </div>
+            ) : mode === 'group' ? (
+              <div className="sq-exams">
+                {groups.map((g) => (
+                  <GroupCard key={g.key} g={g} open={searching || opened.has(g.key)} onToggle={() => toggleGroup(g.key)} onExam={setExam} />
+                ))}
               </div>
             ) : (
               <div className="sq-exams">
@@ -186,6 +270,56 @@ export function StaffQuestionsScreen({ onBack }: Props) {
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+function GroupCard({ g, open, onToggle, onExam }: { g: ExamGroup; open: boolean; onToggle: () => void; onExam: (exam: string) => void }) {
+  const e0 = g.rows[0]!;
+  const single = g.rows.length === 1 && e0.round == null;
+  const nNew = g.rows.filter((x) => x.isNew).length;
+  return (
+    <div className={`sq-grp${open ? ' is-open' : ''}${g.isNew ? ' is-new' : ''}`}>
+      <button type="button" className="sq-gh" aria-expanded={open} onClick={onToggle}>
+        <span className="sq-exam-main">
+          <span className="sq-pub">
+            {e0.year} · {e0.pub}
+          </span>
+          <b>{e0.name}</b>
+          <small>
+            {g.kinds.map((k) => (
+              <span key={k} className={`sq-kind${k === 'basic' ? ' is-basic' : ''}`}>
+                {k === 'basic' ? '基本問題' : '今年度の演習'}
+              </span>
+            ))}
+            {!single && `${g.rows.length} 回`}
+            {!single && nNew > 0 && <span className="sq-newtxt"> · 新着 {nNew} 回</span>}
+          </small>
+        </span>
+        {g.isNew && <span className="sq-new">新着</span>}
+        <span className="sq-count tr-num">
+          <b>{g.count}</b> 問
+          <br />
+          追加 {fmtMd(g.added)}
+        </span>
+        <span className="sq-chev">
+          <Ico id="i-chev-right" size={14} />
+        </span>
+      </button>
+      {open && (
+        <div className={`sq-rounds${single ? ' is-single' : ''}`}>
+          {g.rows.map((x) => (
+            <button key={x.exam} type="button" className="sq-rd" onClick={() => onExam(x.exam)}>
+              {x.isNew && <span className="sq-dot" aria-label="新着" />}
+              <b>{x.round != null ? `第${x.round}回` : '問題を見る'}</b>
+              <small className="tr-num">
+                {x.count} 問{x.lastDate ? ` · 実施 ${fmtMd(x.lastDate)}` : ''}
+              </small>
+              <small className="tr-num">追加 {fmtMd(x.addedAt)}</small>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
