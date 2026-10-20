@@ -205,6 +205,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   const [events, setEvents] = useState<MergedTreeEvent[]>([]);
   /** 季節イベント（いま開いている科目・2026-10-20）。古い Proxy・イベントの無い時期は event: null */
   const [seasonEvent, setSeasonEvent] = useState<SeasonEventState | null>(null);
+  /** 季節イベントを読み込み中（その間は「開催されていません」を出さない・2026-10-21 検証で修正）*/
+  const [seasonEventLoading, setSeasonEventLoading] = useState(false);
   const [eventMessage, setEventMessage] = useState<string | null>(null);
   setTreeStage(stage);
   /** 通知のコールバック（先に作る）から呼ぶ loadTickets */
@@ -294,12 +296,16 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   const seasonEventFor = useRef<string | null>(null);
   const loadSeasonEvent = useCallback((s: string) => {
     seasonEventFor.current = s;
+    setSeasonEventLoading(true);
     fetchSeasonEvent(s)
       .then((st) => {
         if (seasonEventFor.current === s) setSeasonEvent(st.event ? st : null);
       })
       .catch(() => {
         if (seasonEventFor.current === s) setSeasonEvent(null);
+      })
+      .finally(() => {
+        if (seasonEventFor.current === s) setSeasonEventLoading(false);
       });
   }, []);
 
@@ -887,7 +893,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       {view.kind === 'event' && !seasonEvent?.event && (
         <div className={rootClass()}>
           <div className="tr-center">
-            <div>イベントは開催されていません。</div>
+            <div>{seasonEventLoading ? '読み込み中…' : 'イベントは開催されていません。'}</div>
             <button type="button" className="tr-ghost" style={{ width: 240 }} onClick={() => setView({ kind: 'tree' })}>
               ツリーへ戻る
             </button>

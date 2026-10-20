@@ -559,8 +559,8 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
                     小問 {i + 1} / {qs.length}
                   </span>
                   <span className="tr-member-right">
-                    <span className="tr-num" style={{ color: 'var(--tr-sub)', fontWeight: 500 }}>
-                      解答番号 {boxLabel(q)}
+                    <span style={{ color: 'var(--tr-sub)', fontWeight: 500 }}>
+                      解答番号 <span className="tr-num">{boxLabel(q)}</span>
                     </span>
                     {mark(q.id)}
                   </span>
@@ -581,8 +581,8 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
             <div className="tr-frame">
               <div className="tr-member-head">
                 <span>設問</span>
-                <span className="tr-num" style={{ color: 'var(--tr-sub)', fontWeight: 500 }}>
-                  解答番号 {boxLabel(first)}
+                <span style={{ color: 'var(--tr-sub)', fontWeight: 500 }}>
+                  解答番号 <span className="tr-num">{boxLabel(first)}</span>
                 </span>
               </div>
               <div className="tr-paper">

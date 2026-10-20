@@ -303,7 +303,7 @@ export function ResultScreen({ result, session, marked, manifest, grade, nicknam
       }
     : after
       ? {
-          label: QTYPE_LABEL[session.qtype],
+          label: QTYPE_LABEL[session.qtype] ?? manifest.name,
           total: after.total,
           dist: { ...after.dist, fresh: Math.max(0, after.total - after.dist.mastered - after.dist.solved - after.dist.review) },
         }
@@ -347,6 +347,11 @@ export function ResultScreen({ result, session, marked, manifest, grade, nicknam
           {ev ? (
             <>
               <b>{EV_NAME[ev.kind] ?? ev.name}</b> · {manifest.name} · 結果
+            </>
+          ) : session.field === '_event' ? (
+            // イベントの挑戦なのに event が返らなかった（古い Proxy など）: 「_event › undefined」と出さない
+            <>
+              <b>イベント</b> · {manifest.name} · 結果
             </>
           ) : (
             <>

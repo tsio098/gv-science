@@ -374,7 +374,7 @@ export function RankingScreen({ manifest, stage = 'front', initial, arena = fals
             <span className="tr-rank-name">
               {data.me.nickname} <small>あなた</small>
             </span>
-            <span className="tr-num">{data.me.rank ? fmtScore(data.me.score) : '未掲載'}</span>
+            {data.me.rank ? <span className="tr-num">{fmtScore(data.me.score)}</span> : <span>未掲載</span>}
           </div>
           <div className="tr-rank-foot">
             {isArena

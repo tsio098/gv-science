@@ -83,7 +83,8 @@ function AnchorTreeCard({ onOpen, subjects, staff }: { onOpen: () => void; subje
         <TreeBanner
           kind={treeBannerKind(p?.home)}
           season={p?.home?.season}
-          iconSkin={p?.home?.iconSkin ?? rememberedIconSkin()}
+          // Proxy が iconSkin を返したら null（錨を外した・持っていない）でもそれを使う。端末の記憶は返さない古い Proxy のときだけ（2026-10-21 検証で修正）
+          iconSkin={p?.home && 'iconSkin' in p.home ? p.home.iconSkin ?? null : rememberedIconSkin()}
           onOpen={() => {
             if (longPressed.current) {
               longPressed.current = false;

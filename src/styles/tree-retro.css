@@ -128,6 +128,10 @@
 /* ヒラギノのまま: 問題の転記テキスト・必要な値のチップ・改善要望の入力欄・ログイン ID（Fonts の WHERE）*/
 .tr-root.is-retro .tr-qtext,
 .tr-root.is-retro .tr-given > span,
+.tr-root.is-retro .ab-prompt,
+.tr-root.is-retro .ab-opt-text,
+.tr-root.is-retro .ab-part-head,
+.tr-root.is-retro .ab-input,
 .tr-root.is-retro .tr-report-text,
 .tr-root.is-retro .tr-login-id,
 .tr-root.is-retro .tr-imgph {
@@ -698,6 +702,7 @@
   font-size: 10px;
   text-align: center;
   width: 26px;
+  min-width: max-content;
 }
 .tr-root.is-retro.tr-rank:not(.is-arena):not(.st-root) .tr-rank-row > .tr-num:last-child {
   font-size: 9px;
@@ -781,12 +786,17 @@
   flex: 1;
   display: flex;
   gap: 3px;
+  height: auto;
+  border-radius: 0;
+  background: none;
+  overflow: visible;
   filter: drop-shadow(0 0 4px rgba(var(--tr-accent-rgb), 0.45));
 }
 .tr-root.is-retro .tr-qpips > i {
   flex: 1;
   height: 8px;
   display: block;
+  border-radius: 0;
   background: rgba(var(--tr-text-rgb), 0.14);
 }
 .tr-root.is-retro .tr-qpips > i.is-done {
@@ -1296,14 +1306,16 @@
   color: var(--tr-sub);
 }
 .tr-root .tr-ev-master-top > .tr-arc {
-  font-size: 7px;
   color: var(--tr-sub);
+}
+.tr-root.is-retro .tr-ev-master-top > .tr-arc {
+  font-size: 7px;
 }
 .tr-root .tr-ev-master-top b {
   font-size: 16px;
   font-weight: 400;
 }
-.tr-root .tr-ev-master-top .tr-arc:not(b) {
+.tr-root.is-retro .tr-ev-master-top .tr-arc:not(b) {
   font-size: 9px;
 }
 .tr-root .tr-ev-master-bar {
@@ -1326,8 +1338,10 @@
   color: var(--tr-sub);
 }
 .tr-root .tr-ev-master-note .tr-arc {
-  font-size: 8px;
   color: var(--tr-text);
+}
+.tr-root.is-retro .tr-ev-master-note .tr-arc {
+  font-size: 8px;
 }
 
 /* ── チャンピオンアリーナ（A03r〜A15r）: 夜の紫 ＋ 金のまま・角だけドット・数字は今の DotGothic16 のまま ── */
@@ -1404,7 +1418,7 @@
   clip-path: var(--px2);
 }
 /* 太字の指定（600 / 700）は DotGothic16 では効かないので、字の太さで差をつけない（font-synthesis: none）*/
-.tr-root.is-retro b,
-.tr-root.is-retro strong {
+.tr-root.is-retro:not(.st-root) b,
+.tr-root.is-retro:not(.st-root) strong {
   font-weight: 400;
 }

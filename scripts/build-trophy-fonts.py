@@ -15,6 +15,7 @@ LIFF の WebView では Google Fonts が遅い・出ないことがあるので�
 """
 import argparse
 import glob
+import json
 import os
 import re
 
@@ -27,6 +28,7 @@ FONTS = os.path.join(ROOT, 'public', 'fonts')
 DEFAULT_LIST = os.path.expanduser('~/Documents/Claude/Projects/大学リサーチ+app/vault/GV Science/進捗チェックツリー/トロフィー一覧.md')
 FIELDS = os.path.join(ROOT, '..', 'gv-science-proxy', 'tools', 'tree-content', 'fields')
 CRABS = os.path.join(ROOT, '..', 'gv-science-proxy', 'src', 'crabNames.js')
+BUILD = os.path.expanduser('~/Documents/GV問題PDF/_build/content')  # build.py の出力（R2 と同じ）。試験名・分野名の字を拾う
 
 RANGES = [
     (0x20, 0x7E),      # ASCII
@@ -87,6 +89,17 @@ def main():
     dot |= chars_of_files(glob.glob(os.path.join(ROOT, 'src', '**', '*.ts'), recursive=True))
     dot |= chars_of_files(glob.glob(os.path.join(ROOT, 'src', '**', '*.tsx'), recursive=True))
     dot |= chars_of_files([p for p in [CRABS] if os.path.exists(p)])
+    # 試験名・分野名（2026-10-21: 結果画面の間違えた問題の見出しなどに出る「浜」などが無かった）。各科目・ABYSS の最新の版の manifest
+    for d in glob.glob(os.path.join(BUILD, '*')) + glob.glob(os.path.join(BUILD, '*', 'back')):
+        vs = sorted(glob.glob(os.path.join(d, 'v*', 'manifest.json')))
+        if vs:
+            with open(vs[-1], encoding='utf-8') as f:
+                m = json.load(f)
+            dot |= set(m.get('name') or '')
+            for e in m.get('exams') or []:
+                dot |= set(str(e.get('exam') or ''))
+            for fl in m.get('fields') or []:
+                dot |= set(str(fl.get('name') or ''))
     # 制御文字・サロゲート・私用領域・BMP の外（絵文字など。フォントに無い）は除く
     # （2026-10-21 修正: 前は ord(c) < 0xE000 で、全角英数・記号 U+FF01〜FF5E の（）！？％ なども落としていた）
     dot = {c for c in dot if c >= ' ' and not (0xD800 <= ord(c) <= 0xDFFF) and not (0xE000 <= ord(c) <= 0xF8FF) and ord(c) <= 0xFFFF}
