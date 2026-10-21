@@ -598,15 +598,16 @@
 .tr-root.is-retro.tr-rank:not(.st-root) .tr-seg > button.is-on {
   box-shadow: none;
 }
+/* 地は不透明に: 半透明だと下の枠の色（＝選択中の文字色）が透けて文字が見えなくなる */
 .tr-root.is-retro.tr-rank:not(.st-root) .tr-chips > button {
   --rf-edge: rgba(var(--tr-text-rgb), 0.25);
-  --rf-face: rgba(var(--tr-ground-rgb), 0.6);
+  --rf-face: var(--rx-card);
   border-radius: 0;
   font-weight: 400;
 }
 .tr-root.is-retro.tr-rank:not(.st-root) .tr-chips > button.is-on {
   --rf-edge: var(--rf-chip, var(--tr-text));
-  --rf-face: rgba(var(--tr-text-rgb), 0.1);
+  --rf-face: linear-gradient(rgba(var(--tr-text-rgb), 0.12), rgba(var(--tr-text-rgb), 0.12)), var(--rx-card);
   box-shadow: none !important;
 }
 /* 表彰台: .px の枠（金 / 銀 / 銅）＋ 押し出し 4px ＋ 走査線（RankingScreen が --pd-edge / --pd-filter で渡す）*/
