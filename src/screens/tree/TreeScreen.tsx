@@ -402,14 +402,12 @@ export function TreeScreen(props: Props) {
                     </span>
                   )}
                   {ready && open && (p?.newCount ?? 0) > 0 && (
-                    // 新着の「+n」は控えめに（2026-10-21 先生「主張が強すぎる」）: 塗りと発光をやめ、細い枠と文字の色だけ
+                    // 新着は小さい点だけ（2026-10-21 先生: 問題数は要らない・もっと小さく。以前は「+n」）
                     <span
-                      className="tr-badge tr-num tr-newbadge"
-                      style={{ left: f.kiso && master ? x + 34 : x + 14, top: y - 29, color: NEW_COLOR }}
-                      aria-label={`新着 ${p!.newCount} 問`}
-                    >
-                      +{p!.newCount}
-                    </span>
+                      className="tr-badge tr-newbadge"
+                      style={{ left: f.kiso && master ? x + 38 : x + 18, top: y - 25, background: NEW_COLOR, boxShadow: `0 0 4px ${alpha(NEW_COLOR, 0.6)}` }}
+                      aria-label="新着あり"
+                    />
                   )}
                   {!ready && (
                     <span
