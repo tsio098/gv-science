@@ -702,7 +702,14 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
       )}
 
       {away && (
-        <div className="tr-ar-away" onPointerDown={reveal} onClick={reveal}>
+        // click だけで外す（pointerdown で外すと、指を離したときの click が下の選択肢・決定に当たる・2026-10-22 デバッグで修正）
+        <div
+          className="tr-ar-away"
+          onClick={(e) => {
+            e.stopPropagation();
+            reveal();
+          }}
+        >
           <img src={CROWN_MONO} alt="" style={{ width: 40, height: 'auto', display: 'block' }} />
           <div>タップすると問題に戻ります</div>
         </div>
@@ -712,7 +719,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
         <div className="tr-overlay" role="alertdialog">
           <div className="tr-card">
             <div>{submitError}</div>
-            {!/すでに提出|終了しました|見つかりませんでした/.test(submitError) && (
+            {!/すでに提出|終了しました|見つかりませんでした|期間が終わりました/.test(submitError) && (
               <button type="button" className="tr-cta" disabled={submitting} onClick={() => void submit()}>
                 {submitting ? '送信中…' : 'もう一度送る'}
               </button>

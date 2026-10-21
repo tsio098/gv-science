@@ -277,6 +277,12 @@
     --ev-cell: 18px;
   }
 }
+/* 360px 幅では凡例「正解済み」の行が約 13px はみ出す → マスを 16px に（2026-10-22 デバッグで修正）*/
+@media (max-width: 369px) {
+  .ev-cells {
+    --ev-cell: 16px;
+  }
+}
 .ev-cell {
   display: block;
   box-sizing: border-box;

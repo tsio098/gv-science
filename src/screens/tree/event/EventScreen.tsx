@@ -39,8 +39,9 @@ export function EventScreen({ state, subject, subjectName, starting, message, on
   const test = state.test;
   const rewards = state.rewards;
   const testDone = test?.status === 'done';
-  const testOpen = cleared && !!test && (test.status === 'ready' || test.status === 'started');
   const staff = !!state.staff;
+  // 先生は提出した後も受け直せる（Proxy は先生の done を消して始め直す・2026-10-22 デバッグで修正: ボタンが出ず説明と食い違っていた）
+  const testOpen = cleared && !!test && (test.status === 'ready' || test.status === 'started' || (staff && test.status === 'done'));
 
   const ticketState = rewards?.ticket
     ? 'GET'
@@ -226,10 +227,10 @@ export function EventScreen({ state, subject, subjectName, starting, message, on
             {testOpen && (
               <button type="button" className="ev-cta-wrap is-test" style={{ flex: 1.6 }} disabled={starting} onClick={onTest}>
                 <span className="ev-px2 ev-cta is-test">
-                  <span className="ev-dot" style={{ fontSize: 16, lineHeight: 1 }}>{test!.status === 'started' ? 'テストを再開' : 'テストを受ける'}</span>
+                  <span className="ev-dot" style={{ fontSize: 16, lineHeight: 1 }}>{test!.status === 'started' ? 'テストを再開' : test!.status === 'done' ? 'もう一度受ける' : 'テストを受ける'}</span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 6, lineHeight: 1 }}>
                     <span className="ev-arc" style={{ fontSize: 8 }}>{test!.size || 20}Q</span>
-                    <span className="ev-dot" style={{ fontSize: 11 }}>· 1 回のみ</span>
+                    {!staff && <span className="ev-dot" style={{ fontSize: 11 }}>· 1 回のみ</span>}
                   </span>
                 </span>
               </button>

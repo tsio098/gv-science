@@ -31,6 +31,7 @@ const ScoresScreen = lazy(() =>
   importScoresScreen().then((m) => ({ default: m.ScoresScreen }))
 );
 // ANCHOR TREE（理科進捗ツリー）も遅延ロード。ホームの ANCHOR TREE カードが先読みする
+import { TreeErrorBoundary } from './screens/tree/TreeErrorBoundary';
 const TreeRoot = lazy(() => importTreeRoot().then((m) => ({ default: m.TreeRoot })));
 
 function renderRoute(route: Route, nav: ReturnType<typeof useNav>['nav']) {
@@ -72,7 +73,9 @@ function renderRoute(route: Route, nav: ReturnType<typeof useNav>['nav']) {
     case 'tree':
       return (
         <Suspense fallback={<ScoresFallback />}>
-          <TreeRoot mode="liff" onClose={() => nav('back')} />
+          <TreeErrorBoundary onClose={() => nav('back')}>
+            <TreeRoot mode="liff" onClose={() => nav('back')} />
+          </TreeErrorBoundary>
         </Suspense>
       );
     case 'scores':

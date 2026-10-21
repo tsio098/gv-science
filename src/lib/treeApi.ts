@@ -934,7 +934,13 @@ export interface SeasonEventTestResult {
   results: { qid: string; type: QType; correct: boolean; value: PartValue[]; timeMs: number; bonus: number; gain: number }[];
   summary: { correct: number; total: number; rate: number; pass: boolean; passAt: number; elapsedMs: number };
   event: { id: string; kind: string; name: string };
-  ticket: (TreeTicket & { kind: 'event' }) | null;
+  /** /test/submit が返すのは eventTicketPub の形だけ（sig・grade・nickname は無い → チケット画面には /tree/tickets で取り直したものを渡す・2026-10-22 デバッグで型を合わせた）*/
+  ticket:
+    | (Pick<TreeTicket, 'id' | 'subject' | 'eventId' | 'eventKind' | 'eventName' | 'testRate' | 'issuedAt' | 'usableFrom' | 'usableUntil'> & {
+        kind: 'event';
+        usedAt: number | null;
+      })
+    | null;
 }
 
 /** いまのイベント（その科目）。古い Proxy（404）・D1 0016 の前（503）は event: null */

@@ -212,6 +212,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   const [seasonEvent, setSeasonEvent] = useState<SeasonEventState | null>(null);
   /** 季節イベントを読み込み中（その間は「開催されていません」を出さない・2026-10-21 検証で修正）*/
   const [seasonEventLoading, setSeasonEventLoading] = useState(false);
+  /** 季節イベントの最後の読み込みが失敗した（「開催されていません」と言わずに、読み直しのボタンを出す）*/
+  const [seasonEventFailed, setSeasonEventFailed] = useState(false);
   const [eventMessage, setEventMessage] = useState<string | null>(null);
   /** 先生の確認用の日付（?evnow）。ツリーの下に札を出して × で消す（2026-10-21: 外しても残ったため）*/
   const [evNowTag, setEvNowTag] = useState<string | null>(() => seasonEventNowParam());
@@ -229,7 +231,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   /** トロフィー一覧の分野チップ用（今の科目以外の manifest）*/
   const [otherManifests, setOtherManifests] = useState<Record<string, TreeManifest>>({});
   // 読み込み中（manifest / progress が無い間）は通知の層を描かないので止める（2026-10-19 レビューで修正）
-  const toastPaused = view.kind === 'play' || view.kind === 'arenaPlay' || view.kind === 'eventTest' || !!events[0] || !manifest || !progress;
+  const playing = view.kind === 'play' || view.kind === 'arenaPlay' || view.kind === 'eventTest';
+  const toastPaused = playing || !!events[0] || !manifest || !progress;
   const onToastShown = useCallback((items: ToastItem[]) => {
     const trophies = items.filter((t) => t.trophy).map((t) => t.trophy!);
     const keys = items.filter((t) => t.noticeKey).map((t) => t.noticeKey!);
@@ -300,16 +303,19 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   }, []);
 
   // 季節イベント（科目ごと）。遅れて返った前の科目の分で上書きしない
+  // 読めなかったときは前の状態を残す（一時的な通信失敗でイベントが消えて「開催されていません」にならない・2026-10-22 デバッグで修正）
   const seasonEventFor = useRef<string | null>(null);
   const loadSeasonEvent = useCallback((s: string) => {
     seasonEventFor.current = s;
     setSeasonEventLoading(true);
     fetchSeasonEvent(s)
       .then((st) => {
-        if (seasonEventFor.current === s) setSeasonEvent(st.event ? st : null);
+        if (seasonEventFor.current !== s) return;
+        setSeasonEvent(st.event ? st : null);
+        setSeasonEventFailed(false);
       })
       .catch(() => {
-        if (seasonEventFor.current === s) setSeasonEvent(null);
+        if (seasonEventFor.current === s) setSeasonEventFailed(true);
       })
       .finally(() => {
         if (seasonEventFor.current === s) setSeasonEventLoading(false);
@@ -441,7 +447,9 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
         if (pg.abyss) setAbyssOpen(pg.abyss.open);
       } catch (e) {
         if (e instanceof TreeApiError && e.code === 'NO_CONTENT') setMessage('この科目の ABYSS（二次問題）はまだ準備中です。');
-        else fail(e);
+        // ログイン切れ（外部ブラウザ）以外は、いまのツリーを残して知らせるだけ（前はツリー全体がエラー画面になった・2026-10-22 デバッグで修正）
+        else if (e instanceof TreeApiError && e.code === 'UNAUTHORIZED') fail(e);
+        else setMessage('切り替えられませんでした。通信状況を確かめてもう一度お試しください。');
       }
     },
     [subject, stage, fail]
@@ -479,28 +487,75 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
     [subject, subjects, openSubject, switchStage, loadArena, loadTickets, fail]
   );
 
+  // いま表示している科目・ステージ（遅れて返った前の科目・ステージの進捗で上書きしない・2026-10-22 デバッグで修正）
+  const shownKey = useRef('');
+  shownKey.current = `${subject}|${stage}`;
   const refreshProgress = useCallback(() => {
     // manifest が差し替わっていたら一緒に取り直す（版がずれると問題 ID が合わない）
     if (!subject) return;
+    const key = `${subject}|${stage}`;
     fetchTreeProgress(subject, stage)
       .then((pg) => {
+        if (shownKey.current !== key) return;
         setProgress(pg);
         if (pg.abyss) {
           // 挑戦の結果で ABYSS が開いた（60% に届いてチケットが出た）ら、ヘッダーのチケット枚数も取り直す
           if (pg.abyss.open && !abyssOpen) loadTickets();
           setAbyssOpen(pg.abyss.open);
         }
-        if (manifest && pg.version !== manifest.version) fetchTreeManifest(subject, stage).then(setManifest).catch(() => {});
+        if (manifest && pg.version !== manifest.version)
+          fetchTreeManifest(subject, stage)
+            .then((mf) => {
+              if (shownKey.current === key) setManifest(mf);
+            })
+            .catch(() => {});
       })
       .catch(() => {});
     loadArena(subject);
-    // 季節イベントは開催中・予告のときだけ取り直す（イベントの無い時期に D1 を読まない。科目を開いたときには必ず取る）
-    if (seasonEvent?.event) loadSeasonEvent(subject);
-  }, [manifest, subject, stage, loadArena, loadSeasonEvent, loadTickets, abyssOpen, seasonEvent]);
+    // 季節イベントは開催中・予告のとき（と前の読み込みが失敗したとき）だけ取り直す（イベントの無い時期に要求を増やさない。科目を開いたときには必ず取る）
+    if (seasonEvent?.event || seasonEventFailed) loadSeasonEvent(subject);
+  }, [manifest, subject, stage, loadArena, loadSeasonEvent, loadTickets, abyssOpen, seasonEvent, seasonEventFailed]);
+
+  /**
+   * 画面を開いたまま予告 → 開催（0:00）・開催 → 終わり（5:00）をまたいだら取り直す。時刻は Proxy の now との差で決める（端末の時計のずれを受けない）。
+   * LINE が画面を残したまま戻ってきたとき（visible）も取り直す（1 分に 1 回まで）。2026-10-22 デバッグで追加
+   */
+  const seasonEventAt = useRef(0);
+  useEffect(() => {
+    if (!subject) return;
+    const ev = seasonEvent?.event;
+    const reload = () => {
+      seasonEventAt.current = Date.now();
+      loadSeasonEvent(subject);
+      setEvNowTag(seasonEventNowParam());
+    };
+    let timer: number | undefined;
+    if (ev) {
+      const next = ev.phase === 'soon' ? ev.startAt : ev.phase === 'open' ? ev.endAt : null;
+      const wait = next == null ? null : next - ev.now + 1000 + Math.floor(Math.random() * 20_000); // 一斉に来ないよう 1〜21 秒ずらす
+      if (wait != null && wait > 0 && wait < 2 * 86400_000) timer = window.setTimeout(reload, wait);
+    }
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible' || Date.now() - seasonEventAt.current < 60_000) return;
+      if (ev || seasonEventFailed) reload();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      if (timer !== undefined) window.clearTimeout(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [subject, seasonEvent, seasonEventFailed, loadSeasonEvent]);
 
   /** 季節イベントの挑戦（5 問）を始める。100% の後は復習（マスター度は下がらない）*/
   const beginEvent = async () => {
-    if (!subject || !seasonEvent?.event) return;
+    if (!subject) return;
+    if (!seasonEvent?.event) {
+      // 読み込みに失敗して状態が無い → 黙って何もしないのではなく、読み直して知らせる（2026-10-22 デバッグで修正）
+      setEventMessage('イベントを読み込めませんでした。少し待ってもう一度お試しください。');
+      loadSeasonEvent(subject);
+      setView({ kind: 'event' });
+      return;
+    }
     setStarting(true);
     setEventMessage(null);
     try {
@@ -527,7 +582,12 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
 
   /** 季節イベントのテスト（20 問・1 回だけ・途中なら再開）*/
   const beginEventTest = async () => {
-    if (!subject || !seasonEvent?.event) return;
+    if (!subject) return;
+    if (!seasonEvent?.event) {
+      setEventMessage('イベントを読み込めませんでした。少し待ってもう一度お試しください。');
+      loadSeasonEvent(subject);
+      return;
+    }
     setStarting(true);
     setEventMessage(null);
     try {
@@ -555,6 +615,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   openEventRef.current = (s: string) => {
     setEventMessage(null);
     if (s === subject) {
+      // 結果画面から来る（100% に届いた提出の直後）→ ツリーの進捗も取り直す（2026-10-22 デバッグで修正）
+      refreshProgress();
       loadSeasonEvent(s);
       setView({ kind: 'event' });
       return;
@@ -917,7 +979,12 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       {view.kind === 'event' && !seasonEvent?.event && (
         <div className={rootClass()}>
           <div className="tr-center">
-            <div>{seasonEventLoading ? '読み込み中…' : 'イベントは開催されていません。'}</div>
+            <div>{seasonEventLoading ? '読み込み中…' : seasonEventFailed ? 'イベントを読み込めませんでした。' : 'イベントは開催されていません。'}</div>
+            {!seasonEventLoading && seasonEventFailed && subject && (
+              <button type="button" className="tr-ghost" style={{ width: 240 }} onClick={() => loadSeasonEvent(subject)}>
+                もう一度読み込む
+              </button>
+            )}
             <button type="button" className="tr-ghost" style={{ width: 240 }} onClick={() => setView({ kind: 'tree' })}>
               ツリーへ戻る
             </button>
@@ -1051,7 +1118,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
             refreshProgress();
             setView({ kind: 'tree' });
           }}
-          onRanking={() => setView({ kind: 'ranking', scope: 'arena', field: null, qtype: 'tf', back: { kind: 'tree' } })}
+          // 戻ったら結果画面へ（先生の「記録として提出」・間違えた問題がランキングを見た後も使える・2026-10-22 デバッグで修正）
+          onRanking={() => setView({ kind: 'ranking', scope: 'arena', field: null, qtype: 'tf', back: view })}
           onReport={(qid, message, label, img) => report(view.session.sessionId, qid, message, label, img)}
         />
       )}
@@ -1077,7 +1145,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           }}
         />
       )}
-      {toastDetail && (
+      {/* 出題中は演出・トロフィーの詳細を重ねない（閉じたときにツリーへ移って挑戦が消えていた・2026-10-22 デバッグで修正）*/}
+      {toastDetail && !playing && (
         <TrophyDetailSheet
           item={toastDetail.item}
           fieldInfo={(id) => trophyFieldInfo(toastDetail.subject, id)}
@@ -1087,7 +1156,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       )}
       {toasts.layer}
       {sharing && <TreeShareModal loginId={me.loginId} staff={me.grade === '先生'} onClose={() => setSharing(false)} />}
-      {events[0] && (
+      {events[0] && !playing && (
         <FxScreen
           key={events[0].key}
           event={events[0]}

@@ -122,6 +122,9 @@ export function submitToasts(r: SubmitResult, manifest: TreeManifest, subjectNam
   if (r.level30) out.push(level30Toast(r.level30, subjectName));
   for (const n of r.near ?? []) out.push(nearToast(n));
   for (const f of r.newlyUnlocked ?? []) {
+    // 問題がまだ無い（準備中の）分野は知らせない（結果画面の帯と同じ・2026-10-22 デバッグで修正）
+    const mf = manifest.fields.find((x) => x.id === f);
+    if (mf && !(mf.total > 0)) continue;
     out.push({ key: `node:${manifest.subject}:${stage}:${f}`, kind: 'node', head: 'NODE OPEN!', main: name(f), sub: `${subjectName} · ${stageName}` });
   }
   // 季節イベントの挑戦（r.event）の node・rank は科目の値（分野・種別ではない）→ MASTER! は出さず、RANK UP! は科目の名前で

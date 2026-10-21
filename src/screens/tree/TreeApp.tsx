@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { clearTreeSession, getTreeSessionToken } from '../../lib/treeAuth';
 import { TreeLoginScreen } from './TreeLoginScreen';
 import { TreeRoot } from './TreeRoot';
+import { TreeErrorBoundary } from './TreeErrorBoundary';
 import '../../styles/tree.css';
 
 export function TreeApp() {
@@ -29,13 +30,15 @@ export function TreeApp() {
   return (
     <div style={{ position: 'fixed', inset: 0 }}>
       {authed ? (
-        <TreeRoot
-          mode="external"
-          onLogout={() => {
-            clearTreeSession();
-            setAuthed(false);
-          }}
-        />
+        <TreeErrorBoundary>
+          <TreeRoot
+            mode="external"
+            onLogout={() => {
+              clearTreeSession();
+              setAuthed(false);
+            }}
+          />
+        </TreeErrorBoundary>
       ) : (
         <TreeLoginScreen onLoggedIn={() => setAuthed(true)} />
       )}

@@ -25,14 +25,17 @@ export function DressUpScreen({ onBack, onSaved }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [pick, setPick] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // 読み込みに失敗したら「もう一度読み込む」で取り直す（2026-10-22 デバッグで修正: 前は戻るしかなかった）
+  const [reloadKey, setReloadKey] = useState(0);
   useEffect(() => {
+    setError(null);
     fetchCosmetics()
       .then((d) => {
         setData(d);
         setPick(d.selected);
       })
       .catch((e) => setError(e instanceof TreeApiError ? e.code : 'NETWORK'));
-  }, []);
+  }, [reloadKey]);
 
   const owned = new Set((data?.icons ?? []).map((x) => x.item));
   const kinds = data?.kinds ?? ['halloween', 'xmas', 'newyear', 'setsubun'];
@@ -73,6 +76,11 @@ export function DressUpScreen({ onBack, onSaved }: Props) {
         {error && (
           <div className="ev-msg ev-dot" role="alert">
             {error === 'NOT_OWNED' ? 'まだ手に入れていないアイコンです。' : error === 'EVENT_NOT_READY' ? '着せ替えはまだ準備中です。' : '読み込めませんでした。通信状況を確かめてもう一度お試しください。'}
+            {!data && error !== 'EVENT_NOT_READY' && (
+              <button type="button" className="tr-ghost" style={{ display: 'block', marginTop: 8 }} onClick={() => setReloadKey((k) => k + 1)}>
+                もう一度読み込む
+              </button>
+            )}
           </div>
         )}
         <div className="ev-shadow is-aqua">
