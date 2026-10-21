@@ -380,7 +380,7 @@ html.tr-noswipe #root * {
   justify-content: center;
   z-index: 15;
 }
-/* 新着は小さい点（2026-10-21 先生: 問題数は要らない・もっと小さく）*/
+/* 新着は光る白丸（2026-10-21 先生: 問題数は要らない・もっと小さく・光る白丸）*/
 .tr-badge.tr-newbadge {
   min-width: 0;
   width: 7px;

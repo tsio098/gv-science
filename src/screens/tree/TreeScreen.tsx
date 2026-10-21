@@ -23,7 +23,6 @@ import {
   IPAD_MIN_W,
   MASTER_AT,
   PHONE_GEOM,
-  NEW_COLOR,
   QTYPE_ICON,
   T,
   alpha,
@@ -402,10 +401,10 @@ export function TreeScreen(props: Props) {
                     </span>
                   )}
                   {ready && open && (p?.newCount ?? 0) > 0 && (
-                    // 新着は小さい点だけ（2026-10-21 先生: 問題数は要らない・もっと小さく。以前は「+n」）
+                    // 新着は光る白丸だけ（2026-10-21 先生: 問題数は要らない・もっと小さく・光る白丸に。以前は「+n」）
                     <span
                       className="tr-badge tr-newbadge"
-                      style={{ left: f.kiso && master ? x + 38 : x + 18, top: y - 25, background: NEW_COLOR, boxShadow: `0 0 4px ${alpha(NEW_COLOR, 0.6)}` }}
+                      style={{ left: f.kiso && master ? x + 38 : x + 18, top: y - 25, background: '#FFFFFF', boxShadow: '0 0 3px #FFFFFF, 0 0 8px rgba(255,255,255,.75)' }}
                       aria-label="新着あり"
                     />
                   )}
