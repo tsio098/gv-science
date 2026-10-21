@@ -163,8 +163,7 @@ export function newsToast(manifest: TreeManifest, progress: TreeProgress, subjec
   }
   if (!n) return null;
   return {
-    // 小さい 1 行の札（2026-10-21 先生: 問題数は出さない）
-    key: `news:${manifest.subject}:${manifest.version}`, kind: 'news', head: 'NEW',
-    main: `${list.length === 1 ? list[0]!.name : subjectName}に新着`,
+    key: `news:${manifest.subject}:${manifest.version}`, kind: 'news', head: `NEW +${n}`,
+    main: list.length === 1 ? `${list[0]!.name}に新着 ${n} 問` : `新着 ${n} 問`, sub: `${subjectName} · ROUTE`,
   };
 }
