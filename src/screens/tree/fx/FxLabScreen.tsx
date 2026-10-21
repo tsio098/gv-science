@@ -14,6 +14,7 @@ import { eventClearToast, eventTicketToast, level30Toast, noticeToast, trophyToa
 import { Ico } from '../TreeIcons';
 import { rootClass } from '../treeTheme';
 import { FxScreen } from './FxScreen';
+import { EV_TROPHY_NAME } from '../event/evTheme';
 import { preloadFxImages } from './fxKit';
 
 interface Props {
@@ -124,11 +125,11 @@ export function FxLabScreen({ grade, nickname, subject, subjectName, season, onT
     // 2026-10-20 季節イベント（ハロウィン）: EVENT CLEAR!!（初めての 100% = トロフィー ＋ アイコン / 2 科目目 = EVENT トロフィー）・TICKET GET!
     {
       label: 'EVENT CLEAR!!（初めて・トロフィー ＋ アイコン）',
-      items: () => [eventClearToast({ subject, id: 'ev_halloween', grade: 'E', name: '何か邪悪なものがやって来る', pt: 0, first: false, desc: '', event: true, firstIcon: true }, subjectName)],
+      items: () => [eventClearToast({ subject, id: 'ev_halloween', grade: 'E', name: EV_TROPHY_NAME.halloween?.[subject] ?? 'EVENT トロフィー', pt: 0, first: false, desc: '', event: true, firstIcon: true }, subjectName)],
     },
     {
       label: 'EVENT CLEAR!!（2 科目目）',
-      items: () => [eventClearToast({ subject, id: 'ev_halloween', grade: 'E', name: '何か邪悪なものがやって来る', pt: 0, first: false, desc: '', event: true, firstIcon: false }, subjectName)],
+      items: () => [eventClearToast({ subject, id: 'ev_halloween', grade: 'E', name: EV_TROPHY_NAME.halloween?.[subject] ?? 'EVENT トロフィー', pt: 0, first: false, desc: '', event: true, firstIcon: false }, subjectName)],
     },
     {
       label: 'TICKET GET!（10/31 のみ使用可能）',
@@ -138,7 +139,7 @@ export function FxLabScreen({ grade, nickname, subject, subjectName, season, onT
       label: 'トロフィー + LEVEL 30 + EVENT CLEAR!! + TICKET GET!（並び）',
       items: () => [
         eventTicketToast({ subject, eventId: 'halloween-2026', usableFrom: Date.parse('2026-10-31T00:00:00+09:00'), kind: 'halloween' }, subjectName),
-        eventClearToast({ subject, id: 'ev_halloween', grade: 'E', name: '何か邪悪なものがやって来る', pt: 0, first: false, desc: '', event: true, firstIcon: true }, subjectName),
+        eventClearToast({ subject, id: 'ev_halloween', grade: 'E', name: EV_TROPHY_NAME.halloween?.[subject] ?? 'EVENT トロフィー', pt: 0, first: false, desc: '', event: true, firstIcon: true }, subjectName),
         level30Toast({ subject }, subjectName),
         tg('G', '時は金なり', 6),
       ],

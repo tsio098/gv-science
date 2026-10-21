@@ -45,6 +45,7 @@ import {
 } from '../../lib/treeApi';
 import { EventScreen } from './event/EventScreen';
 import { EventTestResult } from './event/EventTestResult';
+import { EventStaffScreen } from './event/EventStaffScreen';
 import { DressUpScreen } from './event/DressUpScreen';
 import { rememberIconSkin } from './event/evTheme';
 import { ArenaScreen } from './ArenaScreen';
@@ -122,6 +123,8 @@ type View =
   | { kind: 'event' }
   | { kind: 'eventTest'; session: SeasonEventTestSession }
   | { kind: 'eventTestResult'; result: SeasonEventTestResult }
+  /** 先生用 季節イベントの生徒の状況（2026-10-21・イベント画面と「…」メニューから）*/
+  | { kind: 'eventStaff'; back: View }
   /** 錨のアイコンの着せ替え（「…」メニュー・イベント画面・テストの結果から）*/
   | { kind: 'dressUp'; back: View };
 
@@ -784,6 +787,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           }
           onStaff={me.grade === '先生' ? () => setView({ kind: 'staff' }) : undefined}
           onStaffQuestions={me.grade === '先生' ? () => setView({ kind: 'staffQuestions' }) : undefined}
+          onStaffEvent={me.grade === '先生' ? () => setView({ kind: 'eventStaff', back: { kind: 'tree' } }) : undefined}
           onFxLab={me.grade === '先生' ? () => setView({ kind: 'fxlab' }) : undefined}
           tickets={tickets.filter((t) => !t.usedAt).length}
           onTickets={() => setView({ kind: 'tickets', back: { kind: 'tree' } })}
@@ -888,6 +892,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       {view.kind === 'event' && seasonEvent?.event && (
         <EventScreen
           state={seasonEvent}
+          subject={subject ?? ''}
           subjectName={manifest.name}
           starting={starting}
           message={eventMessage}
@@ -898,6 +903,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           onChallenge={() => void beginEvent()}
           onTest={() => void beginEventTest()}
           onDressUp={seasonEvent.rewards?.icon ? () => setView({ kind: 'dressUp', back: { kind: 'event' } }) : undefined}
+          onStaffView={me.grade === '先生' ? () => setView({ kind: 'eventStaff', back: { kind: 'event' } }) : undefined}
           onTickets={
             seasonEvent.rewards?.ticket
               ? () => {
@@ -983,6 +989,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       )}
       {view.kind === 'staff' && <StaffScreen onBack={() => setView({ kind: 'tree' })} />}
       {view.kind === 'staffQuestions' && <StaffQuestionsScreen onBack={() => setView({ kind: 'tree' })} />}
+      {view.kind === 'eventStaff' && <EventStaffScreen subject={subject} onBack={() => setView(view.back)} />}
       {view.kind === 'fxlab' && (
         <FxLabScreen grade={me.grade} nickname={me.nickname} subject={subject} subjectName={manifest.name} season={arena?.season ?? null} onTickets={() => setView({ kind: 'tickets', back: { kind: 'fxlab' } })} onToasts={pushToasts} onBack={() => setView({ kind: 'tree' })} />
       )}

@@ -71,6 +71,8 @@ interface Props {
   onStaff?: () => void;
   /** 先生用 問題の確認（2026-10-20）*/
   onStaffQuestions?: () => void;
+  /** 先生用 季節イベントの生徒の状況（2026-10-21）*/
+  onStaffEvent?: () => void;
   /** 先生用アカウントだけ: 演出の確認（5 つの演出を何度でも再生。2026-10-17 夕方）*/
   onFxLab?: () => void;
   /** 未使用のチケットの枚数（ABYSS・総合優勝）。1 枚以上のときだけヘッダーにボタン */
@@ -614,6 +616,19 @@ export function TreeScreen(props: Props) {
             >
               <Ico id="i-lines" size={15} />
               問題の確認（先生用）
+            </button>
+          )}
+          {props.onStaffEvent && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenu(false);
+                props.onStaffEvent?.();
+              }}
+            >
+              <Ico id="i-lines" size={15} />
+              イベントの状況（先生用）
             </button>
           )}
           {props.onFxLab && (

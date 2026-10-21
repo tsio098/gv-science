@@ -846,7 +846,7 @@ export async function fetchStaffNames(ticket: NonNullable<StaffOverview['names']
 /* ── 季節イベント（ハロウィンチャレンジ・2026-10-20・vault 実装手順_季節イベント.md「先生の回答 3」）──────────────
  * 期間 10/22 0:00〜10/30 5:00（JST）。参加条件 = その科目の分野ノードを半分以上開放。科目ごとに全員共通の 70 題。
  * マスター度 = イベントの挑戦の解答だけ（2 回続けて正解で定着）。100% で錨（アイコン・アカウントに 1 つ）と EVENT トロフィー（科目ごと）。
- * 100% の後に 1 回だけテスト（20 問・80% で合格）→ イベント限定チケット（10/31 のみ使用可能）。
+ * 100% の後に 1 回だけテスト（20 問・90% で合格・2026-10-21 先生: 80% → 90%）→ イベント限定チケット（10/31 のみ使用可能）。
  * パスは /tree/season-event（/tree/events は演出のイベント）。古い Proxy・D1 0016 の前は event: null（ノードを出さない） */
 
 export type SeasonEventPhase = 'soon' | 'open' | 'closed';
@@ -893,7 +893,8 @@ export interface SeasonEventState {
   progress?: SeasonEventProgress | null;
   cleared?: boolean;
   clearedAt?: number | null;
-  rewards?: { icon: boolean; trophy: boolean; ticket: { id: string; usedAt: number | null } | null } | null;
+  /** trophyName = その科目の EVENT トロフィーの名前（科目ごと・2026-10-21。古い Proxy には無い）*/
+  rewards?: { icon: boolean; trophy: boolean; trophyName?: string | null; ticket: { id: string; usedAt: number | null } | null } | null;
   test?: SeasonEventTest | null;
   staff?: boolean;
 }
@@ -951,6 +952,40 @@ export const startSeasonEventTest = (subject: string, eventId: string) =>
   post<SeasonEventTestSession>(`/tree/season-event/test/start?${C2}${evQ()}`, { subject, eventId });
 export const submitSeasonEventTest = (sessionId: string, answers: { qid: string; value: PartValue[]; timeMs: number }[]) =>
   post<SeasonEventTestResult>(`/tree/season-event/test/submit?${C2}${evQ()}`, { sessionId, answers });
+
+/* ── 先生用 イベントの生徒の状況（2026-10-21）: 達成率・挑戦回数・テストの点数。生徒は key（本名は GAS treeNames から）── */
+
+export interface SeasonEventStaffRow {
+  key: string;
+  grade: string;
+  nickname: string;
+  /** 達成率 = EVENT MASTER（%・切り捨て。100% の後は 100）*/
+  mastery: number;
+  settled: number;
+  total: number;
+  /** イベントの挑戦（5 問）の提出の回数・解いた問題数・正解数 */
+  plays: number;
+  answered: number;
+  answeredCorrect: number;
+  lastAt: number | null;
+  clearedAt: number | null;
+  test: { status: 'started'; startedAt: number } | { status: 'done'; correct: number; total: number; pass: boolean; submittedAt: number } | null;
+  ticket: { usedAt: number | null } | null;
+}
+
+export interface SeasonEventStaff {
+  event: SeasonEventInfo | null;
+  subject?: string;
+  size?: number;
+  testSize?: number;
+  passAt?: number;
+  passRate?: number;
+  students?: SeasonEventStaffRow[];
+  names?: StaffOverview['names'];
+}
+
+export const fetchSeasonEventStaff = (subject: string) =>
+  get<SeasonEventStaff>(`/tree/season-event/staff?subject=${encodeURIComponent(subject)}${evQ()}`);
 
 /** 着せ替え（錨のアイコンだけ・フレームは作らない）。kinds = 着せ替えの並び（いつもの + この順）*/
 export interface TreeCosmetics {

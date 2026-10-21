@@ -75,13 +75,39 @@ export const evMd = (ms: number) => {
   const d = new Date(ms + JST);
   return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
 };
-/** 'M/D H:MM'（JST）。締め切り「10/30 5:00」*/
-export const evMdHm = (ms: number) => {
+/** 'AM5:00' / 'PM8:30'（JST・12 時間制。2026-10-21 先生「10/30 AM5:00」）*/
+const evAmPm = (ms: number) => {
   const d = new Date(ms + JST);
-  return `${d.getUTCMonth() + 1}/${d.getUTCDate()} ${d.getUTCHours()}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
+  const h = d.getUTCHours();
+  return `${h < 12 ? 'AM' : 'PM'}${h % 12 || (h < 12 ? 0 : 12)}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
 };
-/** 期間「10/22-10/30」（終わりは含まないので 1 ms 戻す）*/
-export const evPeriod = (start: number, end: number) => `${evMd(start)}-${evMd(end - 1)}`;
+/** 'M/D AMh:MM'（JST）。締め切り「10/30 AM5:00」*/
+export const evMdHm = (ms: number) => `${evMd(ms)} ${evAmPm(ms)}`;
+/**
+ * 期間「10/22-10/30 AM5:00」（2026-10-21 先生）。終わりが 0:00 ちょうどなら前の日まで「10/22-10/29」（終わりは含まない）
+ */
+export const evPeriod = (start: number, end: number) => {
+  const e = new Date(end + JST);
+  const midnight = e.getUTCHours() === 0 && e.getUTCMinutes() === 0;
+  return `${evMd(start)}-${midnight ? evMd(end - 1) : evMdHm(end)}`;
+};
+
+/** テストの合格ライン（%）。表示用（判定は Proxy・20 問なら 18 問。2026-10-21 先生: 80% → 90%）*/
+export const EV_TEST_PASS_PCT = 90;
+
+/**
+ * EVENT トロフィーの名前（科目ごと・2026-10-21 先生「5 科目でそれぞれ別々に」）。Proxy の rewards.trophyName が無いときの予備
+ * （Proxy src/trophies.js の EVENT_TROPHIES と同じ）
+ */
+export const EV_TROPHY_NAME: Record<string, Record<string, string>> = {
+  halloween: {
+    chemistry: '火よ燃えよ、大釜よ煮え立て',
+    'chemistry-basic': '人は一つにあらず、二つなり',
+    biology: '生き物の鈍い黄色の眼が開く',
+    'biology-basic': '夜の子らの奏でる音楽',
+    'earth-basic': '今は魔の刻、墓場が口を開く',
+  },
+};
 
 /** マスター度の表示は切り捨て（99.x% を 100% と出さない）*/
 export const evPct = (mastery: number) => Math.floor(Math.max(0, Math.min(1, mastery)) * 100 + 1e-9);

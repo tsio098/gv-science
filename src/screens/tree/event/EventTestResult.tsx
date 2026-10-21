@@ -1,11 +1,11 @@
 /**
- * 季節イベントのテストの結果（ボード E04）。SCORE n/20・PASS・正答率・ライン 80% の印 → 合格ならチケット（10/31 のみ使用可能）。
+ * 季節イベントのテストの結果（ボード E04）。SCORE n/20・PASS・正答率・ライン 90% の印（2026-10-21 先生: 80% → 90%） → 合格ならチケット（10/31 のみ使用可能）。
  * 時間ボーナスなし・正解は出さない（ほかの結果画面と同じ）。TICKET GET! の通知は TreeRoot がこの画面に入ってから出す
  */
 import type { SeasonEventTestResult } from '../../../lib/treeApi';
 import { gradeLabel } from '../../../lib/treeApi';
 import { fmtTime, rootClass } from '../treeTheme';
-import { EV_ASSET, evMd } from './evTheme';
+import { EV_ASSET, EV_TEST_PASS_PCT, evMd } from './evTheme';
 import { EvDayTag, PxLock, PxStar } from './EvParts';
 import '../../../styles/tree-event.css';
 
@@ -56,14 +56,14 @@ export function EventTestResult({ result, subjectName, grade, nickname, staff, o
               </div>
               <div className="ev-testbar">
                 <span style={{ width: `${pct}%` }} />
-                <i style={{ left: '80%' }} aria-hidden="true" />
+                <i style={{ left: `${s.total ? (s.passAt / s.total) * 100 : EV_TEST_PASS_PCT}%` }} aria-hidden="true" />
               </div>
               <div className="ev-dot" style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--ev-sub)' }}>
                 <span>
                   経過 <span className="ev-arc" style={{ fontSize: 8, color: 'var(--ev-text)' }}>{fmtTime(s.elapsedMs)}</span>
                 </span>
                 <span>
-                  ライン <span className="ev-arc" style={{ fontSize: 8, color: 'var(--ev-text)' }}>80%</span>（{s.passAt} 問）
+                  ライン <span className="ev-arc" style={{ fontSize: 8, color: 'var(--ev-text)' }}>{EV_TEST_PASS_PCT}%</span>（{s.passAt} 問）
                 </span>
               </div>
               <div className="ev-scan" style={{ opacity: 0.4 }} />

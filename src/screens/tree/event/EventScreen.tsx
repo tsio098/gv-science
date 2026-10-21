@@ -1,18 +1,21 @@
 /**
  * 季節イベントの画面（ボード E02 進行中・E03 100% 達成。2026-10-20 先生の回答 3）。
  *   見出し（戻る・HALLOWEEN のドット文字・CHALLENGE · 科目）→ マスター度のカード（% のクローム・あと n 日・期間・70 マス・凡例）
- *   → REWARDS（錨・EVENT トロフィー・チケット）→ 進行中はテストの案内「テストは MASTER 100% で受けられます／締め切り 10/30 5:00」
+ *   → REWARDS（錨・EVENT トロフィー・チケット）→ 進行中はテストの案内「テストは MASTER 100% で受けられます／締め切り 10/30 AM5:00」
+ *   先生用アカウントは「生徒の状況」（達成率・挑戦回数・テストの点数・2026-10-21）へ
  *   → 下に「挑戦する 5Q」。100% の後は「復習する」と「テストを受ける 20Q · 1 回のみ」（テストのカードは置かない）
  * 「次は 未着手 5 問」は出さない（先生の回答 3）。月と星は素材（deco_ev_halloween_{moon,star}）
  */
 import type { SeasonEventState } from '../../../lib/treeApi';
 import { rootClass } from '../treeTheme';
-import { EV_ASSET, evMd, evMdHm, evPct, evPeriod } from './evTheme';
+import { EV_ASSET, EV_TEST_PASS_PCT, EV_TROPHY_NAME, evMd, evMdHm, evPct, evPeriod } from './evTheme';
 import { EvCells, EvLegend, PxBackIcon, PxLock } from './EvParts';
 import '../../../styles/tree-event.css';
 
 interface Props {
   state: SeasonEventState;
+  /** 科目キー（EVENT トロフィーの名前は科目ごと）*/
+  subject: string;
   subjectName: string;
   starting: boolean;
   message: string | null;
@@ -23,9 +26,11 @@ interface Props {
   onDressUp?: () => void;
   /** イベントのチケットを持っていればチケット画面へ */
   onTickets?: () => void;
+  /** 先生用アカウントだけ: 生徒の状況（達成率・挑戦回数・テストの点数）*/
+  onStaffView?: () => void;
 }
 
-export function EventScreen({ state, subjectName, starting, message, onBack, onChallenge, onTest, onDressUp, onTickets }: Props) {
+export function EventScreen({ state, subject, subjectName, starting, message, onBack, onChallenge, onTest, onDressUp, onTickets, onStaffView }: Props) {
   const ev = state.event!;
   const a = EV_ASSET(ev.kind);
   const p = state.progress;
@@ -154,7 +159,7 @@ export function EventScreen({ state, subjectName, starting, message, onBack, onC
           <RewardRow
             img={a.trophy}
             iw={28}
-            name={TROPHY_NAME[ev.kind] ?? 'EVENT トロフィー'}
+            name={rewards?.trophyName ?? EV_TROPHY_NAME[ev.kind]?.[subject] ?? 'EVENT トロフィー'}
             cond={rewards?.trophy ? 'EVENT トロフィー' : 'EVENT トロフィー · MASTER 100%'}
             st={rewards?.trophy ? 'GET' : staff && cleared ? 'STAFF' : 'LOCK'}
             got={!!rewards?.trophy}
@@ -163,7 +168,7 @@ export function EventScreen({ state, subjectName, starting, message, onBack, onC
             img={a.icon2x}
             iw={30}
             name={ev.name.split(' ')[0] + ' TICKET'}
-            cond="MASTER 100% ＋ テスト 80%"
+            cond={`MASTER 100% ＋ テスト ${EV_TEST_PASS_PCT}%`}
             st={ticketState}
             got={!!rewards?.ticket}
             test={ticketState === 'TEST'}
@@ -193,6 +198,13 @@ export function EventScreen({ state, subjectName, starting, message, onBack, onC
           <div className="ev-dot" style={{ fontSize: 11, lineHeight: 1.6, color: 'var(--ev-sub)' }}>
             先生用: 挑戦・テストの記録はしますが、錨・トロフィー・チケットは出ません。テストは何度でも受けられます。
           </div>
+        )}
+        {staff && onStaffView && (
+          <button type="button" className="ev-ghost-wrap ev-px2" onClick={onStaffView}>
+            <span className="ev-px2 ev-ghost">
+              <span className="ev-dot" style={{ fontSize: 14 }}>生徒の状況を見る（先生用）</span>
+            </span>
+          </button>
         )}
       </div>
 
@@ -228,9 +240,6 @@ export function EventScreen({ state, subjectName, starting, message, onBack, onC
     </div>
   );
 }
-
-/** EVENT トロフィーの名前（一覧に出す前でも報酬の行に出す・先生の回答 3）*/
-const TROPHY_NAME: Record<string, string> = { halloween: '何か邪悪なものがやって来る' };
 
 function RewardRow({
   img,
