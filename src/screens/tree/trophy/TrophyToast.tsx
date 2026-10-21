@@ -66,7 +66,60 @@ function Spark({ size, fill, style }: { size: number; fill: string; style: CSSPr
 /** 入場の保険: 1.5 秒で描き終わっていなければ（WebView で animation が止まった）最後の状態にする。描き終わる頃にも */
 const DONE_MS: Record<string, number> = { P: 4200, F: 3900 };
 
-export function ToastCard({ item, more, peek, wide, out = false, onTap }: { item: ToastItem; more: number; peek: ToastItem | null; wide: boolean; out?: boolean; onTap: () => void }) {
+export function ToastCard(props: { item: ToastItem; more: number; peek: ToastItem | null; wide: boolean; out?: boolean; onTap: () => void }) {
+  return props.item.kind === 'news' ? <NewsToastCard {...props} /> : <FullToastCard {...props} />;
+}
+
+/** 新着（2026-10-21 先生: 問題数は要らない・もっと小さく）: アイコン・NEW・「〇〇に新着」の 1 行だけ */
+function NewsToastCard({ item, peek, wide, out = false, onTap }: { item: ToastItem; peek: ToastItem | null; wide: boolean; out?: boolean; onTap: () => void }) {
+  const look = toastLook(item);
+  const w = toastWidth(item, wide);
+  const slotRef = useRef<HTMLDivElement>(null);
+  const [done, setDone] = useState(false);
+  useLayoutEffect(() => {
+    const sp = toastSpeed();
+    if (sp === 1) return;
+    try {
+      for (const a of slotRef.current?.getAnimations({ subtree: true }) ?? []) a.playbackRate = sp;
+    } catch {
+      /* getAnimations の無い古い端末は通常の速さ */
+    }
+  }, [out]);
+  useEffect(() => {
+    const t = window.setTimeout(() => setDone(true), 1500 / toastSpeed());
+    return () => window.clearTimeout(t);
+  }, []);
+  return (
+    <div ref={slotRef} className={`tt-slot${done ? ' is-done' : ''}${out ? ' is-out' : ''}`} style={{ width: w + 8, height: 44 }}>
+      {peek && <span className="tt-peekcard tt-px2 tt-peek" aria-hidden="true" style={{ width: w, height: 30, left: 5, top: 5, background: toastLook(peek).c }} />}
+      <button
+        type="button"
+        className="tt-toast tt-in is-news"
+        style={{ width: w, filter: `drop-shadow(2px 2px 0 ${look.d}) drop-shadow(0 0 6px rgba(${look.rgb},.4))` }}
+        aria-label={`${item.head} ${item.main}`}
+        onClick={onTap}
+      >
+        <span className="tt-frame tt-px2" style={{ background: look.c, padding: 2 }}>
+          <span className="tt-body tt-px2" style={{ background: look.bg, padding: '5px 9px 7px 6px', gap: 7 }}>
+            <PxIcon d={look.icon ?? ''} c={look.c} side={look.d} size={16} />
+            <span className="tt-arc tt-chrome tt-head tt-blink" style={{ backgroundImage: look.chrome, flex: 'none', alignSelf: 'center' }}>
+              {item.head}
+            </span>
+            <span className="tt-dot tt-main tt-name" style={{ fontSize: 12, lineHeight: 1.2, flex: 1, minWidth: 0, textOverflow: 'ellipsis' }}>
+              {item.main}
+            </span>
+            <span className="tt-scan" />
+            <span className="tt-timerbox" style={{ left: 8, right: 8, bottom: 2 }}>
+              <span className="tt-timer" style={{ background: `repeating-linear-gradient(90deg,${look.c} 0 6px,rgba(0,0,0,0) 6px 8px)` }} />
+            </span>
+          </span>
+        </span>
+      </button>
+    </div>
+  );
+}
+
+function FullToastCard({ item, more, peek, wide, out = false, onTap }: { item: ToastItem; more: number; peek: ToastItem | null; wide: boolean; out?: boolean; onTap: () => void }) {
   const look = toastLook(item);
   const w = toastWidth(item, wide);
   const fs = toastNameSize(item, wide);

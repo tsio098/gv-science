@@ -127,7 +127,9 @@ export function toastNameSize(t: Pick<ToastItem, 'kind' | 'grade' | 'main'>, wid
 }
 
 /** 通知の幅（px）*/
-export function toastWidth(t: Pick<ToastItem, 'kind' | 'grade'>, wide = false): number {
+export function toastWidth(t: Pick<ToastItem, 'kind' | 'grade'> & { main?: string }, wide = false): number {
+  // 新着は 1 行の小さい札: 文字数に合わせる（12px × 字数 ＋ アイコン・NEW・余白）
+  if (t.kind === 'news') return Math.min(wide ? 264 : 248, Math.max(140, 78 + [...(t.main ?? '')].length * 12));
   if ((t.kind === 'trophy' && t.grade === 'P') || t.kind === 'level30' || t.kind === 'evClear' || t.kind === 'evTicket') return 272;
   if (t.kind === 'trophy' && t.grade === 'F') return 260;
   return wide ? 264 : 248;
