@@ -1,0 +1,14 @@
+{
+  "name": "ANCHOR TREE",
+  "short_name": "ANCHOR TREE",
+  "start_url": "/tree",
+  "scope": "/tree",
+  "display": "browser",
+  "background_color": "#043039",
+  "theme_color": "#0E6474",
+  "icons": [
+    { "src": "/tree/brand/ev/appicon_ev_halloween_192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/tree/brand/ev/appicon_ev_halloween_512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/tree/brand/ev/appicon_ev_halloween_512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

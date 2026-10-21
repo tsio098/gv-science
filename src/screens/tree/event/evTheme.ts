@@ -121,6 +121,32 @@ export function rememberIconSkin(skin: string | null | undefined) {
   } catch {
     /* 覚えられない端末はいつもの錨 */
   }
+  applyHomeIcon(skin ?? null);
+}
+
+/**
+ * ホーム画面に追加したときのアイコン（/tree の apple-touch-icon・icon・manifest。index.html と同じ名前）。2026-10-21:
+ * 着せ替えの錨に合わせる。iOS・Android とも「ホーム画面に追加」した時点の絵になる（後から変えたら追加し直す）
+ */
+const HOME_ICON: Record<string, { i180: string; i192: string; manifest: string }> = {
+  route: { i180: '/tree/icon/anchor-tree-180.png', i192: '/tree/icon/anchor-tree-192.png', manifest: '/tree/anchor-tree.webmanifest' },
+  halloween: { i180: `${EV}appicon_ev_halloween_180.png`, i192: `${EV}appicon_ev_halloween_192.png`, manifest: '/tree/anchor-tree-halloween.webmanifest' },
+};
+export function applyHomeIcon(skin: string | null) {
+  try {
+    const p = location.pathname;
+    if (p !== '/tree' && !p.startsWith('/tree/')) return; // GV Science 側（LIFF のホーム）にはアイコンを付けない
+    const h = HOME_ICON[skin ?? ''] ?? HOME_ICON.route!;
+    const set = (sel: string, href: string) => {
+      const el = document.head.querySelector<HTMLLinkElement>(sel);
+      if (el && el.getAttribute('href') !== href) el.setAttribute('href', href);
+    };
+    set('link[rel="apple-touch-icon"]', h.i180);
+    set('link[rel="icon"][sizes="192x192"]', h.i192);
+    set('link[rel="manifest"]', h.manifest);
+  } catch {
+    /* 失敗してもいつもの錨のまま */
+  }
 }
 export function rememberedIconSkin(): string | null {
   try {

@@ -2,6 +2,7 @@
  * 錨のアイコンの着せ替え（ボード E05・先生の回答 3: アイコンだけ・ICON FRAME は無し）。
  * 上にプレビュー（選んでいるアイコン・「ホームのタイル・ログインの錨がこの絵になる」）→ ANCHOR ICON（いつもの + イベント 4 つ）→「これにする」。
  * まだ持っていないアイコンは「?」だけ（絵・名前・日付を出さない・21:33 先生）
+ * 下に「ホーム画面のアイコンにする」方法（2026-10-21 先生: ホーム画面に Web アプリとして追加する手順。アイコンは追加した時点の絵）
  */
 import { useEffect, useState } from 'react';
 import type { TreeCosmetics } from '../../../lib/treeApi';
@@ -84,7 +85,7 @@ export function DressUpScreen({ onBack, onSaved }: Props) {
                   <img src={smallIcon} alt="" style={{ width: 28, height: 28, display: 'block', objectFit: 'contain', imageRendering: 'pixelated' }} />
                   <span className="ev-arc" style={{ fontSize: 8, color: '#2DF4C6' }}>ANCHOR TREE</span>
                 </div>
-                <span className="ev-dot" style={{ fontSize: 11, color: '#8ED4E0', lineHeight: 1.5 }}>ホームのタイル・ログインの錨がこの絵になる</span>
+                <span className="ev-dot" style={{ fontSize: 11, color: '#8ED4E0', lineHeight: 1.5 }}>ホームのタイル・ログインの錨・ホーム画面のアイコン（下の方法で追加）がこの絵になる</span>
               </div>
               <div className="ev-scan" />
             </div>
@@ -113,6 +114,8 @@ export function DressUpScreen({ onBack, onSaved }: Props) {
             );
           })}
         </div>
+
+        <HomeIconGuide />
       </div>
 
       <div className="ev-foot is-aqua">
@@ -121,6 +124,37 @@ export function DressUpScreen({ onBack, onSaved }: Props) {
             <span className="ev-dot" style={{ fontSize: 17 }}>{saving ? '保存中…' : pick === data?.selected ? '選択中' : 'これにする'}</span>
           </span>
         </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * ホーム画面のアイコンにする方法（2026-10-21 先生）。ANCHOR TREE を Safari / Chrome で開いて「ホーム画面に追加」すると、
+ * そのとき選んでいる錨がアイコンになる（index.html・evTheme applyHomeIcon）。LINE の中からは追加できないので「別のブラウザで使う」から
+ */
+function HomeIconGuide() {
+  const step = { fontSize: 12, lineHeight: 1.7, color: '#EAFBFF' } as const;
+  const num = { fontSize: 8, color: '#2DF4C6', marginRight: 6 } as const;
+  return (
+    <div className="ev-px2" style={{ background: 'rgba(45,244,198,.35)', padding: 2 }}>
+      <div className="ev-px2" style={{ background: '#031C22', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <span className="ev-arc" style={{ fontSize: 8, color: '#2DF4C6' }}>HOME SCREEN</span>
+        <span className="ev-dot" style={{ fontSize: 14, color: '#FFFFFF' }}>ホーム画面のアイコンにするには</span>
+        <div className="ev-dot" style={step}>
+          <span className="ev-arc" style={num}>1</span>上でアイコンを選んで「これにする」を押す
+        </div>
+        <div className="ev-dot" style={step}>
+          <span className="ev-arc" style={num}>2</span>LINE で開いているときは「…」→「別のブラウザで使う」で ANCHOR TREE を開き、ログインする（iPhone は Safari、Android は Chrome）
+        </div>
+        <div className="ev-dot" style={step}>
+          <span className="ev-arc" style={num}>3</span>iPhone: 画面下の共有ボタン（□に↑）→「ホーム画面に追加」→「追加」
+          <br />
+          Android: 右上の ⋮ →「ホーム画面に追加」→「追加」
+        </div>
+        <div className="ev-dot" style={{ fontSize: 11, lineHeight: 1.6, color: '#8ED4E0' }}>
+          アイコンは追加したときの絵のままです。もうホーム画面に置いている人は、いったん削除してから追加し直してください。
+        </div>
       </div>
     </div>
   );

@@ -13,6 +13,8 @@
       // ANCHOR TREE の外部ブラウザ入口（/tree）をホーム画面に追加したときのアイコン・名前（2026-10-19）。
       // HTML は GV Science と共通なので、/tree のときだけ最初に差し込む（GV Science 側にはアイコンを付けない）。
       // 角丸はしない正方形の PNG（iOS・Android が自分で角を丸める）。元は ANCHOR_TREE_logo の appicon_route
+      // 2026-10-21: 着せ替えの錨（端末に覚えた gvTree.iconSkin）がハロウィンなら、ホーム画面のアイコンもハロウィンに
+      //   （ログインの後は evTheme の applyHomeIcon がアカウントの選択に合わせて差し替える。名前は evTheme の HOME_ICON と同じ）
       (function () {
         var p = location.pathname;
         if (p !== '/tree' && p.indexOf('/tree/') !== 0) return;
@@ -23,11 +25,16 @@
           for (var k in attrs) el.setAttribute(k, attrs[k]);
           head.appendChild(el);
         };
+        var skin = null;
+        try {
+          skin = localStorage.getItem('gvTree.iconSkin');
+        } catch (e) {}
+        var hw = skin === 'halloween';
         var icon = document.querySelector('link[rel="icon"]');
         if (icon) icon.parentNode.removeChild(icon);
-        add('link', { rel: 'icon', type: 'image/png', sizes: '192x192', href: '/tree/icon/anchor-tree-192.png' });
-        add('link', { rel: 'apple-touch-icon', sizes: '180x180', href: '/tree/icon/anchor-tree-180.png' });
-        add('link', { rel: 'manifest', href: '/tree/anchor-tree.webmanifest' });
+        add('link', { rel: 'icon', type: 'image/png', sizes: '192x192', href: hw ? '/tree/brand/ev/appicon_ev_halloween_192.png' : '/tree/icon/anchor-tree-192.png' });
+        add('link', { rel: 'apple-touch-icon', sizes: '180x180', href: hw ? '/tree/brand/ev/appicon_ev_halloween_180.png' : '/tree/icon/anchor-tree-180.png' });
+        add('link', { rel: 'manifest', href: hw ? '/tree/anchor-tree-halloween.webmanifest' : '/tree/anchor-tree.webmanifest' });
         add('meta', { name: 'apple-mobile-web-app-title', content: 'ANCHOR TREE' });
         add('meta', { name: 'application-name', content: 'ANCHOR TREE' });
       })();
