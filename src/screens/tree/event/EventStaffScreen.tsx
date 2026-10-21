@@ -3,6 +3,8 @@
  * イベント画面の「生徒の状況を見る」と「…」メニューから（先生用アカウントだけ）。科目ごとに、生徒の 達成率（EVENT MASTER）・
  * イベントの挑戦の回数と正答率・テストの点数と合否を本名つきで一覧にする。見た目は先生用の進捗一覧（st-*）と同じ。
  * 数字は Proxy の /tree/season-event/staff（生徒は key で、氏名なし）、本名は GAS の treeNames から直接（Proxy を通さない）。
+ * 2026-10-21 先生「チケットを獲得した生徒一覧を追加」→ タイルの下に、その科目でチケットを持っている生徒（獲得の早い順・使ったか）。
+ * 獲得日時 = テストの提出日時（チケットは合格の提出と同じ batch で出る）。
  */
 import { useEffect, useMemo, useState } from 'react';
 import type { SeasonEventStaff, SeasonEventStaffRow } from '../../../lib/treeApi';
@@ -42,6 +44,8 @@ const fmtLast = (ms: number | null) => {
   const j = new Date(ms + 9 * 3600_000);
   return `${j.getUTCMonth() + 1}/${j.getUTCDate()} ${j.getUTCHours()}:${String(j.getUTCMinutes()).padStart(2, '0')}`;
 };
+/** チケットの獲得日時 = 合格したテストの提出日時（無ければ null）*/
+const ticketAt = (s: SeasonEventStaffRow) => (s.test?.status === 'done' ? s.test.submittedAt : null);
 /** テストの並べ替えの値: 受験済みは点数、受験中は -1、未受験は -2 */
 const testKey = (s: SeasonEventStaffRow) => (s.test?.status === 'done' ? s.test.correct : s.test ? -1 : -2);
 
@@ -106,6 +110,12 @@ export function EventStaffScreen({ subject: initial, onBack }: Props) {
       avg: j.length ? Math.round(j.reduce((a, s) => a + s.mastery, 0) / j.length) : null,
     };
   }, [data]);
+
+  /** チケットを獲得した生徒（獲得の早い順）*/
+  const ticketRows = useMemo(
+    () => rows.filter((r) => r.s.ticket).sort((a, b) => (ticketAt(a.s) ?? Infinity) - (ticketAt(b.s) ?? Infinity)),
+    [rows]
+  );
 
   const ev = data?.event ?? null;
 
@@ -185,6 +195,38 @@ export function EventStaffScreen({ subject: initial, onBack }: Props) {
               <Tile label="MASTER 100%" value={`${sum.cleared}`} unit=" 人" sub={`平均達成率 ${sum.avg == null ? '—' : sum.avg + '%'}（参加者）`} />
               <Tile label="テスト 合格" value={`${sum.passed}`} unit={` / ${sum.tested} 人`} sub="受験した生徒のうち" />
               <Tile label="挑戦の合計" value={`${rows.reduce((a, r) => a + r.s.plays, 0)}`} unit=" 回" sub="1 回 = 5 問" />
+            </div>
+
+            <div className="st-tk">
+              <div className="st-tk-head">
+                <Ico id="i-ticket" size={18} />
+                <span>チケットを獲得した生徒</span>
+                <b className="tr-num">{ticketRows.length} 人</b>
+                <small>テスト合格で 1 枚 · 10/31 だけ使える</small>
+              </div>
+              {ticketRows.length === 0 ? (
+                <div className="st-tk-empty">まだいません。</div>
+              ) : (
+                ticketRows.map((r) => {
+                  const s = r.s;
+                  const t = s.test?.status === 'done' ? s.test : null;
+                  const used = s.ticket?.usedAt ?? null;
+                  return (
+                    <div key={s.key} className="st-tk-row">
+                      <span className="st-name">
+                        <span className="tr-grade">{gradeLabel(s.grade)}</span>
+                        <span className="st-name-txt">
+                          <b>{r.name ?? (names ? '（名簿に無し）' : s.nickname)}</b>
+                          <small>{r.name || names ? s.nickname : ''}</small>
+                        </span>
+                      </span>
+                      <Cell label="テスト" main={t ? `${t.correct}/${t.total}` : '—'} sub="合格" />
+                      <Cell label="獲得" main={fmtLast(ticketAt(s))} />
+                      <Cell label="使用" main={used ? '使用済み' : '未使用'} sub={used ? fmtLast(used) : undefined} hot={!used} />
+                    </div>
+                  );
+                })
+              )}
             </div>
 
             {rows.length === 0 ? (

@@ -2728,6 +2728,55 @@ button.tr-stat {
 .st-fcell.is-low {
   color: var(--tr-orange);
 }
+/* 先生用 イベントの状況: チケットを獲得した生徒 */
+.st-tk {
+  border-radius: 22px;
+  background: var(--tr-card);
+  border: 1.5px solid rgba(var(--tr-text-rgb), 0.5);
+  overflow: hidden;
+  flex: none;
+}
+.st-tk-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  background: rgba(var(--tr-text-rgb), 0.04);
+  border-bottom: 1px solid rgba(var(--tr-text-rgb), 0.08);
+}
+.st-tk-head small {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--tr-sub);
+}
+.st-tk-empty {
+  padding: 14px 16px;
+  font-size: 13px;
+  color: var(--tr-sub);
+}
+.st-tk-row {
+  display: grid;
+  grid-template-columns: minmax(170px, 2fr) repeat(3, minmax(72px, 1fr));
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(var(--tr-text-rgb), 0.08);
+  font-size: 14px;
+}
+.st-tk-row:last-child {
+  border-bottom: 0;
+}
+/* 見出しの行が無いので、広い画面でも数字の上に小さなラベル（テスト・獲得・使用）*/
+.st-tk-row .st-cell-label {
+  display: block;
+  font-size: 10px;
+  color: var(--tr-sub);
+}
+
 .st-foot {
   font-size: 11px;
   line-height: 1.7;
@@ -2754,6 +2803,11 @@ button.tr-stat {
   }
   .st-name {
     grid-column: 1 / -1;
+  }
+  .st-tk-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    row-gap: 6px;
+    padding: 10px 14px;
   }
   .st-last {
     display: none;
