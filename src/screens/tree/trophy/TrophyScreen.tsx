@@ -13,7 +13,7 @@ import { TreeApiError, fetchStaffNames, gradeLabel } from '../../../lib/treeApi'
 import { TREE_SUBJECT_NAME, type TreeSubject } from '../../../lib/treeSubject';
 import { Ico } from '../TreeIcons';
 import { rootClass } from '../treeTheme';
-import { CHROME, GRADE_COLOR, LV30_BAND, PRISM, TrophyIcon, TrophySprite } from './TrophyIcon';
+import { CHROME, GRADE_COLOR, LV30_BAND, PRISM, TrophyIcon } from './TrophyIcon';
 import { TrophyDetailSheet, type FieldInfo } from './TrophyDetailSheet';
 import { loadTrophies, mdJst, rarityPct } from './trophyData';
 import '../../../styles/tree-trophy.css';
@@ -103,7 +103,8 @@ export function TrophyScreen({ subject: initial, subjects, fieldInfo, onBack, on
 
   return (
     <div className={rootClass('tt-list')}>
-      <TrophySprite />
+      {/* グラデ（TrophySprite）は TreeRoot の 1 つを使う。ここにも置くと、一覧を閉じたときに iOS（WebKit）が同じ id のグラデを全部見失い、
+          以後のトロフィーが輪郭だけになる（2026-10-22 先生の報告・LINE の演出の確認で発生）*/}
       <div aria-hidden="true" style={{ position: 'absolute', left: -40, right: -40, top: -40, height: 220, background: 'radial-gradient(ellipse 60% 70% at 50% 0%,rgba(120,255,235,0.2),rgba(120,255,235,0) 70%)', pointerEvents: 'none' }} />
       <div className="tt-list-head" style={{ position: 'relative' }}>
         <button type="button" className="tr-iconbtn" aria-label="ツリーへ戻る" onClick={onBack}>

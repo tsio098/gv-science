@@ -1,7 +1,8 @@
 /**
  * ドットのトロフィー（実装手順_トロフィー §6.2・ボード「トロフィーの仕組み」）。
  * 下に 1px ずらした側面 → 面（縦グラデ・52% で切れるクローム）→ 走査線 の 3 枚。輪郭は #06121A（paint-order: stroke）。
- * グラデは TrophySprite に 1 回だけ置き、url(#tr-fc-*) で参照する（TreeRoot・FxLab で 1 つ）。
+ * グラデは TrophySprite に 1 回だけ置き、url(#tr-fc-*) で参照する（TreeRoot に 1 つだけ）。
+ * 2 つ置かない: 同じ id が 2 つある状態から片方が消えると、WebKit（iOS・LINE）は残った方も見失い、トロフィーが輪郭だけになる（2026-10-22）。
  */
 import type { CSSProperties } from 'react';
 import type { ToastGrade } from './toastQueue';
