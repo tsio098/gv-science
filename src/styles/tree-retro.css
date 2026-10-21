@@ -623,17 +623,14 @@
 .tr-root.is-retro.tr-rank:not(.st-root) .tr-podium-card.is-me {
   --rf-face: linear-gradient(180deg, rgba(var(--tr-text-rgb), 0.16), rgba(var(--tr-text-rgb), 0.06)), var(--rx-card);
 }
-/* ROUTE / ABYSS: 2 位・1 位・3 位の並び（ボード R01）。アリーナは 1 位が左のまま（A10r）*/
+/* ROUTE / ABYSS: 左から 1 位・2 位・3 位（並べ替えはしない・高さだけ順位で変える）*/
 .tr-root.is-retro.tr-rank:not(.is-arena):not(.st-root) .tr-podium-card.is-rk1 {
-  order: 2;
   min-height: 196px;
 }
 .tr-root.is-retro.tr-rank:not(.is-arena):not(.st-root) .tr-podium-card.is-rk2 {
-  order: 1;
   min-height: 178px;
 }
 .tr-root.is-retro.tr-rank:not(.is-arena):not(.st-root) .tr-podium-card.is-rk3 {
-  order: 3;
   min-height: 170px;
 }
 .tr-root.is-retro .tr-podium-en {
