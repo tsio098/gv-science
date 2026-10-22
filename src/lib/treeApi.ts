@@ -522,15 +522,25 @@ export const fetchArena = (subject: string) => get<ArenaInfo>(`/tree/arena?subje
 export const startArena = (subject: string, season?: string) => post<ArenaSession>('/tree/arena/start', { subject, season });
 /**
  * 1 回だけの挑戦（アリーナ・イベントのテスト）を途中で終了した提出（ended = 決定済みの問題だけ・2026-10-23）。
- * 画面が隠れた直後に送るので keepalive（ページが止まっても送り切る）
+ * keepalive = 画面が隠れた直後の提出（ページが止まっても送り切る）。画面が見えている間（中断・もう一度送る・開き直し）は付けない。
+ * keepalive の送信そのものを断る古い WebView（preflight 付きの keepalive が未対応）では、付けずに 1 回送り直す（2026-10-23 不具合調査）
  */
 export interface EndedSubmit {
   ended?: boolean;
+  keepalive?: boolean;
 }
-const postEnded = <T>(path: string, body: Record<string, unknown>, opts: EndedSubmit) =>
-  opts.ended
-    ? call<T>(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body, ended: true }), keepalive: true })
-    : post<T>(path, body);
+const postEnded = async <T>(path: string, body: Record<string, unknown>, opts: EndedSubmit): Promise<T> => {
+  if (!opts.ended) return post<T>(path, body);
+  const json = JSON.stringify({ ...body, ended: true });
+  const init = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: json };
+  if (!opts.keepalive) return call<T>(path, init);
+  try {
+    return await call<T>(path, { ...init, keepalive: true });
+  } catch (e) {
+    if (e instanceof TypeError) return call<T>(path, init);
+    throw e;
+  }
+};
 export const submitArena = (sessionId: string, answers: { qid: string; value: PartValue[]; timeMs: number }[], opts: EndedSubmit = {}) =>
   postEnded<ArenaResult>(`/tree/arena/submit?${C2}`, { sessionId, answers }, opts);
 /** 先生: 採点した挑戦を記録にする（何度押しても同じ）*/

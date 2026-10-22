@@ -1159,6 +1159,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           group="basic"
           onExit={() => {
             refreshProgress();
+            // 挑戦の状態（始めたまま・提出済み）を取り直す（2026-10-23 不具合調査: 終了画面から戻ると開始前の「挑戦する」のままだった）
+            if (subject) loadArena(subject);
             setView({ kind: 'arena' });
           }}
           onDone={() => {}}

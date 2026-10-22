@@ -75,6 +75,11 @@ interface ArenaSaved {
   raws?: Record<string, RawVal[]>;
   /** イベントのテスト: いまの問題（idx）の時計を始めた時刻（Date.now）。再開しても時間を戻さない */
   cur?: { idx: number; at: number };
+  /**
+   * この端末で終了した（画面を離れた・中断）。提出が届かないまま 15 秒以内に開き直すと Proxy は再開（問題あり）を返すので、
+   * 端末側でも終了扱いにして続きを解かせない（2026-10-23 不具合調査）
+   */
+  ended?: boolean;
 }
 const arenaKey = (sessionId: string) => `tr-arena:${sessionId}`;
 function loadArena(sessionId: string): ArenaSaved | null {
@@ -193,12 +198,12 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
   const autoNext = isEventTest;
   /** 途中で画面を離れたら終了する挑戦（keepsProgress と同じ）。sessionEnded = 前回離れたまま開いた（Proxy の ended）*/
   const oneShot = keepsProgress;
-  const sessionEnded = (session as { ended?: boolean }).ended === true;
   const col = isArena ? ARENA_GOLD : isEvent ? '#FF9A1F' : groupColor(group);
   const bonusMax = isArena ? 75 : 25;
   const units = session.units;
   const totalQ = units.reduce((s, u) => s + u.qids.length, 0);
   const [saved] = useState(() => (keepsProgress ? loadArena(session.sessionId) : null));
+  const sessionEnded = (session as { ended?: boolean }).ended === true || saved?.ended === true;
   // 再開はまだ決定していない最初の問題から（決定した問題は times に入る。順番が変わっても取りこぼさない）
   const [idx, setIdx] = useState(() => {
     if (!saved) return 0;
@@ -236,6 +241,10 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
   const [timeUp, setTimeUp] = useState(false);
   const [ended, setEnded] = useState<EndState | null>(null);
   const endedRef = useRef(false);
+  const endStateRef = useRef(ended);
+  endStateRef.current = ended;
+  /** 途中終了の提出を送っている間 */
+  const sendingRef = useRef(false);
   /** 最後の決定の提出中（このときは画面を離れても終了させない）*/
   const submittingRef = useRef(false);
   const picksRef = useRef(picks);
@@ -285,7 +294,8 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
 
   const ready = unitPaths(idx).every((p) => imgs[p]);
   useEffect(() => {
-    if (!ready || unitStart.current !== null) return;
+    // 終了した後に画像がそろっても、端末の途中経過（ended の印）を上書きしない
+    if (!ready || unitStart.current !== null || endedRef.current) return;
     const r = resumeAt.current;
     resumeAt.current = null;
     if (autoNext && r && r.idx === idx) {
@@ -343,7 +353,8 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
   };
 
   const submit = async () => {
-    if (endedRef.current) return;
+    // 同じフレームで 2 回押された・時間切れと重なったときに 2 回送らない
+    if (endedRef.current || submittingRef.current) return;
     submittingRef.current = true;
     setSubmitting(true);
     setSubmitError(null);
@@ -395,8 +406,11 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
     }
   };
 
-  /** 途中で終了した挑戦を、決定した問題だけで提出する（画面が隠れた直後でも送り切れるよう keepalive）*/
-  const sendEnded = async () => {
+  /** 途中で終了した挑戦を、決定した問題だけで提出する。keepalive = 画面が隠れた直後（ページが止まっても送り切る）*/
+  const sendEnded = async (keepalive = false) => {
+    // 送信中（画面に戻ったときの自動の再送と「もう一度送る」が重なる等）は送らない
+    if (sendingRef.current) return;
+    sendingRef.current = true;
     const answers = units
       .flatMap((u) => u.qids)
       .filter((qid) => times.current[qid] != null)
@@ -411,8 +425,8 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
     setEnded((s) => s && { ...s, sending: true, error: null });
     try {
       const r = isArena
-        ? await submitArena(session.sessionId, answers, { ended: true })
-        : await submitSeasonEventTest(session.sessionId, answers, { ended: true });
+        ? await submitArena(session.sessionId, answers, { ended: true, keepalive })
+        : await submitSeasonEventTest(session.sessionId, answers, { ended: true, keepalive });
       saveArena(session.sessionId, null);
       setEnded((s) => s && { ...s, sending: false, result: r });
     } catch (e) {
@@ -430,8 +444,12 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
                 ? 'この挑戦は見つかりませんでした。ツリーに戻ってください。'
                 : '採点を送れませんでした。通信状況を確かめて、もう一度送ってください。';
       setEnded((s) => s && { ...s, sending: false, error: msg, final });
+    } finally {
+      sendingRef.current = false;
     }
   };
+  const sendEndedRef = useRef(sendEnded);
+  sendEndedRef.current = sendEnded;
 
   /** 1 回だけの挑戦をここで終了する（画面を離れた・中断・前回離れたまま開いた）*/
   const endNow = (reason: EndReason) => {
@@ -440,26 +458,38 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
     setConfirmExit(false);
     setZoomPath(null);
     const decided = units.reduce((n, u) => n + u.qids.filter((id) => times.current[id] != null).length, 0);
+    // 提出が届かないまま開き直しても続きを解かせない印（端末の途中経過に残す・提出できたら消える）
+    saveArena(session.sessionId, { idx: 0, picks: picksRef.current, times: times.current, raws: rawsRef.current, ended: true });
     setEnded({ reason, decided, sending: true, result: null, error: null, final: false });
-    void sendEnded();
+    void sendEnded(reason === 'away');
   };
 
-  // 画面が隠れたら（アプリの切り替え・ホーム・画面ロック・閉じる）終了。前回離れたまま開いたときは開いた時点で終了
+  // 画面が隠れたら（アプリの切り替え・ホーム・画面ロック・閉じる）終了。前回離れたまま開いたときは開いた時点で終了。
+  // 隠れた直後の提出が届かなかったときは、画面に戻ったら自動でもう一度送る（2026-10-23 不具合調査・iOS は戻った後に失敗が返ることがあるので少し待つ）
   useEffect(() => {
     if (!oneShot) return;
-    if (sessionEnded) {
-      endNow('resume');
-      return;
-    }
+    if (sessionEnded) endNow('resume');
+    let retryTimer: number | undefined;
+    const retryLater = () => {
+      window.clearTimeout(retryTimer);
+      retryTimer = window.setTimeout(() => {
+        const st = endStateRef.current;
+        if (!document.hidden && st && st.error && !st.final && !st.result) void sendEndedRef.current();
+      }, 1200);
+    };
     const onVis = () => {
       if (document.hidden) endNow('away');
+      else retryLater();
     };
     const onPageHide = () => endNow('away');
     document.addEventListener('visibilitychange', onVis);
     window.addEventListener('pagehide', onPageHide);
+    window.addEventListener('pageshow', retryLater);
     return () => {
+      window.clearTimeout(retryTimer);
       document.removeEventListener('visibilitychange', onVis);
       window.removeEventListener('pagehide', onPageHide);
+      window.removeEventListener('pageshow', retryLater);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -473,6 +503,9 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
   /** timeUp = 制限時間を過ぎた（イベントのテスト）。答えていない欄があってもそのまま進む */
   const decide = (timeUp = false) => {
     if ((!allPicked && !timeUp) || submitting || endedRef.current) return;
+    // 同じ問題で 2 回進めない（決定の 2 度押し・時間切れと決定が同じ瞬間。前は 2 回目で時間が 0 に上書きされていた）。
+    // 最後の問題は提出の失敗後に押し直せるよう止めない（2 回送らないのは submit 側で止める）
+    if (decidedIdx.current === idx && idx + 1 < units.length) return;
     decidedIdx.current = idx;
     const raw = unitStart.current === null ? 0 : performance.now() - unitStart.current;
     const spent = autoNext ? Math.min(raw, limitMs) : raw;
@@ -625,6 +658,7 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
   const isLast = idx + 1 >= units.length;
   const playRoot = isArena ? 'tr-play is-arena' : evKind ? `tr-play is-ev-${evKind}` : 'tr-play';
 
+  // ここから先で早く return する。hook（useState・useEffect など）は必ずこの行より上に書く（下に書くと終了画面に切り替わった時点で React が落ちる）
   if (ended) {
     const what = isArena ? 'この挑戦' : 'このテスト';
     const why =
@@ -653,7 +687,7 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
               </button>
             ) : ended.error ? (
               !ended.final && (
-                <button type="button" className={isArena ? 'tr-ar-btn' : 'tr-cta'} disabled={ended.sending} onClick={() => void sendEnded()}>
+                <button type="button" className={isArena ? 'tr-ar-btn' : 'tr-cta'} disabled={ended.sending} onClick={() => void sendEnded(false)}>
                   {ended.sending ? '送信中…' : 'もう一度送る'}
                 </button>
               )
