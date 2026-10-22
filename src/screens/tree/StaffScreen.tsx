@@ -87,7 +87,8 @@ export function StaffScreen({ onBack }: Props) {
   const [filter, setFilter] = useState<string>('all');
   const [sort, setSort] = useState<SortKey>('gain');
   const [open, setOpen] = useState<Set<string>>(() => new Set());
-  const [manifests, setManifests] = useState<Record<string, TreeManifest | null>>({});
+  /** 科目の manifest（null = 読み込み中・'error' = 読めなかった。「もう一度読み込む」で消して読み直す）*/
+  const [manifests, setManifests] = useState<Record<string, TreeManifest | null | 'error'>>({});
 
   useEffect(() => {
     let alive = true;
@@ -127,11 +128,18 @@ export function StaffScreen({ onBack }: Props) {
       if (ds in manifests) continue;
       setManifests((m) => ({ ...m, [ds]: null }));
       const { subject, back } = splitDs(ds);
+      // 失敗は 'error' として覚え、詳細に文と「もう一度読み込む」を出す（2026-10-22 修正: 失敗すると「分野を読み込み中…」のままだった）
       fetchTreeManifest(subject, back ? 'back' : 'front')
         .then((mf) => setManifests((m) => ({ ...m, [ds]: mf })))
-        .catch(() => {});
+        .catch(() => setManifests((m) => ({ ...m, [ds]: 'error' })));
     }
   }, [needDs, manifests]);
+  /** 読めなかった科目の manifest を読み直す（覚えた 'error' を消すと上の effect が取り直す）*/
+  const retryManifest = (ds: string) =>
+    setManifests((m) => {
+      const { [ds]: _drop, ...rest } = m;
+      return rest;
+    });
 
   const rows = useMemo<Row[]>(() => {
     if (!data) return [];
@@ -346,7 +354,7 @@ export function StaffScreen({ onBack }: Props) {
                         <Cell label="正答率" main={fmtRate(rateOf(r.day))} sub={`前日 ${fmtRate(rateOf(r.prev))}`} />
                         <span className="st-cell st-last tr-num">{fmtLast(r.s.lastAt, data.today)}</span>
                       </button>
-                      {on && <Detail row={r} manifests={manifests} />}
+                      {on && <Detail row={r} manifests={manifests} onRetry={retryManifest} />}
                     </Fragment>
                   );
                 })}
@@ -388,14 +396,16 @@ function Cell({ label, main, sub, hot }: { label: string; main: string; sub?: st
 }
 
 /** 展開: 科目ごとに分野の内訳（manifest の順。問題がある分野は 0 点でも出す）*/
-function Detail({ row, manifests }: { row: Row; manifests: Record<string, TreeManifest | null> }) {
+function Detail({ row, manifests, onRetry }: { row: Row; manifests: Record<string, TreeManifest | null | 'error'>; onRetry: (ds: string) => void }) {
   const dss = row.dss;
   if (!dss.length) return <div className="st-detail st-detail-empty">今年度の記録はまだありません。</div>;
   return (
     <div className="st-detail">
       {dss.map((ds) => {
         const sj = row.s.subj[ds];
-        const mf = manifests[ds];
+        const got = manifests[ds];
+        const failed = got === 'error';
+        const mf = failed ? null : got;
         const fields = mf
           ? mf.fields.filter((f) => f.total > 0 || sj?.fields[f.id])
           : Object.keys(sj?.fields ?? {}).map((id) => ({ id, name: id, group: 'basic', total: 0 }));
@@ -410,7 +420,16 @@ function Detail({ row, manifests }: { row: Row; manifests: Record<string, TreeMa
                   : '記録なし'}
               </span>
             </div>
-            {!mf && <div className="st-detail-empty">分野を読み込み中…</div>}
+            {failed ? (
+              <div className="st-detail-empty">
+                分野を読み込めませんでした。
+                <button type="button" className="tr-ghost" style={{ width: 200, marginTop: 6 }} onClick={() => onRetry(ds)}>
+                  もう一度読み込む
+                </button>
+              </div>
+            ) : (
+              !mf && <div className="st-detail-empty">分野を読み込み中…</div>
+            )}
             <div className="st-frows">
               <div className="st-frow st-fhead" aria-hidden>
                 <span>分野</span>

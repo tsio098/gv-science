@@ -62,6 +62,7 @@ import { TreeSprite } from './TreeIcons';
 import { T, alpha, rootClass, setTreeStage } from './treeTheme';
 import { getLiffStatus } from '../../lib/liff';
 import { TREE_SUBJECT_NAME, type TreeSubject, pickTreeSubject, rememberTreeSubject, treeSubjectsFor } from '../../lib/treeSubject';
+import { usableTicketCount } from '../../lib/treeTickets';
 import { TreeScreen } from './TreeScreen';
 import { PlayScreen } from './PlayScreen';
 import { ResultScreen } from './ResultScreen';
@@ -271,17 +272,36 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   const onToastEvent = useCallback((s: string) => openEventRef.current(s), []);
   const toasts = useToasts({ paused: toastPaused, onShown: onToastShown, onOpenTrophy: onToastOpen, onOpenTickets: onToastTickets, onOpenEvent: onToastEvent });
   const pushToasts = toasts.push;
-  /** 未通知の獲得とお知らせ（ツリーを開いた・科目を切り替えたとき）。古い Proxy は空 */
+  /**
+   * 未通知の獲得とお知らせ（ツリーを開いた・科目を切り替えたとき）。古い Proxy は空。
+   * 走っている間は 2 本目を始めず、終わってから 1 回だけやり直す（2026-10-22 修正: 開いた直後の取得と科目の切替の取得が同時に 2 本走っていた）
+   */
+  const pendingRun = useRef({ busy: false, again: false });
   const loadPending = useCallback(() => {
-    fetchTrophyPending()
-      .then((p) => {
-        setTrophyReady(p.available);
-        pushToasts([
-          ...p.trophies.map((t) => trophyToast(t, subjectJa(t.subject))),
-          ...p.notices.map((n) => noticeToast(n, subjectJa(n.subject))).filter((x): x is ToastItem => !!x),
-        ]);
-      })
-      .catch(() => {});
+    const st = pendingRun.current;
+    if (st.busy) {
+      st.again = true;
+      return;
+    }
+    st.busy = true;
+    const run = () => {
+      fetchTrophyPending()
+        .then((p) => {
+          setTrophyReady(p.available);
+          pushToasts([
+            ...p.trophies.map((t) => trophyToast(t, subjectJa(t.subject))),
+            ...p.notices.map((n) => noticeToast(n, subjectJa(n.subject))).filter((x): x is ToastItem => !!x),
+          ]);
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (st.again) {
+            st.again = false;
+            run();
+          } else st.busy = false;
+        });
+    };
+    run();
   }, [pushToasts]);
 
   // アリーナは化学・生物だけ（2026-10-17 先生決定）。他の科目では取りに行かずノードも出さない。
@@ -298,7 +318,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
         if (arenaFor.current === s) setArena(a);
       })
       .catch(() => {
-        if (arenaFor.current === s) setArena(null);
+        // 読めなかったときは同じ科目の前の状態を残す（2026-10-22 修正: 一時的な通信失敗で null にして、ツリーからアリーナのノードが消えていた。季節イベントと同じ方針）
+        if (arenaFor.current === s) setArena((a) => (a && a.subject === s ? a : null));
       });
   }, []);
 
@@ -346,16 +367,26 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   );
 
   /**
+   * ツリーに出す manifest・進捗の要求の番号（科目を開く openSubject・ROUTE⇄ABYSS の switchStage で共有）。
+   * 反映の直前に最新の要求か確かめ、古ければ捨てる（2026-10-22 修正: ABYSS を押して待つ間に科目を変えると、
+   * 後から返った前の科目の ABYSS で manifest・進捗・ステージが上書きされていた。refreshProgress の shownKey と同じ考え方）
+   */
+  const treeSeq = useRef(0);
+
+  /**
    * 科目の manifest と進捗を読む。まだ問題が無い科目（NO_CONTENT）は一覧から外して次の科目へ。
-   * 全部無ければ読み込みエラー。
+   * 全部無ければ読み込みエラー。反映したら true、後から別の要求が来て捨てたら false（呼び出し側はその後の画面移動をしない）
    */
   const openSubject = useCallback(
-    async (list: TreeSubject[], want: TreeSubject) => {
+    async (list: TreeSubject[], want: TreeSubject): Promise<boolean> => {
+      const my = ++treeSeq.current;
+      const stale = () => my !== treeSeq.current;
       const order = [want, ...list.filter((s) => s !== want)];
       const empty = new Set<TreeSubject>();
       for (const s of order) {
         try {
           const [mf, pg] = await Promise.all([fetchTreeManifest(s), fetchTreeProgress(s)]);
+          if (stale()) return false;
           setSubjects(list.filter((x) => !empty.has(x)));
           setSubject(s);
           setStage('front');
@@ -368,13 +399,16 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           loadSeasonEvent(s);
           const news = newsToast(mf, pg, subjectJa(s));
           if (news) pushToasts([news]);
-          return;
+          return true;
         } catch (e) {
+          // 後から別の要求が来ていたら、この失敗は知らせない（今の要求の方が画面を決める）
+          if (stale()) return false;
           // 問題がまだ無い科目・名簿の科目が変わって開けなくなった科目は飛ばす
           if (!(e instanceof TreeApiError && (e.code === 'NO_CONTENT' || e.code === 'SUBJECT_NOT_ALLOWED'))) throw e;
           empty.add(s);
         }
       }
+      if (stale()) return false;
       throw new TreeApiError('NO_CONTENT', 404);
     },
     [loadArena, loadSeasonEvent, pushToasts]
@@ -433,23 +467,31 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
 
   useEffect(load, [load]);
 
-  /** ROUTE ⇄ ABYSS。ABYSS の問題がまだ無い科目（NO_CONTENT）は切り替えずに知らせる */
+  /**
+   * ROUTE ⇄ ABYSS。ABYSS の問題がまだ無い科目（NO_CONTENT）は切り替えずに知らせる。
+   * 反映したら true。後から科目の切替・別の切替が来たら、返った応答は捨てて false（treeSeq）
+   */
   const switchStage = useCallback(
-    async (next: TreeStage) => {
-      if (!subject || next === stage) return;
+    async (next: TreeStage): Promise<boolean> => {
+      if (!subject || next === stage) return true;
+      const my = ++treeSeq.current;
       setSelected(null);
       setMessage(null);
       try {
         const [mf, pg] = await Promise.all([fetchTreeManifest(subject, next), fetchTreeProgress(subject, next)]);
+        if (my !== treeSeq.current) return false;
         setStage(next);
         setManifest(mf);
         setProgress(pg);
         if (pg.abyss) setAbyssOpen(pg.abyss.open);
+        return true;
       } catch (e) {
+        if (my !== treeSeq.current) return false;
         if (e instanceof TreeApiError && e.code === 'NO_CONTENT') setMessage('この科目の ABYSS（二次問題）はまだ準備中です。');
         // ログイン切れ（外部ブラウザ）以外は、いまのツリーを残して知らせるだけ（前はツリー全体がエラー画面になった・2026-10-22 デバッグで修正）
         else if (e instanceof TreeApiError && e.code === 'UNAUTHORIZED') fail(e);
         else setMessage('切り替えられませんでした。通信状況を確かめてもう一度お試しください。');
+        return false;
       }
     },
     [subject, stage, fail]
@@ -475,8 +517,9 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           setProgress(null);
           setArena(null);
           setSelected(null);
+          // 後から別の科目を開いた（false）ときは、アリーナへ移らない
           openSubject(subjects, to as TreeSubject)
-            .then(() => setView({ kind: 'arena' }))
+            .then((ok) => ok && setView({ kind: 'arena' }))
             .catch(fail);
         } else {
           if (subject) loadArena(subject);
@@ -629,7 +672,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
     setSeasonEvent(null);
     setSelected(null);
     openSubject(subjects, s as TreeSubject)
-      .then(() => setView({ kind: 'event' }))
+      .then((ok) => ok && setView({ kind: 'event' }))
       .catch(fail);
   };
 
@@ -707,10 +750,26 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
     }
   };
 
+  /**
+   * 結果画面の「送った改善要望」と「記録として提出」（挑戦の sessionId ごと）。ランキングから戻ると結果画面が作り直されるので、ここに持って渡す
+   * （2026-10-22 修正: ランキングから戻ると「送信済み」「記録済み」の表示が消えて 'idle' に戻り、もう一度押せていた）
+   */
+  const resultMemo = useRef(new Map<string, { recorded: boolean; reports: Record<string, 'sent' | 'already'> }>());
+  const memoOf = (sessionId: string) => {
+    let m = resultMemo.current.get(sessionId);
+    if (!m) {
+      m = { recorded: false, reports: {} };
+      resultMemo.current.set(sessionId, m);
+    }
+    return m;
+  };
+
   const report = async (sessionId: string, qid: string, message: string, label: string, img: string | null): Promise<'sent' | 'already' | 'error'> => {
     try {
       const r = await reportTreeQuestion({ sessionId, qid, message, label, img });
-      return r.already ? 'already' : 'sent';
+      const st = r.already ? 'already' : 'sent';
+      memoOf(sessionId).reports[qid] = st;
+      return st;
     } catch {
       return 'error';
     }
@@ -741,12 +800,12 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       setSelected(null);
       setView({ kind: 'tree' });
       openSubject(subjects, s)
-        .then(() => setSelected(field))
+        .then((ok) => ok && setSelected(field))
         .catch(fail);
       return;
     }
     setView({ kind: 'tree' });
-    if (stage !== 'front') void switchStage('front').then(() => setSelected(field));
+    if (stage !== 'front') void switchStage('front').then((ok) => ok && setSelected(field));
     else setSelected(field);
   };
 
@@ -851,7 +910,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           onStaffQuestions={me.grade === '先生' ? () => setView({ kind: 'staffQuestions' }) : undefined}
           onStaffEvent={me.grade === '先生' ? () => setView({ kind: 'eventStaff', back: { kind: 'tree' } }) : undefined}
           onFxLab={me.grade === '先生' ? () => setView({ kind: 'fxlab' }) : undefined}
-          tickets={tickets.filter((t) => !t.usedAt).length}
+          // 期限の過ぎた季節イベントのチケットは数えない（2026-10-22 修正）
+          tickets={usableTicketCount(tickets, Date.now())}
           onTickets={() => setView({ kind: 'tickets', back: { kind: 'tree' } })}
           onTrophies={!trophyReady ? undefined : () => {
             setTrophyDot(null);
@@ -907,7 +967,10 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           onDone={(result, marked) => {
             // トロフィー・分野の解放・マスター・順位アップは結果画面に入ってから出す
             pushToasts(submitToasts(result, manifest, manifest.name, stage));
-            setView({ kind: 'result', session: view.session, result, marked });
+            // いまの画面がまだこの挑戦の出題のときだけ結果へ（2026-10-22 修正: 採点待ちの間に中断して別の挑戦を始めると、
+            // 後から返った前の挑戦の結果で出題中の画面ごと結果画面に置き換わっていた）
+            const id = view.session.sessionId;
+            setView((v) => (v.kind === 'play' && v.session.sessionId === id ? { kind: 'result', session: v.session, result, marked } : v));
           }}
         />
       )}
@@ -923,6 +986,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           busy={starting}
           onSaveNick={saveNick}
           onReport={(qid, message, label, img) => report(view.session.sessionId, qid, message, label, img)}
+          reported={resultMemo.current.get(view.session.sessionId)?.reports}
           onRetry={() => {
             refreshProgress();
             if (isEventSession(view.session)) void beginEvent();
@@ -1009,7 +1073,9 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
               // TICKET GET! はテストの結果画面に入ってから（キューの最後・畳まない）
               pushToasts([eventTicketToast({ subject: result.ticket.subject, eventId: result.ticket.eventId ?? result.event.id, usableFrom: result.ticket.usableFrom ?? null, kind: result.event.kind }, subjectJa(result.ticket.subject))]);
             }
-            setView({ kind: 'eventTestResult', result });
+            // いまの画面がまだこのテストの出題のときだけ結果へ（2026-10-22 修正・通常の挑戦と同じ）
+            const id = view.session.sessionId;
+            setView((v) => (v.kind === 'eventTest' && v.session.sessionId === id ? { kind: 'eventTestResult', result } : v));
           }}
         />
       )}
@@ -1101,7 +1167,9 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
               ...(result.level30 ? [level30Toast(result.level30, subjectJa(result.level30.subject))] : []),
             ]);
             if (subject) loadArena(subject);
-            setView({ kind: 'arenaResult', session: view.session, result });
+            // いまの画面がまだこの挑戦の出題のときだけ結果へ（2026-10-22 修正・通常の挑戦と同じ）
+            const id = view.session.sessionId;
+            setView((v) => (v.kind === 'arenaPlay' && v.session.sessionId === id ? { kind: 'arenaResult', session: v.session, result } : v));
           }}
         />
       )}
@@ -1121,6 +1189,11 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           // 戻ったら結果画面へ（先生の「記録として提出」・間違えた問題がランキングを見た後も使える・2026-10-22 デバッグで修正）
           onRanking={() => setView({ kind: 'ranking', scope: 'arena', field: null, qtype: 'tf', back: view })}
           onReport={(qid, message, label, img) => report(view.session.sessionId, qid, message, label, img)}
+          reported={resultMemo.current.get(view.session.sessionId)?.reports}
+          recorded={!!resultMemo.current.get(view.session.sessionId)?.recorded}
+          onRecorded={() => {
+            memoOf(view.session.sessionId).recorded = true;
+          }}
         />
       )}
       {view.kind === 'tickets' && (

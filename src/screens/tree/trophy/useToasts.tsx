@@ -97,14 +97,19 @@ export function useToasts({
   }, [cur, paused, queue]);
 
   // 出題・演出・読み込みが始まったら今の通知を下げ、キューの先頭に戻す（見せないまま消さない・2026-10-19 レビューで修正）
+  // 閉じる途中（タップ・スワイプ・表示時間切れで畳んでいる 320ms の間）の通知は戻さず、そのまま閉じ切る
+  // （2026-10-22 修正: 閉じる途中に科目の切替・出題が始まると、閉じた通知がキューに戻って効果音つきで再表示され、既読も 2 回送っていた）
   useEffect(() => {
     if (paused && cur) {
-      for (const t of cur.consumed) shown.current.delete(t.key);
-      setQueue((q) => mergeToasts(cur.consumed, q, shown.current));
-      setCur(null);
-      setOut(false);
+      const wasClosing = !!closing.current;
       if (closing.current) window.clearTimeout(closing.current);
       closing.current = 0;
+      if (!wasClosing) {
+        for (const t of cur.consumed) shown.current.delete(t.key);
+        setQueue((q) => mergeToasts(cur.consumed, q, shown.current));
+      }
+      setCur(null);
+      setOut(false);
     }
   }, [paused, cur]);
 

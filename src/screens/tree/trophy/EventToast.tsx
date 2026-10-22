@@ -103,7 +103,8 @@ export function EventToastCard({ item, wide, out = false, onTap }: { item: Toast
                 {item.main}
               </span>
               <span className="tt-row tt-name">
-                {clear ? (
+                {/* TICKET GET! で使える日が無い（札が空）ときは日付の部分を出さず、文だけ（2026-10-22 修正）*/}
+                {clear || !item.ev?.stamp ? (
                   <span className="tt-dot tt-sub" style={{ color: '#E6D2FF' }}>{item.sub}</span>
                 ) : (
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap', minWidth: 0 }}>
@@ -134,9 +135,11 @@ export function EventToastCard({ item, wide, out = false, onTap }: { item: Toast
             style={{ left: 33, top: 33, width: 4, height: 4, color: '#FFFFFF', boxShadow: '0 -16px #FF9A1F,12px -12px #FFC872,16px 0 #C9A2FF,12px 12px #FF9A1F,0 16px #FFC872,-12px 12px #C9A2FF,-16px 0 #FF9A1F,-12px -12px #FFC872' }}
           />
         )}
-        <span className={`tt-stamp1 tt-arc tt-stamp ev-stamp${clear ? '' : ' is-ticket'}`} aria-hidden="true">
-          {item.ev?.stamp}
-        </span>
+        {item.ev?.stamp && (
+          <span className={`tt-stamp1 tt-arc tt-stamp ev-stamp${clear ? '' : ' is-ticket'}`} aria-hidden="true">
+            {item.ev.stamp}
+          </span>
+        )}
         {clear && (
           <span className="ev-tghost" aria-hidden="true">
             <img className="ev-bob" src={a.ghost} alt="" />

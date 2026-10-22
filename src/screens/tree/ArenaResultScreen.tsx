@@ -26,18 +26,26 @@ interface Props {
   onBack: () => void;
   onRanking: () => void;
   onReport: (qid: string, message: string, label: string, img: string | null) => Promise<'sent' | 'already' | 'error'>;
+  /** この挑戦で送った改善要望（問題 ID → 送信済み）。ランキングから戻って作り直しても「送信済み」を出す（TreeRoot が持つ）*/
+  reported?: Record<string, 'sent' | 'already'>;
+  /** この挑戦を「記録として提出」済みか（TreeRoot が持つ）*/
+  recorded?: boolean;
+  /** 「記録として提出」が通った */
+  onRecorded?: () => void;
 }
 
-export function ArenaResultScreen({ result, session, staff, grade, nickname, crab, onSaveNick, onBack, onRanking, onReport }: Props) {
+export function ArenaResultScreen({ result, session, staff, grade, nickname, crab, onSaveNick, onBack, onRanking, onReport, reported, recorded, onRecorded }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [nick, setNick] = useState(nickname === 'プレイヤー' || nickname === crab ? '' : nickname);
   const [nickError, setNickError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [record, setRecord] = useState<'idle' | 'sending' | 'done' | 'error'>('idle');
+  // 記録済みなら「記録済み」から始める（2026-10-22 修正: ランキングから戻ると結果画面が作り直されて 'idle' に戻り、「記録として提出」がまた押せていた）
+  const [record, setRecord] = useState<'idle' | 'sending' | 'done' | 'error'>(recorded ? 'done' : 'idle');
   const sendRecord = async () => {
     setRecord('sending');
     try {
       await recordArena(result.sessionId);
+      onRecorded?.();
       setRecord('done');
     } catch {
       setRecord('error');
@@ -96,7 +104,7 @@ export function ArenaResultScreen({ result, session, staff, grade, nickname, cra
           </span>
         </button>
 
-        {staff && <WrongList results={result.results} session={session} layer={rootRef} onReport={onReport} />}
+        {staff && <WrongList results={result.results} session={session} layer={rootRef} onReport={onReport} reported={reported} />}
       </div>
 
       <div className="tr-ar-foot" style={{ gap: 10 }}>

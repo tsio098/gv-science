@@ -77,14 +77,20 @@ export function TrophyScreen({ subject: initial, subjects, fieldInfo, onBack, on
   /** 獲得者の表示名: 本名（取れなければニックネーム）*/
   const holderName = (h: { key: string; nickname: string }) => names?.[h.key] ?? h.nickname;
 
+  // その科目のプラチナ（全獲得）は上のカードに出す。ほかのプラチナ（範囲のランキング制覇・出藍の誉れ）は行に出す
+  const listed = useMemo(() => (data ? data.items.filter((it) => it.id !== data.platinum?.id && !it.oops && !it.event) : []), [data]);
+  // タブの件数は行と同じ数え方（2026-10-22 修正: サーバの counts はプラチナのカードの分も数えていて、行より 1 多かった）
+  const tabCounts = useMemo(() => {
+    const earned = listed.filter((it) => it.earnedAt != null).length;
+    return { all: listed.length, earned, not: listed.length - earned };
+  }, [listed]);
+
   const rows = useMemo(() => {
-    if (!data) return [];
-    // その科目のプラチナ（全獲得）は上のカードに出す。ほかのプラチナ（範囲のランキング制覇・出藍の誉れ）は行に出す
-    let list = data.items.filter((it) => it.id !== data.platinum?.id && !it.oops && !it.event);
+    let list = listed;
     if (tab === 'got') list = list.filter((it) => it.earnedAt != null);
     if (tab === 'not') list = list.filter((it) => it.earnedAt == null);
     return [...list].sort((a, b) => (recent ? (b.earnedAt ?? 0) - (a.earnedAt ?? 0) : 0) || a.order - b.order);
-  }, [data, tab, recent]);
+  }, [listed, tab, recent]);
 
   // 残念トロフィー（獲得したものだけ返る）。並びは新しい順の切り替えに合わせる
   const oops = useMemo(
@@ -128,7 +134,8 @@ export function TrophyScreen({ subject: initial, subjects, fieldInfo, onBack, on
       <div className="tt-list-body">
         <div>
           {error ? (
-            <div className="tt-empty">{error === 'HTTP 404' || error === 'NOT_FOUND' ? 'トロフィーはまだ準備中です。' : '読み込めませんでした。通信状況を確かめてもう一度お試しください。'}</div>
+            // TROPHY_NOT_READY（503・D1 の表がまだ無い）も準備中（2026-10-22 修正: 「読み込めませんでした」と出ていた）
+            <div className="tt-empty">{error === 'HTTP 404' || error === 'NOT_FOUND' || error === 'TROPHY_NOT_READY' ? 'トロフィーはまだ準備中です。' : '読み込めませんでした。通信状況を確かめてもう一度お試しください。'}</div>
           ) : !data ? (
             <div className="tr-center" style={{ position: 'relative', padding: 40 }}>
               <div className="tr-spinner" />
@@ -221,9 +228,9 @@ export function TrophyScreen({ subject: initial, subjects, fieldInfo, onBack, on
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
                 <div style={{ display: 'flex', gap: 6 }} role="tablist">
                   {([
-                    ['all', 'すべて', data.counts.all],
-                    ['got', '獲得', data.counts.earned],
-                    ['not', '未獲得', data.counts.all - data.counts.earned],
+                    ['all', 'すべて', tabCounts.all],
+                    ['got', '獲得', tabCounts.earned],
+                    ['not', '未獲得', tabCounts.not],
                   ] as const).map(([k, label, n]) => (
                     <button key={k} type="button" role="tab" aria-selected={tab === k} className={`tt-btn is-tab tt-px2${tab === k ? ' is-on' : ''}`} onClick={() => setTab(k)}>
                       {label} {n}

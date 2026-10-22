@@ -624,6 +624,8 @@ export interface TrophyGet {
   /** EVENT トロフィー（grade = 'E'）。通知は TROPHY GET! でなく EVENT CLEAR!! */
   event?: boolean;
   eventId?: string;
+  /** イベントの種類（'halloween' など・札の絵柄）。古い Proxy は無い */
+  eventKind?: string | null;
   /** アカウントで初めての 100%（錨のアイコンも一緒に手に入った）*/
   firstIcon?: boolean;
 }

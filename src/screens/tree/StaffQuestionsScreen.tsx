@@ -6,7 +6,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import type { AbyssPart, QType, StaffQuestion, StaffQuestions, StaffSolution, TreeManifest, TreeStage } from '../../lib/treeApi';
-import { QTYPE_LABEL, circled, examLabel, fetchStaffQuestions, fetchTreeManifest, treeImage } from '../../lib/treeApi';
+import { QTYPE_LABEL, TreeApiError, circled, examLabel, fetchStaffQuestions, fetchTreeManifest, treeImage } from '../../lib/treeApi';
 import { TREE_SUBJECTS, TREE_SUBJECT_NAME, type TreeSubject } from '../../lib/treeSubject';
 import { Ico } from './TreeIcons';
 import { PlayZoomScreen, type ZoomTab } from './PlayZoomScreen';
@@ -104,9 +104,13 @@ function fmtNumeric(v: number, sig: number | null, sci: boolean) {
   return `${m}×10${String(n).split('').map((c) => SUP[c] ?? c).join('')}`;
 }
 
+/** manifest が使える（読み込み中・問題なし・失敗ではない）*/
+const ok = (m: TreeManifest | 'error' | 'empty' | undefined): m is TreeManifest => !!m && m !== 'error' && m !== 'empty';
+
 export function StaffQuestionsScreen({ onBack }: Props) {
   const [ds, setDs] = useState<string>('chemistry');
-  const [manifests, setManifests] = useState<Record<string, TreeManifest | 'error'>>({});
+  /** 'empty' = この科目の問題がまだ無い（NO_CONTENT）・'error' = 読めなかった（「もう一度読み込む」で読み直す）*/
+  const [manifests, setManifests] = useState<Record<string, TreeManifest | 'error' | 'empty'>>({});
   const [exam, setExam] = useState<string | null>(null);
   const [filter, setFilter] = useState<ExamFilter>('all');
   const [query, setQuery] = useState('');
@@ -118,13 +122,21 @@ export function StaffQuestionsScreen({ onBack }: Props) {
   useEffect(() => {
     if (ds in manifests) return;
     const { subject, stage } = splitDs(ds);
+    // 問題が無い科目と通信の失敗を分ける（2026-10-22 修正: 失敗も 'error' のまま覚えて、出直すまで読み直せなかった）
     fetchTreeManifest(subject, stage)
       .then((m) => setManifests((x) => ({ ...x, [ds]: m })))
-      .catch(() => setManifests((x) => ({ ...x, [ds]: 'error' })));
+      .catch((e) => setManifests((x) => ({ ...x, [ds]: e instanceof TreeApiError && e.code === 'NO_CONTENT' ? 'empty' : 'error' })));
   }, [ds, manifests]);
+  /** 読めなかった科目を読み直す（覚えた 'error' を消すと上の effect が取り直す）*/
+  const retry = () =>
+    setManifests((x) => {
+      const { [ds]: _drop, ...rest } = x;
+      return rest;
+    });
+
 
   const exams = useMemo(() => {
-    if (!mf || mf === 'error') return [];
+    if (!ok(mf)) return [];
     const days = (mf as TreeManifest & { newDays?: number }).newDays || NEW_DAYS;
     const now = Date.now();
     const words = query.trim().split(/\s+/).filter(Boolean);
@@ -169,11 +181,11 @@ export function StaffQuestionsScreen({ onBack }: Props) {
     });
   const searching = query.trim() !== '';
 
-  if (exam && mf && mf !== 'error') {
+  if (exam && ok(mf)) {
     return <ExamView ds={ds} exam={exam} manifest={mf} onBack={() => setExam(null)} />;
   }
 
-  const total = mf && mf !== 'error' ? mf.exams.length : 0;
+  const total = ok(mf) ? mf.exams.length : 0;
   return (
     <div className={rootClass('tr-rank st-root')}>
       <div className="tr-rank-head">
@@ -224,9 +236,16 @@ export function StaffQuestionsScreen({ onBack }: Props) {
           onChange={(e) => setQuery(e.target.value)}
         />
 
-        {mf === 'error' ? (
+        {mf === 'empty' ? (
           <div className="tr-panel" style={{ textAlign: 'center', fontSize: 13, padding: '28px 16px' }}>
-            この科目の問題はまだありません（または読み込めませんでした）。
+            この科目の問題はまだありません。
+          </div>
+        ) : mf === 'error' ? (
+          <div className="tr-center" style={{ position: 'static', padding: '40px 0' }}>
+            <div>読み込めませんでした。</div>
+            <button type="button" className="tr-ghost" style={{ width: 200 }} onClick={retry}>
+              もう一度読み込む
+            </button>
           </div>
         ) : !mf ? (
           <div className="tr-center" style={{ position: 'static', padding: '40px 0' }}>

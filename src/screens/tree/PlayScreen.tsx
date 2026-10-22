@@ -140,7 +140,27 @@ function useAway(on: boolean): [boolean, () => void] {
   return [on && away, () => setAway(false)];
 }
 
-export function PlayScreen({ session, subjectName, fieldName, group, onExit, onDone, onArenaDone, onEventTestDone }: Props) {
+/**
+ * 出題の一覧（units）が空なら出題画面を出さず、エラーの文と「ツリーへ戻る」だけ出す
+ * （2026-10-22 修正: units[0] が無いまま描いて画面ごと落ちていた）
+ */
+export function PlayScreen(props: Props) {
+  if (!props.session.units?.length) {
+    return (
+      <div className={rootClass()}>
+        <div className="tr-center">
+          <div>問題を読み込めませんでした。ツリーに戻って、もう一度お試しください。</div>
+          <button type="button" className="tr-ghost" style={{ width: 240 }} onClick={props.onExit}>
+            ツリーへ戻る
+          </button>
+        </div>
+      </div>
+    );
+  }
+  return <PlayBody {...props} />;
+}
+
+function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onArenaDone, onEventTestDone }: Props) {
   const isArena = (session as { arena?: boolean }).arena === true;
   /** 季節イベント: 挑戦（5 問・ふつうの提出）とテスト（20 問・1 回だけ）*/
   const evKind = (session as { event?: { kind?: string } }).event?.kind ?? null;
@@ -323,6 +343,12 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
     }
   };
 
+  /** 中断（採点中は押せない。ボタンの disabled が効かない端末でも、ここで止める）*/
+  const exit = () => {
+    if (submitting) return;
+    onExit();
+  };
+
   const decide = () => {
     if (!allPicked || submitting) return;
     const spent = unitStart.current === null ? 0 : performance.now() - unitStart.current;
@@ -462,7 +488,8 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
   return (
     <div className={rootClass(isArena ? 'tr-play is-arena' : evKind ? `tr-play is-ev-${evKind}` : 'tr-play')}>
       <div className="tr-bar">
-        <button type="button" className="tr-iconbtn" aria-label="中断してツリーへ" onClick={() => setConfirmExit(true)}>
+        {/* 採点中（提出の応答待ち）は中断できない（2026-10-22 修正: 中断して別の挑戦を始めると、後から返った結果で出題中の画面が結果画面に置き換わっていた）*/}
+        <button type="button" className="tr-iconbtn" aria-label="中断してツリーへ" disabled={submitting} onClick={() => !submitting && setConfirmExit(true)}>
           <Ico id={RETRO ? 'i-px-close' : 'i-close'} size={RETRO ? 14 : 16} />
         </button>
         <div className="tr-bar-mid">
@@ -694,7 +721,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
             <button type="button" className={isArena ? 'tr-ar-btn' : 'tr-cta'} onClick={() => setConfirmExit(false)}>
               続ける
             </button>
-            <button type="button" className={isArena ? 'tr-ar-btn2' : 'tr-ghost'} style={isArena ? { height: 50 } : undefined} onClick={onExit}>
+            <button type="button" className={isArena ? 'tr-ar-btn2' : 'tr-ghost'} style={isArena ? { height: 50 } : undefined} disabled={submitting} onClick={exit}>
               中断してツリーへ
             </button>
           </div>
@@ -724,7 +751,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
                 {submitting ? '送信中…' : 'もう一度送る'}
               </button>
             )}
-            <button type="button" className="tr-ghost" onClick={onExit}>
+            <button type="button" className="tr-ghost" disabled={submitting} onClick={exit}>
               ツリーへ戻る
             </button>
           </div>

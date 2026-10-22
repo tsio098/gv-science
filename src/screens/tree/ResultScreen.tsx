@@ -16,6 +16,7 @@ import { useRef, useState, type RefObject } from 'react';
 import type { Dist, FieldGroup, PartValue, PlayQuestion, SubmitResult, TreeManifest, TreeSession } from '../../lib/treeApi';
 import { QTYPE_LABEL, circled, examLabel, gradeLabel, treeImage } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
+import { numericLabel } from './AbyssAnswer';
 import { PlayShot, SHOT_SKIP } from './PlayShot';
 import { CHECK_COLOR, REVIEW_COLOR, RETRO, T, alpha, fmtScore, fmtTime, groupColor, groupSide, rootClass } from './treeTheme';
 import { Pips } from './NodeSheet';
@@ -40,6 +41,8 @@ interface Props {
   busy: boolean;
   /** 季節イベントの挑戦の結果: イベント画面へ（左下の「イベントへ」）*/
   onEvent?: () => void;
+  /** この挑戦で送った改善要望（問題 ID → 送信済み）。ランキングから戻って作り直しても「送信済み」を出す（TreeRoot が持つ）*/
+  reported?: Record<string, 'sent' | 'already'>;
 }
 
 type ReportState = 'idle' | 'open' | 'sending' | 'sent' | 'already' | 'error';
@@ -60,6 +63,7 @@ function WrongItem({
   body,
   layer,
   onReport,
+  reported,
 }: {
   label: string;
   mine: string;
@@ -73,6 +77,8 @@ function WrongItem({
   /** スクショのプレビューを出す先（結果画面のいちばん外側）*/
   layer: RefObject<HTMLElement>;
   onReport: (message: string) => Promise<'sent' | 'already' | 'error'>;
+  /** 前に送った改善要望（結果画面を作り直したとき）*/
+  reported?: 'sent' | 'already';
 }) {
   const card = useRef<HTMLDivElement>(null);
   const actions = useRef<HTMLDivElement>(null);
@@ -81,7 +87,8 @@ function WrongItem({
   const [failed, setFailed] = useState(false);
   const [leadUrl, setLeadUrl] = useState<string | null>(null);
   const [leadFailed, setLeadFailed] = useState(false);
-  const [report, setReport] = useState<ReportState>('idle');
+  // 送った後は「送信済み」から始める（2026-10-22 修正: ランキングから戻ると 'idle' に戻り、もう一度送れていた）
+  const [report, setReport] = useState<ReportState>(reported ?? 'idle');
   const [text, setText] = useState('');
   const toggle = () => {
     setOpen((v) => !v);
@@ -179,12 +186,27 @@ function WrongItem({
   );
 }
 
-/** 自分の答えの表示: ROUTE は ①・③、ABYSS は欄ごと（「共有結合 / イ / 4.00e-2」）*/
+/**
+ * 自分の答えの表示: ROUTE は ①・③、ABYSS は欄ごと（「共有結合 / イ / 4.00 × 10⁻² mol」）。
+ * 数値の欄は欄の定義（指数固定 fixedExp・単位）を使い、出題画面と同じ numericLabel で出す
+ * （2026-10-22 修正: 指数固定の欄は送る値が仮数だけなので「4.00」とだけ出て、単位も出ていなかった）
+ */
 function mineLabel(q: PlayQuestion | undefined, value: PartValue[]) {
   if (!value.length || value.every((v) => (Array.isArray(v) ? !v.length : !String(v).trim()))) return '未回答';
   if (q && q.answer.kind === 'parts') {
+    const parts = q.answer.parts;
     return value
-      .map((v) => (Array.isArray(v) ? v.join('・') : String(v).replace(/e(-?\d+)$/, ' × 10^$1')) || '—')
+      .map((v, i) => {
+        if (Array.isArray(v)) return v.join('・') || '—';
+        const p = parts[i];
+        const str = String(v).trim();
+        if (p && p.kind === 'numeric' && str) {
+          // 送った値は '1.6e-3'（指数つき）か仮数だけ（指数固定・整数小数）
+          const m = /^(.*?)e(-?\d+)$/.exec(str);
+          return numericLabel(p, m ? { m: m[1]!, e: m[2]! } : { m: str, e: '' });
+        }
+        return str.replace(/e(-?\d+)$/, ' × 10^$1') || '—';
+      })
       .join(' / ');
   }
   return value.map((v) => circled(String(v))).join('・');
@@ -200,6 +222,7 @@ export function WrongList({
   marked = [],
   layer,
   onReport,
+  reported,
 }: {
   results: { qid: string; correct: boolean; value: PartValue[] }[];
   session: TreeSession;
@@ -207,6 +230,8 @@ export function WrongList({
   marked?: string[];
   layer: RefObject<HTMLElement>;
   onReport: (qid: string, message: string, label: string, img: string | null) => Promise<'sent' | 'already' | 'error'>;
+  /** この挑戦で送った改善要望（問題 ID → 送信済み）*/
+  reported?: Record<string, 'sent' | 'already'>;
 }) {
   const checked = new Set(marked);
   const wrong = results.filter((r) => !r.correct);
@@ -234,6 +259,7 @@ export function WrongList({
         body={q?.img.body ?? null}
         layer={layer}
         onReport={(message) => onReport(r.qid, message, label, q?.img.body ?? null)}
+        reported={reported?.[r.qid]}
       />
     );
   };
@@ -272,7 +298,7 @@ function rankDelta(b: number | null, a: number | null, of: number) {
   return `${of} 人中`;
 }
 
-export function ResultScreen({ result, session, marked, manifest, grade, nickname, crab, onSaveNick, onRetry, onBack, onRanking, onReport, busy, onEvent }: Props) {
+export function ResultScreen({ result, session, marked, manifest, grade, nickname, crab, onSaveNick, onRetry, onBack, onRanking, onReport, busy, onEvent, reported }: Props) {
   const ev = result.event ?? null;
   const field = manifest.fields.find((f) => f.id === session.field);
   const group = (field?.group ?? 'basic') as FieldGroup;
@@ -581,7 +607,7 @@ export function ResultScreen({ result, session, marked, manifest, grade, nicknam
           </div>
         )}
 
-        <WrongList results={result.results} session={session} marked={marked} layer={rootRef} onReport={onReport} />
+        <WrongList results={result.results} session={session} marked={marked} layer={rootRef} onReport={onReport} reported={reported} />
       </div>
 
       <div className="tr-foot">

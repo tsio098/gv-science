@@ -14,7 +14,7 @@ const who = (h: { grade: string; nickname: string }) => `${gradeLabel(h.grade)} 
  * 季節イベントの EVENT CLEAR!!（EVENT トロフィー ＋ 初めてなら錨のアイコン・2026-10-20）。既読はトロフィーと同じ（trophy:{科目}:{id}）。
  * 札はアカウントで初めての 100% なら「{科目} · トロフィー ＋ アイコン」、2 科目目からは「{科目} · EVENT トロフィー」
  */
-export function eventClearToast(t: TrophyGet, subjectName: string, kind = 'halloween'): ToastItem {
+export function eventClearToast(t: TrophyGet, subjectName: string, kind = t.eventKind || 'halloween'): ToastItem {
   return {
     key: `trophy:${t.subject}:${t.id}`, kind: 'evClear', grade: 'E', head: 'EVENT CLEAR!!', main: t.name,
     sub: t.firstIcon ? `${subjectName} · トロフィー ＋ アイコン` : `${subjectName} · EVENT トロフィー`,
@@ -30,13 +30,15 @@ export function eventTicketToast(g: { subject: string; eventId: string; usableFr
   const stamp = d ? `${d.getUTCMonth() + 1}/${d.getUTCDate()}` : '';
   return {
     key, noticeKey: key, kind: 'evTicket', head: 'TICKET GET!', main: `${subjectName} · ボーナスチケット`,
-    sub: `${stamp} のみ使用可能`, ticket: true, ev: { kind: g.kind || 'halloween', subject: g.subject, stamp },
+    // 使える日が無い（usableFrom が null）ときは日付の部分を出さない（2026-10-22 修正: 「 のみ使用可能」と日付が空で出ていた）
+    sub: stamp ? `${stamp} のみ使用可能` : undefined, ticket: true, ev: { kind: g.kind || 'halloween', subject: g.subject, stamp },
   };
 }
 
 /** 獲得したトロフィー */
 export function trophyToast(t: TrophyGet, subjectName: string, stage: TreeStage = 'front'): ToastItem {
   // EVENT トロフィーは TROPHY GET! を出さず EVENT CLEAR!! の 1 件にまとめる（2026-10-20）
+  // 札の絵柄はトロフィーの eventKind（2026-10-22 修正: 'halloween' 固定で、次のイベントの通知もハロウィンの札になっていた）
   if (t.grade === 'E' || t.event) return eventClearToast(t, subjectName);
   // 残念トロフィー（2026-10-19）: 札は何が起きたか（無ければ「残念トロフィー」）・+0PT
   if (t.grade === 'Z') {

@@ -59,6 +59,13 @@ export function EventStaffScreen({ subject: initial, onBack }: Props) {
   const [names, setNames] = useState<Record<string, string> | null>(null);
   const [nameErr, setNameErr] = useState(false);
   const [sort, setSort] = useState<SortKey>('mastery');
+  /** 科目を切り替える。本名と「本名を読み込めませんでした」は前の科目のものなので戻す（2026-10-22 修正: 切り替えても残っていた）*/
+  const pickSubject = (s: TreeSubject) => {
+    if (s === subject) return;
+    setNames(null);
+    setNameErr(false);
+    setSubject(s);
+  };
 
   useEffect(() => {
     let alive = true;
@@ -149,7 +156,7 @@ export function EventStaffScreen({ subject: initial, onBack }: Props) {
 
         <div className="tr-chips" role="listbox" aria-label="科目">
           {TREE_SUBJECTS.map((s) => (
-            <button key={s} type="button" role="option" aria-selected={subject === s} className={subject === s ? 'is-on' : ''} onClick={() => setSubject(s)}>
+            <button key={s} type="button" role="option" aria-selected={subject === s} className={subject === s ? 'is-on' : ''} onClick={() => pickSubject(s)}>
               {TREE_SUBJECT_NAME[s]}
             </button>
           ))}
