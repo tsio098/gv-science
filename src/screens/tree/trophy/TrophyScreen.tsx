@@ -17,7 +17,7 @@ import { Ico } from '../TreeIcons';
 import { rootClass } from '../treeTheme';
 import { CHROME, GRADE_COLOR, LV30_BAND, PRISM, TrophyIcon } from './TrophyIcon';
 import { TrophyDetailSheet, type FieldInfo } from './TrophyDetailSheet';
-import { loadTrophies, mdJst, rarityPct } from './trophyData';
+import { loadTrophies, mdJst, rarityPct, secretKind } from './trophyData';
 import '../../../styles/tree-trophy.css';
 
 interface Props {
@@ -254,7 +254,7 @@ export function TrophyScreen({ subject: initial, subjects, fieldInfo, onBack, on
                 {!rows.length && <div className="tt-empty">{tab === 'got' ? 'まだ獲得したトロフィーはありません。' : 'すべて獲得しました。'}</div>}
                 {staff && (
                   <div className="tt-dot" style={{ fontSize: 11, lineHeight: 1.6, color: '#8ED4E0' }}>
-                    先生用: 各トロフィーの下に獲得した生徒（{names ? '本名' : 'ニックネーム'}・獲得の早い順）。押すと全員の一覧が開きます。隠し・ファースト・プラチナも条件つきで出ています。
+                    先生用: 各トロフィーの下に獲得した生徒（{names ? '本名' : 'ニックネーム'}・獲得の早い順）。押すと全員の一覧が開きます。隠し・ファースト・プラチナも条件つきで出ています（「隠し ???」= 生徒には獲得するまで ???・「隠し」= 生徒には獲得するまで一覧に出ない）。
                   </div>
                 )}
               </div>
@@ -371,6 +371,8 @@ function Row({ it, isNew, onOpen, holderName }: { it: TrophyItem; isNew: boolean
 
   // 先生用: 取得した人数と、獲得者の名前（1 行・はみ出しは …）
   const holders = holderName ? it.holders : undefined;
+  // 先生用: 生徒からは隠れているトロフィーに「隠し」の札（2026-10-22 先生の依頼）
+  const sk = holderName ? secretKind(it) : null;
   if (holders) {
     rate = `取得 ${holders.length} 人 · ${rarityPct(it.rarity)}`;
     if (!got) {
@@ -396,6 +398,11 @@ function Row({ it, isNew, onOpen, holderName }: { it: TrophyItem; isNew: boolean
         <div className="tt-rowtext">
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
             <span className="tt-dot tt-rowname" style={{ color: oops ? '#E4E8D8' : got ? '#FFFFFF' : 'rgba(234,251,255,.65)' }}>{it.hidden ? '隠しトロフィー' : it.name}</span>
+            {sk && (
+              <span className="tt-dot tt-px2" title={sk === 'q' ? '生徒には ??? で表示' : '生徒には獲得まで出ない'} style={{ flex: 'none', padding: '1px 5px', background: 'rgba(208,139,255,.22)', border: '1px solid #D08BFF', color: '#E9CCFF', fontSize: 10, lineHeight: 1.3 }}>
+                {sk === 'q' ? '隠し ???' : '隠し'}
+              </span>
+            )}
             {isNew && <span className="tt-arc tt-px2" style={{ flex: 'none', padding: '3px 5px', background: '#FF7A45', color: '#140A05', fontSize: 6 }}>NEW</span>}
           </div>
           <div className="tt-dot tt-rowdesc" style={oops ? { color: '#A9B09A' } : undefined}>{it.hidden ? '獲得すると内容が見えます' : it.desc}</div>

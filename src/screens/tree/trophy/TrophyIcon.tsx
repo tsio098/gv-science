@@ -43,7 +43,8 @@ export const GRADE_COLOR: Record<ToastGrade, { c: string; d: string; rgb: string
   P: { c: '#D08BFF', d: '#1C1236', rgb: '208,139,255', en: 'PLATINUM', pt: 20 },
   F: { c: '#FF5A6E', d: '#7A0C24', rgb: '255,90,110', en: 'FIRST', pt: 12 },
   Z: { c: '#A9B09A', d: '#2E3326', rgb: '169,176,154', en: 'OOPS', pt: 0 },
-  E: { c: '#FF9A1F', d: '#7A2C00', rgb: '255,154,31', en: 'EVENT', pt: 0 },
+  // EVENT は 12 pt（2026-10-22 先生決定・レベルの満点の外のボーナス。前は 0）
+  E: { c: '#FF9A1F', d: '#7A2C00', rgb: '255,154,31', en: 'EVENT', pt: 12 },
 };
 
 /** クロームの文字（見出し）: 52% で切れる縦グラデ */

@@ -7,7 +7,7 @@ import type { TrophyItem } from '../../../lib/treeApi';
 import { gradeLabel } from '../../../lib/treeApi';
 import { MASTER_AT, groupColor, groupSide } from '../treeTheme';
 import { CHROME, GRADE_COLOR, PRISM, TrophyIcon } from './TrophyIcon';
-import { hmJst, rarityPct, ymdJst } from './trophyData';
+import { SECRET_NOTE, hmJst, rarityPct, secretKind, ymdJst } from './trophyData';
 
 export interface FieldInfo {
   name: string;
@@ -38,6 +38,8 @@ export function TrophyDetailSheet({ item, fieldInfo, onClose, onShowTree, holder
   useEffect(() => setShown(true), []);
   const frame = item.grade === 'P' ? PRISM : item.grade === 'F' ? 'linear-gradient(90deg,#FFD84A 0 14px,#FF5A6E 14px calc(100% - 14px),#FFD84A calc(100% - 14px))' : g.c;
   const holder = item.firstHolder;
+  // 先生用: 生徒からは隠れているか（2026-10-22）
+  const sk = holderName ? secretKind(item) : null;
 
   return (
     <>
@@ -99,6 +101,11 @@ export function TrophyDetailSheet({ item, fieldInfo, onClose, onShowTree, holder
               <div className="tt-arc tt-chrome" style={{ fontSize: 10, backgroundImage: chrome }}>
                 {g.en} +{g.pt}PT
               </div>
+              {sk && (
+                <div className="tt-dot tt-px2" style={{ padding: '3px 8px', background: 'rgba(208,139,255,.22)', border: '1px solid #D08BFF', color: '#E9CCFF', fontSize: 11 }}>
+                  隠しトロフィー（先生用）· {SECRET_NOTE[sk]}
+                </div>
+              )}
               <h2 className="tt-dot" style={{ margin: 0, fontSize: [...item.name].length > 13 ? 18 : 21, fontWeight: 400, color: '#FFFFFF', textShadow: '3px 3px 0 #021014' }}>
                 {item.hidden ? '隠しトロフィー' : item.name}
               </h2>

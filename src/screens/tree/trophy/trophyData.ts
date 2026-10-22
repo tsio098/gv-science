@@ -38,4 +38,16 @@ export const hmJst = (ms: number) => {
   return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
 };
 
+/**
+ * 先生用（2026-10-22）: 生徒からは隠れているトロフィーか。
+ *   'q'   = 獲得するまで ???（名前・条件・出典を出さない）… 隠しの B / S / G
+ *   'off' = 獲得するまで一覧に出ない … プラチナ・ファースト・残念・イベント
+ *   null  = ふつう（はじめから見える）
+ */
+export function secretKind(it: Pick<TrophyItem, 'grade' | 'secret' | 'first' | 'oops' | 'event'>): 'q' | 'off' | null {
+  if (it.first || it.grade === 'P' || it.oops || it.event) return 'off';
+  return it.secret ? 'q' : null;
+}
+export const SECRET_NOTE = { q: '生徒には獲得するまで ??? で表示', off: '生徒には獲得するまで一覧に出ません' } as const;
+
 export const gradeOf = (it: Pick<TrophyItem, 'grade'>) => GRADE_COLOR[it.grade];
