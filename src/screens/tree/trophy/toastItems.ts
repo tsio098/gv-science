@@ -1,7 +1,7 @@
 /**
  * API の応答 → 通知（ToastItem）。文言はボード「通知のバリエーション」（実装手順_トロフィー §5.4・§5.5）。
  */
-import type { ArenaSeason, Level30Got, QType, SubmitResult, TreeManifest, TreeNotice, TreeProgress, TreeStage, TrophyGet, TrophyNear } from '../../../lib/treeApi';
+import type { ArenaSeason, Level30Got, Level50Got, QType, SubmitResult, TreeManifest, TreeNotice, TreeProgress, TreeStage, TrophyGet, TrophyNear } from '../../../lib/treeApi';
 import { gradeLabel } from '../../../lib/treeApi';
 import { MASTER_AT, fmtScore } from '../treeTheme';
 import type { ToastItem } from './toastQueue';
@@ -69,6 +69,12 @@ export function level30Toast(g: Pick<Level30Got, 'subject'>, subjectName: string
   return { key, noticeKey: key, kind: 'level30', head: 'LEVEL 30 REACHED!!', main: 'トロフィーレベル 30', sub: `${subjectName} · ボーナスチケット獲得`, ticket: true };
 }
 
+/** トロフィーレベル 50（LV.50 チケット・2026-10-22）。既読は level50:{科目}。見た目・音は LEVEL 30 と同じ（スタンプ LV50）*/
+export function level50Toast(g: Pick<Level50Got, 'subject'>, subjectName: string): ToastItem {
+  const key = `level50:${g.subject}`;
+  return { key, noticeKey: key, kind: 'level50', head: 'LEVEL 50 REACHED!!', main: 'トロフィーレベル 50', sub: `${subjectName} · ボーナスチケット獲得`, ticket: true };
+}
+
 /** 数えるトロフィーが 80% に届いた */
 export function nearToast(n: TrophyNear): ToastItem {
   return { key: `near:${n.subject}:${n.id}`, kind: 'progress', head: `PROGRESS ${n.now}/${n.max}`, main: n.name, prog: { now: n.now, max: n.max } };
@@ -103,6 +109,8 @@ export function noticeToast(n: TreeNotice, subjectName: string): ToastItem | nul
       };
     case 'level30':
       return level30Toast(n, subjectName);
+    case 'level50':
+      return level50Toast(n, subjectName);
     case 'event_ticket':
       return eventTicketToast(n, subjectName);
     case 'arena_last_day':
@@ -122,6 +130,7 @@ export function submitToasts(r: SubmitResult, manifest: TreeManifest, subjectNam
   const stageName = stage === 'back' ? 'ABYSS' : 'ROUTE';
   for (const t of r.trophies ?? []) out.push(trophyToast(t, subjectName, stage));
   if (r.level30) out.push(level30Toast(r.level30, subjectName));
+  if (r.level50) out.push(level50Toast(r.level50, subjectName));
   for (const n of r.near ?? []) out.push(nearToast(n));
   for (const f of r.newlyUnlocked ?? []) {
     // 問題がまだ無い（準備中の）分野は知らせない（結果画面の帯と同じ・2026-10-22 デバッグで修正）

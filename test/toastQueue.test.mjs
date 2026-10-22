@@ -73,3 +73,16 @@ test('季節イベント: EVENT CLEAR!! と TICKET GET! は畳まず最後に（
   assert.deepEqual(order, ['c', 'level30:chemistry', 'evclear:chemistry', 'evticket:chemistry'], '3 件のトロフィーは畳み、イベントは畳まない');
   assert.deepEqual([toastMs(ev), toastMs(tk), toastWidth(ev), toastWidth(tk), toastNameSize(ev), toastNameSize(tk)], [6000, 6000, 272, 272, 13, 14]);
 });
+
+test('LEVEL 50（2026-10-22）は LEVEL 30 と同じ扱い: 畳まず最後に・6 秒・幅 272・名前 15px', () => {
+  const l50 = { key: 'level50:chemistry', kind: 'level50', head: 'LEVEL 50 REACHED!!', main: 'トロフィーレベル 50', ticket: true };
+  const ev = { key: 'evclear:chemistry', kind: 'evClear', head: 'EVENT', main: '火よ燃えよ、大釜よ煮え立て', ev: { kind: 'halloween', subject: 'chemistry', stamp: '100%' } };
+  let q = [ev, l50, tr('a', 'B'), tr('b', 'S'), tr('c', 'G')];
+  const order = [];
+  for (let p = pickToast(q); p; p = pickToast(q)) {
+    order.push(p.item.key);
+    q = p.rest;
+  }
+  assert.deepEqual(order, ['c', 'level50:chemistry', 'evclear:chemistry']);
+  assert.deepEqual([toastMs(l50), toastWidth(l50), toastNameSize(l50)], [6000, 272, 15]);
+});

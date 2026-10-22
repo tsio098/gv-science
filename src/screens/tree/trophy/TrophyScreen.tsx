@@ -6,6 +6,8 @@
  * 科目は今の科目（開ける科目が 2 つ以上なら上のセグメントで切り替え）。
  * 残念トロフィー（2026-10-19）: 獲得したものだけ、いちばん下の別枠「OOPS 残念トロフィー n」に（タブの数に入れない・0 個なら枠ごと出さない）。
  * Lv30（LV.30 チケット）: レベルのカードを MAX の見た目にし、「LV.30 チケットを見る ▶」
+ * 2026-10-22 から上限は Lv50（Proxy が level.max を返す・LIFF は計算しない）: Lv50 で MAX・「LV.50 チケットを見る ▶」。
+ * Lv49 以下は NEXT LV.n あと x pt（Lv30 だった生徒の MAX 表示・LV.30 のボタンは消える。LV.30 チケットはチケット画面から見られる）
  */
 import { useEffect, useMemo, useState } from 'react';
 import type { TrophyItem, TrophyList } from '../../../lib/treeApi';
@@ -24,7 +26,7 @@ interface Props {
   fieldInfo: (subject: string, id: string) => FieldInfo | null;
   onBack: () => void;
   onShowTree: (subject: TreeSubject, field: string | null) => void;
-  /** LV.30 チケットを見る（チケット画面）*/
+  /** LV.50 チケットを見る（チケット画面）*/
   onTickets?: () => void;
 }
 
@@ -103,7 +105,10 @@ export function TrophyScreen({ subject: initial, subjects, fieldInfo, onBack, on
     [data, recent],
   );
   const lv = data?.level;
-  const lvMax = !!lv && lv.lv >= (lv.max ?? 30);
+  const lvTop = lv?.max ?? 30;
+  const lvMax = !!lv && lv.lv >= lvTop;
+  // MAX のカードのチケット: 上限 50 なら LV.50（古い Proxy の上限 30 なら LV.30）
+  const lvTicket = !data ? null : lvTop >= 50 ? data.level50Ticket ?? null : data.level30Ticket ?? null;
   const plat = data?.platinum;
   const platItem = data?.items.find((it) => it.id === plat?.id) ?? null;
 
@@ -153,14 +158,14 @@ export function TrophyScreen({ subject: initial, subjects, fieldInfo, onBack, on
                         </div>
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 2 }}>
                           {lvMax ? (
-                            // Lv30（2026-10-19 ボード「トロフィーレベル 30」）: MAX・バー満タン（プラチナの面の 2 色）
+                            // Lv50（2026-10-22 ボード「トロフィーレベル 50」・前は Lv30）: MAX・バー満タン（プラチナの面の 2 色）
                             <div className="tt-dot" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: '#B6E9FF' }}>
                               <span className="tt-arc" style={{ fontSize: 8, color: '#FFFFFF' }}>MAX</span>
-                              <span>レベル 30 達成</span>
+                              <span>{`レベル ${lvTop} 達成`}</span>
                             </div>
                           ) : (
                             <div className="tt-dot" style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#8ED4E0' }}>
-                              {/* 科目ごとに Lv1〜30（2026-10-19 先生決定）*/}
+                              {/* 科目ごとに Lv1〜50（2026-10-22 先生決定・前は 30）*/}
                               <span>{`NEXT LV.${lv.lv + 1}`}</span>
                               <span>{`あと ${Math.max(0, lv.need - lv.into)} pt`}</span>
                             </div>
@@ -175,7 +180,7 @@ export function TrophyScreen({ subject: initial, subjects, fieldInfo, onBack, on
                           </div>
                         </div>
                       </div>
-                      {lvMax && data.level30Ticket && onTickets && (
+                      {lvMax && lvTicket && onTickets && (
                         <button
                           type="button"
                           className="tt-px2 tt-dot"
@@ -183,7 +188,7 @@ export function TrophyScreen({ subject: initial, subjects, fieldInfo, onBack, on
                           onClick={onTickets}
                         >
                           <TrophyIcon grade="P" size={22} scan={false} />
-                          {data.level30Ticket.used ? 'LV.30 チケット（使用済み）▶' : 'LV.30 チケットを見る ▶'}
+                          {lvTicket.used ? `LV.${lvTop} チケット（使用済み）▶` : `LV.${lvTop} チケットを見る ▶`}
                         </button>
                       )}
                       {/* プラチナは隠し要素（2026-10-19 先生決定）: 獲得するまでタイルも出さない */}

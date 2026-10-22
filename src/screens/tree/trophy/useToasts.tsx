@@ -16,6 +16,7 @@ export function sfxFor(t: ToastItem): SfxName {
     case 'trophy':
       return t.grade === 'F' ? 'firstSelf' : t.grade === 'P' ? 'platinum' : t.grade === 'G' ? 'gold' : t.grade === 'S' ? 'silver' : t.grade === 'Z' ? 'oops' : 'bronze';
     case 'level30':
+    case 'level50': // 効果音は LEVEL 30 と同じ（実装手順_LV50 §4.3）
       return 'level30';
     case 'evClear':
       return 'evClear';

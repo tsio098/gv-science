@@ -600,6 +600,18 @@
   width: auto;
   height: 6px;
 }
+/* LV.50 チケット（2026-10-22）: 50 マス。横長 = 1 列・マス 6×7px・間 3px／スマホ = 25 マス × 2 段・高さ 6px */
+.tk-pips.is-50 > span {
+  width: 6px;
+  height: 7px;
+}
+.tk--v .tk-pips.is-50 {
+  grid-template-columns: repeat(25, 6px);
+}
+.tk--v .tk-pips.is-50 > span {
+  width: auto;
+  height: 6px;
+}
 .tk-sparks {
   position: absolute;
   inset: 0;

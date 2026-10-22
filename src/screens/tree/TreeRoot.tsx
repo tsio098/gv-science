@@ -73,7 +73,7 @@ import { TrophyScreen } from './trophy/TrophyScreen';
 import { TrophyDetailSheet, fieldInfoFrom } from './trophy/TrophyDetailSheet';
 import { TrophySprite, GRADE_COLOR } from './trophy/TrophyIcon';
 import { useToasts } from './trophy/useToasts';
-import { eventTicketToast, level30Toast, newsToast, noticeToast, submitToasts, trophyToast } from './trophy/toastItems';
+import { eventTicketToast, level30Toast, level50Toast, newsToast, noticeToast, submitToasts, trophyToast } from './trophy/toastItems';
 import { dropTrophyMemo, loadTrophies } from './trophy/trophyData';
 import type { ToastItem } from './trophy/toastQueue';
 import '../../styles/tree.css';
@@ -156,7 +156,8 @@ function demoTickets(me: TreeMe, arena: ArenaInfo | null, subject: string): Tree
     { ...base, kind: 'abyss', id: 'demo-abyss', pair: null, premium: false },
     { ...base, kind: 'grand', id: 'demo-normal', pair, premium: false },
     { ...base, kind: 'grand', id: 'demo-premium', pair, premium: true },
-    { ...base, kind: 'level30', id: 'demo-level30', pair: null, premium: false },
+    // LV.50 チケット（2026-10-22。LV.30 は配った分だけ残る → 見本は LV.50 だけ）
+    { ...base, kind: 'level50', id: 'demo-level50', pair: null, premium: false },
     // 季節イベントのチケット（見本は使える日の制限なし）
     {
       ...base, kind: 'event', id: 'demo-event', pair: null, premium: false, eventId: 'halloween-2026', eventKind: 'halloween', eventName: 'HALLOWEEN CHALLENGE',
@@ -246,13 +247,13 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       setTrophyDot(GRADE_COLOR[best.grade].c);
       dropTrophyMemo();
     }
-    // LV.30 チケット・イベントのチケットが出た → ヘッダーのチケットの枚数を取り直す（一覧の「LV.30 チケットを見る」も）
-    if (items.some((t) => t.kind === 'level30' || t.kind === 'evTicket')) {
+    // LV.30 / LV.50 チケット・イベントのチケットが出た → ヘッダーのチケットの枚数を取り直す（一覧の「LV.50 チケットを見る」も）
+    if (items.some((t) => t.kind === 'level30' || t.kind === 'level50' || t.kind === 'evTicket')) {
       dropTrophyMemo();
       loadTicketsRef.current();
     }
   }, []);
-  /** LEVEL 30 の通知をタップ → チケット画面（今の画面に戻る）*/
+  /** LEVEL 30 / LEVEL 50 の通知をタップ → チケット画面（今の画面に戻る）*/
   const viewRef = useRef<View>({ kind: 'tree' });
   const onToastTickets = useCallback(() => {
     loadTicketsRef.current();
@@ -1165,6 +1166,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
             pushToasts([
               ...(result.trophies ?? []).map((t) => trophyToast(t, subjectJa(t.subject))),
               ...(result.level30 ? [level30Toast(result.level30, subjectJa(result.level30.subject))] : []),
+              ...(result.level50 ? [level50Toast(result.level50, subjectJa(result.level50.subject))] : []),
             ]);
             if (subject) loadArena(subject);
             // いまの画面がまだこの挑戦の出題のときだけ結果へ（2026-10-22 修正・通常の挑戦と同じ）

@@ -244,8 +244,10 @@ export interface SubmitResult {
   trophies?: TrophyGet[];
   /** 数えるトロフィーが 80% に届いた（PROGRESS の通知。サーバが 1 回だけ返す）*/
   near?: TrophyNear[];
-  /** この提出でその科目のトロフィーレベルがはじめて 30 に届いた（LV.30 チケット・2026-10-19）*/
+  /** この提出でその科目のトロフィーレベルがはじめて 30 に届いた（LV.30 チケット・2026-10-19。2026-10-22 から新しくは出ない）*/
   level30?: Level30Got | null;
+  /** この提出でその科目のトロフィーレベルがはじめて 50 に届いた（LV.50 チケット・2026-10-22・?c=5）*/
+  level50?: Level50Got | null;
   /** 季節イベントの挑戦のとき（2026-10-20）: イベントのマスター度の前後と、100% に届いたか */
   event?: SeasonEventSubmit;
 }
@@ -255,6 +257,8 @@ export interface Level30Got {
   subject: string;
   ticketId: string;
 }
+/** LV.50 チケットが出た（通知「LEVEL 50 REACHED!!」→ タップでチケット画面・2026-10-22）*/
+export type Level50Got = Level30Got;
 
 export interface RankRow {
   rank: number;
@@ -342,7 +346,11 @@ export const startTreeSession = (subject: string, field: string, qtype: QType, s
  * c=4 でも残念トロフィー・LV.30 は返る（c=3 は MASTER100 の予約）。古い Proxy（c === '2' の完全一致）には c=2 として届かない →
  * Proxy を先に出すこと（実装手順 §4）
  */
-const C2 = 'c=4';
+/**
+ * c=5 = トロフィー倍増・トロフィーレベル 50・LV.50 チケットに対応した LIFF（2026-10-22）。付けないと Proxy は新しいトロフィー・level50 を返さず、
+ * レベルも前の式（Lv30）で返す。Proxy を先に出すこと（実装手順_LV50 §5）
+ */
+const C2 = 'c=5';
 /**
  * 先生用アカウントの日付の確認（季節イベント・2026-10-20）: LIFF の URL に ?evnow=2026-10-22T09:00+09:00（%2B09:00 でも可）を付けて開くと、
  * イベントの API に now= を付ける（Proxy は先生のときだけ使い、生徒は無視する）。evnow= を空にすると消す。
@@ -484,6 +492,7 @@ export interface ArenaResult {
   /** この挑戦で獲得したトロフィー（2026-10-19〜）*/
   trophies?: TrophyGet[];
   level30?: Level30Got | null;
+  level50?: Level50Got | null;
 }
 
 export interface ArenaRankRow extends RankRow {
@@ -564,10 +573,10 @@ export const fetchArenaTickets = () => get<{ tickets: ArenaTicket[] }>('/tree/ar
  * チケット（ABYSS チケットと総合優勝のボーナスチケット）。2026-10-17 夕方〜
  * ABYSS チケット = 全分野マスター度 60% を初めて満たした科目ごとに 1 枚（化学・生物）。使い方はボーナスと同じ（半券を切る・1 回だけ）
  */
-export type TreeTicketKind = 'abyss' | 'grand' | 'level30' | 'event';
+export type TreeTicketKind = 'abyss' | 'grand' | 'level30' | 'level50' | 'event';
 export interface TreeTicket extends Omit<ArenaTicket, 'pair' | 'score'> {
   kind: TreeTicketKind;
-  /** grand: 組の 2 シーズン / abyss・level30・event: null */
+  /** grand: 組の 2 シーズン / abyss・level30・level50・event: null */
   pair: ArenaSeason[] | null;
   score: number | null;
   issuedAt?: number;
@@ -659,6 +668,8 @@ export type TreeNotice =
   | { key: string; type: 'rank_down'; subject: string; rank: number; prevRank: number; of: number }
   /** LV.30 チケット（まだ知らせていないもの・2026-10-19）*/
   | { key: string; type: 'level30'; subject: string; ticketId: string }
+  /** LV.50 チケット（まだ知らせていないもの・2026-10-22）*/
+  | { key: string; type: 'level50'; subject: string; ticketId: string }
   /** 季節イベントのチケット（TICKET GET! をまだ出していないもの・2026-10-20）*/
   | { key: string; type: 'event_ticket'; subject: string; eventId: string; ticketId: string; usableFrom: number | null; usableUntil: number | null };
 
@@ -707,13 +718,19 @@ export interface TrophyHolder {
 
 export interface TrophyList {
   subject: string;
-  /** 全科目合計の pt。into = 今のレベルに入ってからの pt・need = そのレベルの幅 */
-  /** 科目ごとのトロフィーレベル Lv1〜max（30）。into = 今のレベルに入ってからの pt、need = 次のレベルまでの幅（max では 0）*/
-  level: { lv: number; max?: number; pt: number; into: number; need: number };
+  /**
+   * 科目ごとのトロフィーレベル Lv1〜max（2026-10-22 から 50）。into = 今のレベルに入ってからの pt、need = 次のレベルまでの幅（max では 0）。
+   * full = 満点（Lv50 に要る pt）。満点・上限は Proxy が決める（LIFF は計算しない）
+   */
+  level: { lv: number; max?: number; pt: number; into: number; need: number; full?: number };
+  /** レベルの上限（2026-10-22・?c=5）*/
+  levelMax?: number;
   /** all / earned は件数、B〜F は獲得数 */
   counts: { all: number; earned: number; B: number; S: number; G: number; P: number; F: number; oops?: { earned: number }; event?: { earned: number } };
   /** LV.30 チケット（その科目で持っていれば）*/
   level30Ticket?: { id: string; used: boolean } | null;
+  /** LV.50 チケット（その科目で持っていれば・2026-10-22）*/
+  level50Ticket?: { id: string; used: boolean } | null;
   /** プラチナは隠し要素（2026-10-19）: 獲得するまで null。ファーストも獲得するまで items に入らない */
   platinum: { now: number; max: number; earned: boolean; name: string; id: string } | null;
   items: TrophyItem[];

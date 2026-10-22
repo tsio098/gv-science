@@ -55,10 +55,10 @@ export function ArenaTicketScreen({ tickets, subjectName, onUsed, onBack, demo =
   const wide = useWide();
   /** テストのやり直し（チケットを作り直して半券を戻す）*/
   const [round, setRound] = useState(0);
-  // ABYSS チケットだけなら深海の画面・見出しは錨 + 「{科目} · ABYSS」、LV.30 だけなら ROUTE の画面・見出しはトロフィー +「{科目} · TROPHY」、
+  // ABYSS チケットだけなら深海の画面・見出しは錨 + 「{科目} · ABYSS」、LV.30 / LV.50 だけなら ROUTE の画面・見出しはトロフィー +「{科目} · TROPHY」、
   // それ以外（総合優勝のチケットがある・混ざっている）はアリーナの画面
   const abyssOnly = tickets.length > 0 && tickets.every((t) => t.kind === 'abyss');
-  const lvOnly = tickets.length > 0 && tickets.every((t) => t.kind === 'level30');
+  const lvOnly = tickets.length > 0 && tickets.every((t) => t.kind === 'level30' || t.kind === 'level50');
   const evOnly = tickets.length > 0 && tickets.every((t) => t.kind === 'event');
   const subjects = [...new Set(tickets.map((t) => t.subject))];
   return (
@@ -96,8 +96,8 @@ export function ArenaTicketScreen({ tickets, subjectName, onUsed, onBack, demo =
             {(tickets.length > 1 || demo) && (
               <div className="tk-cap">
                 {demo
-                  ? t.kind === 'abyss' ? 'ABYSS（見本）' : t.kind === 'level30' ? 'LV.30（見本）' : t.kind === 'event' ? 'イベント（見本）' : t.premium ? 'プレミアム（見本）' : '通常（見本）'
-                  : `${subjectName(t.subject)} · ${t.kind === 'abyss' ? 'ABYSS' : t.kind === 'level30' ? 'LV.30' : t.kind === 'event' ? (t.eventName ?? 'EVENT') : '総合優勝'}`}
+                  ? t.kind === 'abyss' ? 'ABYSS（見本）' : t.kind === 'level30' ? 'LV.30（見本）' : t.kind === 'level50' ? 'LV.50（見本）' : t.kind === 'event' ? 'イベント（見本）' : t.premium ? 'プレミアム（見本）' : '通常（見本）'
+                  : `${subjectName(t.subject)} · ${t.kind === 'abyss' ? 'ABYSS' : t.kind === 'level30' ? 'LV.30' : t.kind === 'level50' ? 'LV.50' : t.kind === 'event' ? (t.eventName ?? 'EVENT') : '総合優勝'}`}
               </div>
             )}
             <Ticket ticket={t} wide={wide} onUsed={onUsed} demo={demo} subjectName={subjectName(t.subject)} />
@@ -124,19 +124,22 @@ function Bubbles() {
   );
 }
 
-/** LV.30 チケットの 30 マスのレベルバー（シアン系 → ピンク系・ボードの pips）*/
+/**
+ * LV.30 / LV.50 チケットのレベルバー（シアン系 → ピンク系・ボードの pips）。n マスを 4 色に等分（マス i に C[min(3, floor(i / (n / 4)))]）。
+ * LV.50 は横長 1 列・マス 6×7px／スマホ 25 マス × 2 段（2026-10-22 ボード「LV.50 チケット」・tree-ticket.css .tk-pips.is-50）
+ */
 const PIP_C = ['#D9FFF6', '#4FC3FF', '#B05BD6', '#FFB8E6'];
-function Pips() {
+function Pips({ n }: { n: 30 | 50 }) {
   return (
-    <div className="tk-pips" aria-hidden="true">
-      {Array.from({ length: 30 }, (_, i) => (
-        <span key={i} style={{ background: PIP_C[Math.min(3, Math.floor(i / 7.5))] }} />
+    <div className={`tk-pips${n === 50 ? ' is-50' : ''}`} aria-hidden="true">
+      {Array.from({ length: n }, (_, i) => (
+        <span key={i} style={{ background: PIP_C[Math.min(3, Math.floor(i / (n / 4)))] }} />
       ))}
     </div>
   );
 }
 
-/** LV.30 チケットのキラ（ドットの十字・静止）*/
+/** LV.30 / LV.50 チケットのキラ（ドットの十字・静止）*/
 const SPARK = 'M2 0h1v2h2v1H3v2H2V3H0V2h2z';
 function Sparks() {
   return (
@@ -173,14 +176,16 @@ function Ticket({ ticket, wide, onUsed, demo, subjectName }: { ticket: TreeTicke
 
   const used = phase === 'used';
   const abyss = ticket.kind === 'abyss';
-  const lv30 = ticket.kind === 'level30';
+  // LV.30 と LV.50 は同じ見た目（文字・マスの数だけ違う・2026-10-22）
+  const lv50 = ticket.kind === 'level50';
+  const lv30 = ticket.kind === 'level30' || lv50;
   const ev = ticket.kind === 'event';
   const premium = ticket.kind === 'grand' && ticket.premium;
   const [s1, s2] = ticket.pair ?? [];
   const title = abyss
     ? `${subjectName} ABYSS 開放`
     : lv30
-      ? `${subjectName} トロフィーレベル 30 達成`
+      ? `${subjectName} トロフィーレベル ${lv50 ? 50 : 30} 達成`
       : ev
         ? `${subjectName} CLEAR`
         : `SEASON ${s1?.n ?? ''}–${s2?.n ?? ''} 総合チャンピオン`;
@@ -271,7 +276,7 @@ function Ticket({ ticket, wide, onUsed, demo, subjectName }: { ticket: TreeTicke
       <div
         className={`tk ${wide ? 'tk--h' : 'tk--v'}${premium ? ' is-premium' : ''}${abyss ? ' is-abyss' : ''}${lv30 ? ' is-lv30' : ''}${ev ? ' is-event' : ''}${ev && (evEarly || evExpired) ? ' no-stub' : ''}${used ? ' is-used' : ''}${evExpired ? ' is-expired' : ''}`}
         role="group"
-        aria-label={`${abyss ? 'ABYSS チケット' : lv30 ? 'LV.30 チケット' : ev ? 'イベントのボーナスチケット' : 'ボーナスチケット'} ${title}${used ? '（使用済み）' : evExpired ? '（期限切れ）' : ''}`}
+        aria-label={`${abyss ? 'ABYSS チケット' : lv30 ? `LV.${lv50 ? 50 : 30} チケット` : ev ? 'イベントのボーナスチケット' : 'ボーナスチケット'} ${title}${used ? '（使用済み）' : evExpired ? '（期限切れ）' : ''}`}
       >
         <div className="tk-main">
           <div className="tk-face">
@@ -284,8 +289,8 @@ function Ticket({ ticket, wide, onUsed, demo, subjectName }: { ticket: TreeTicke
                 <div className="tk-words">
                   <img
                     className="tk-champion"
-                    src={evAsset ? evAsset.text2 : BRAND + (abyss ? 'text_abyss.svg' : lv30 ? 'text_lv30.svg' : 'text_champion.svg')}
-                    alt={ev ? ticket.eventName ?? 'EVENT' : abyss ? 'ABYSS' : lv30 ? 'LV.30' : 'CHAMPION'}
+                    src={evAsset ? evAsset.text2 : BRAND + (abyss ? 'text_abyss.svg' : lv50 ? 'text_lv50.svg' : lv30 ? 'text_lv30.svg' : 'text_champion.svg')}
+                    alt={ev ? ticket.eventName ?? 'EVENT' : abyss ? 'ABYSS' : lv30 ? `LV.${lv50 ? 50 : 30}` : 'CHAMPION'}
                   />
                   {premium && <img className="tk-premium" src={BRAND + 'text_premium.svg'} alt="PREMIUM" />}
                   {!used && !(premium && wide) && <div className="tk-bonus">BONUS TICKET</div>}
@@ -294,7 +299,7 @@ function Ticket({ ticket, wide, onUsed, demo, subjectName }: { ticket: TreeTicke
               {!used && premium && wide && <div className="tk-bonus">BONUS TICKET</div>}
               <div className="tk-title">{title}</div>
               {ev && <div className="tk-evline">MASTER 100% · TEST {Math.round((ticket.testRate ?? 0) * 100)}%</div>}
-              {lv30 && !used && <Pips />}
+              {lv30 && !used && <Pips n={lv50 ? 50 : 30} />}
               <div className="tk-who">{who}</div>
               {!wide && !used && <div className="tk-show">先生へ提示してください</div>}
               {ev && !used && !evExpired && ticket.usableFrom != null && (

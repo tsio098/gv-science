@@ -24,6 +24,8 @@ export type ToastKind =
   | 'firstOther'
   /** トロフィーレベル 30（LV.30 チケット）。タップでチケット画面 */
   | 'level30'
+  /** トロフィーレベル 50（LV.50 チケット・2026-10-22）。LEVEL 30 と同じ扱い */
+  | 'level50'
   /** 季節イベントの MASTER 100%（EVENT トロフィー ＋ 錨）。タップでイベント画面 */
   | 'evClear'
   /** 季節イベントのテスト合格（イベント限定チケット）。タップでチケット画面 */
@@ -59,7 +61,9 @@ export interface ToastItem {
 
 const GRADE_RANK: Record<ToastGrade, number> = { F: 0, P: 1, G: 2, S: 3, B: 4, Z: 6, E: 8 };
 /** 畳まずに最後に 1 件ずつ出す通知（LEVEL 30 → EVENT CLEAR!! → TICKET GET!）*/
-const LATE: Partial<Record<ToastKind, number>> = { level30: 9, evClear: 10, evTicket: 11 };
+const LATE: Partial<Record<ToastKind, number>> = { level30: 9, level50: 9, evClear: 10, evTicket: 11 };
+/** LEVEL 30 / LEVEL 50（同じ見た目・大きさ）*/
+export const isLevelToast = (t: Pick<ToastItem, 'kind'>) => t.kind === 'level30' || t.kind === 'level50';
 export const isLateToast = (t: ToastItem) => LATE[t.kind] != null;
 /** RANK DOWN は残念（順位の残念と同時に出る）より前 */
 export const toastRank = (t: ToastItem) => (t.kind === 'trophy' && t.grade ? GRADE_RANK[t.grade] : t.kind === 'rankDown' ? 5 : LATE[t.kind] ?? 7);
@@ -121,14 +125,14 @@ export function toastNameSize(t: Pick<ToastItem, 'kind' | 'grade' | 'main'>, wid
   // EVENT CLEAR!! は 13 字の名前を 13px・TICKET GET! は 14px（ボード「獲得の演出と効果音」）
   if (t.kind === 'evClear') return 13;
   if (t.kind === 'evTicket') return 14;
-  if ((t.kind === 'trophy' && t.grade === 'P') || t.kind === 'level30') return 15;
+  if ((t.kind === 'trophy' && t.grade === 'P') || isLevelToast(t)) return 15;
   if (wide) return 14;
   return [...t.main].length >= 13 ? 13 : 14;
 }
 
 /** 通知の幅（px）*/
 export function toastWidth(t: Pick<ToastItem, 'kind' | 'grade'>, wide = false): number {
-  if ((t.kind === 'trophy' && t.grade === 'P') || t.kind === 'level30' || t.kind === 'evClear' || t.kind === 'evTicket') return 272;
+  if ((t.kind === 'trophy' && t.grade === 'P') || isLevelToast(t) || t.kind === 'evClear' || t.kind === 'evTicket') return 272;
   if (t.kind === 'trophy' && t.grade === 'F') return 260;
   return wide ? 264 : 248;
 }

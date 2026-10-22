@@ -10,7 +10,7 @@ import { setToastSpeed } from '../trophy/labSpeed';
 import { sfxFor } from '../trophy/useToasts';
 import type { ArenaSeason, TreeEvent, TrophyGet } from '../../../lib/treeApi';
 import type { ToastItem } from '../trophy/toastQueue';
-import { eventClearToast, eventTicketToast, level30Toast, noticeToast, trophyToast } from '../trophy/toastItems';
+import { eventClearToast, eventTicketToast, level50Toast, noticeToast, trophyToast } from '../trophy/toastItems';
 import { Ico } from '../TreeIcons';
 import { rootClass } from '../treeTheme';
 import { FxScreen } from './FxScreen';
@@ -57,7 +57,8 @@ const SOUNDS: { name: SfxName; label: string }[] = [
   { name: 'arena', label: 'アリーナ（最終日・順位）' },
   { name: 'teacher', label: '先生の記録' },
   { name: 'oops', label: '残念トロフィー' },
-  { name: 'level30', label: 'LEVEL 30' },
+  // LEVEL 50（2026-10-22）は LEVEL 30 と同じ音
+  { name: 'level30', label: 'LEVEL 50' },
   { name: 'evClear', label: 'EVENT CLEAR!!' },
   { name: 'evTicket', label: 'TICKET GET!' },
 ];
@@ -116,12 +117,12 @@ export function FxLabScreen({ grade, nickname, subject, subjectName, season, onT
     { label: 'TEACHER RECORD（先生の記録）', items: () => [noticeToast({ key: 'tr', type: 'teacher_record', subject, season: cur, score: 912 }, subjectName)!] },
     { label: '2 件（次がのぞく）', items: () => [tg('S', 'その倍の速さで走れ', 2), tg('B', 'すべては最善', 1)] },
     { label: '3 件まとめて（ほか n 件）', items: () => [tg('B', 'すべては最善', 1), tg('S', 'その倍の速さで走れ', 2), tg('G', '時は金なり', 6)] },
-    // 2026-10-19 残念トロフィー・LV.30 チケット
+    // 2026-10-19 残念トロフィー・LV.30 チケット（2026-10-22 から LEVEL 50・LV.50 チケット。LEVEL 30 の見本は消した）
     { label: '残念トロフィー（セット）', items: () => [tg('Z', 'すべて失われたわけではない', 0)] },
     { label: '残念トロフィー（ランキング）', items: () => [tg('Z', '高ぶりは滅びに先立つ', 0, `${subjectName} 1 位 → 6 位`)] },
     { label: '残念トロフィー（正答率）', items: () => [tg('Z', '二度あることは三度ある', 0, '直近 3 セットの平均 27%')] },
-    { label: 'LEVEL 30（タップでチケット）', items: () => [level30Toast({ subject }, subjectName)] },
-    { label: 'トロフィー + 残念 + LEVEL 30（並び）', items: () => [level30Toast({ subject }, subjectName), tg('Z', 'ホメロスも居眠りする', 0), tg('G', '時は金なり', 6)] },
+    { label: 'LEVEL 50（タップでチケット）', items: () => [level50Toast({ subject }, subjectName)] },
+    { label: 'トロフィー + 残念 + LEVEL 50（並び）', items: () => [level50Toast({ subject }, subjectName), tg('Z', 'ホメロスも居眠りする', 0), tg('G', '時は金なり', 6)] },
     // 2026-10-20 季節イベント（ハロウィン）: EVENT CLEAR!!（初めての 100% = トロフィー ＋ アイコン / 2 科目目 = EVENT トロフィー）・TICKET GET!
     {
       label: 'EVENT CLEAR!!（初めて・トロフィー ＋ アイコン）',
@@ -136,11 +137,11 @@ export function FxLabScreen({ grade, nickname, subject, subjectName, season, onT
       items: () => [eventTicketToast({ subject, eventId: 'halloween-2026', usableFrom: Date.parse('2026-10-31T00:00:00+09:00'), kind: 'halloween' }, subjectName)],
     },
     {
-      label: 'トロフィー + LEVEL 30 + EVENT CLEAR!! + TICKET GET!（並び）',
+      label: 'トロフィー + LEVEL 50 + EVENT CLEAR!! + TICKET GET!（並び）',
       items: () => [
         eventTicketToast({ subject, eventId: 'halloween-2026', usableFrom: Date.parse('2026-10-31T00:00:00+09:00'), kind: 'halloween' }, subjectName),
         eventClearToast({ subject, id: 'ev_halloween', grade: 'E', name: EV_TROPHY_NAME.halloween?.[subject] ?? 'EVENT トロフィー', pt: 0, first: false, desc: '', event: true, firstIcon: true }, subjectName),
-        level30Toast({ subject }, subjectName),
+        level50Toast({ subject }, subjectName),
         tg('G', '時は金なり', 6),
       ],
     },
