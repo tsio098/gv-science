@@ -679,7 +679,7 @@ function EventMasterRow({ ev }: { ev: NonNullable<SubmitResult['event']> }) {
         {ev.clearedNow ? (
           <>MASTER 100% 達成 · テストを受けられます</>
         ) : !ev.recorded ? (
-          <>{ev.cleared ? '復習（マスター度は下がりません）' : 'イベントの期間の後の提出（ふだんの記録には入りました）'}</>
+          <>{ev.cleared ? '復習（マスター度は下がりません）' : 'イベントの期間の後の提出（記録されません）'}</>
         ) : (
           <>
             定着 <span className="tr-arc">{ev.settledGain >= 0 ? `+${ev.settledGain}` : ev.settledGain}</span> 題 · あと <span className="tr-arc">{ev.daysLeft}</span> 日

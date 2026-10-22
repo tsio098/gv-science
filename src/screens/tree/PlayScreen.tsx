@@ -498,7 +498,7 @@ export function PlayScreen({ session, subjectName, fieldName, group, onExit, onD
             {fmtTime(elapsed)}
             {!isBackStage && <span> / {fmtTime(limitMs)}</span>}
           </div>
-          {isBackStage || isEventTest ? (
+          {isBackStage || isEventTest || isEvent ? (
             <small style={{ color: alpha(T.text, 0.45) }}>時間ボーナスなし</small>
           ) : (
             <small className="tr-num" style={{ color: bonus > 0 ? T.accent : alpha(T.text, 0.45) }}>
