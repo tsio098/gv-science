@@ -624,7 +624,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
     }
   };
 
-  /** 季節イベントのテスト（20 問・1 回だけ・途中なら再開）*/
+  /** 季節イベントのテスト（20 問・1 回だけ・途中で画面を離れていたら終了扱い＝決定済みで採点）*/
   const beginEventTest = async () => {
     if (!subject) return;
     if (!seasonEvent?.event) {
@@ -677,7 +677,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       .catch(fail);
   };
 
-  /** アリーナの挑戦を始める（途中なら再開）。開始で今シーズンの 1 回を使う */
+  /** アリーナの挑戦を始める（途中で画面を離れていたら終了扱い＝決定済みで採点）。開始で今シーズンの 1 回を使う */
   const beginArena = async () => {
     if (!subject) return;
     setStarting(true);

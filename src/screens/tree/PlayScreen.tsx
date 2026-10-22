@@ -12,7 +12,7 @@
  * - ABYSS（二次問題・§5.6）: 設問ごとに画像の下へ解答欄（AbyssAnswer）を置き、数値はパッドの位置にキーパッドを出す。
  *   時間ボーナスは無いので経過時間だけ表示する
  * - チャンピオンアリーナ（§5.7）: 全員共通の 10 問。タイムボーナスは最大 75（基礎 25）。提出は /tree/arena/submit。
- *   開始で今シーズンの 1 回を使うので、答えた問題・選んだ答え・時間を端末（localStorage）に残し、閉じても続きから再開できる
+ *   開始で今シーズンの 1 回を使う。答えた問題・選んだ答え・時間は端末（localStorage）に残す
  *   出す順番は挑戦ごとに違う（2026-10-18 先生の指示・Proxy の arenaOrder）。再開は「まだ決定していない最初の問題」から
  *   共通テスト後のシーズンは最後の 2 問が ABYSS の設問（2026-10-18 先生決定・1 問 7 分・タイムボーナスあり）。
  *   ABYSS の画面（解答欄・キーパッド）は問題ごとに切り替える（answer.kind = 'parts'）。欄の入力も端末に残す
@@ -24,11 +24,26 @@
  *   提出は /tree/season-event/test/submit。画面はハロウィンの色（is-ev-halloween）
  *   テストは問題ごとの制限時間（limitSec）を過ぎたら、答えたところまでで自動的に次の問題へ進む（最後の問題なら提出・2026-10-22 先生の指示）。
  *   閉じて再開しても時間が戻らないよう、いまの問題の時計を始めた時刻（cur）も端末に残す
+ * - 途中で画面を離れたら終了（2026-10-23 先生の指示）: アリーナとイベントのテストは、解答中に画面が隠れたら（アプリの切り替え・ホーム・画面ロック・
+ *   閉じる）その時点で終了し、決定した問題だけで採点する（ended: true で提出・keepalive）。中断ボタンも同じ（終了して採点）。
+ *   閉じた・落ちた後に開くと Proxy が ended のセッション（画像なし）を返すので、端末に残った決定済みの解答を提出するだけ。再開はできない
  * - 復習チェック（2026-10-19 先生の要望・設計書 §5.1）: 「あとで復習」を付けた問題は、正解でも結果画面の一覧に出す。
  *   端末の中だけで持つ（提出 API には送らない）。選択肢に重ねないよう、単問は解答パッドの見出し行、セット・ABYSS は小問の見出し行に置く。アリーナには出さない
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AbyssPart, ArenaResult, FieldGroup, PlayQuestion, SeasonEventTestResult, SubmitResult, TreeSession } from '../../lib/treeApi';
+/** 途中で終了した 1 回だけの挑戦（画面を離れた・中断・前回離れたまま開いた）*/
+type EndReason = 'away' | 'quit' | 'resume';
+interface EndState {
+  reason: EndReason;
+  /** 決定した問題の数（採点に入る）*/
+  decided: number;
+  sending: boolean;
+  result: ArenaResult | SeasonEventTestResult | null;
+  error: string | null;
+  /** 送り直しても通らないエラー */
+  final: boolean;
+}
 import { QTYPE_LABEL, TreeApiError, circled, submitArena, submitSeasonEventTest, submitTreeSession, treeImage } from '../../lib/treeApi';
 import { EV_NAME } from './event/evTheme';
 import { Ico } from './TreeIcons';
@@ -176,6 +191,9 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
   const keepsProgress = isArena || isEventTest;
   /** 制限時間を過ぎたら自動で次の問題へ（イベントのテスト）*/
   const autoNext = isEventTest;
+  /** 途中で画面を離れたら終了する挑戦（keepsProgress と同じ）。sessionEnded = 前回離れたまま開いた（Proxy の ended）*/
+  const oneShot = keepsProgress;
+  const sessionEnded = (session as { ended?: boolean }).ended === true;
   const col = isArena ? ARENA_GOLD : isEvent ? '#FF9A1F' : groupColor(group);
   const bonusMax = isArena ? 75 : 25;
   const units = session.units;
@@ -216,6 +234,14 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
   /** 決定（または時間切れ）した単位。同じ単位で 2 回送らない */
   const decidedIdx = useRef(-1);
   const [timeUp, setTimeUp] = useState(false);
+  const [ended, setEnded] = useState<EndState | null>(null);
+  const endedRef = useRef(false);
+  /** 最後の決定の提出中（このときは画面を離れても終了させない）*/
+  const submittingRef = useRef(false);
+  const picksRef = useRef(picks);
+  picksRef.current = picks;
+  const rawsRef = useRef(raws);
+  rawsRef.current = raws;
 
   const unit = units[idx]!;
   const qs = unit.qids.map((id) => session.questions[id]!).filter(Boolean);
@@ -317,6 +343,8 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
   };
 
   const submit = async () => {
+    if (endedRef.current) return;
+    submittingRef.current = true;
     setSubmitting(true);
     setSubmitError(null);
     try {
@@ -362,9 +390,79 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
         setSubmitError('提出できませんでした。通信状況を確かめて、もう一度送ってください。');
       }
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
+
+  /** 途中で終了した挑戦を、決定した問題だけで提出する（画面が隠れた直後でも送り切れるよう keepalive）*/
+  const sendEnded = async () => {
+    const answers = units
+      .flatMap((u) => u.qids)
+      .filter((qid) => times.current[qid] != null)
+      .map((qid) => {
+        const q = session.questions[qid];
+        const value =
+          q && q.answer.kind === 'parts'
+            ? partsOf(q).map((p, i) => toValue(p, rawsRef.current[qid]?.[i]))
+            : (picksRef.current[qid] ?? []).filter((v) => v !== '');
+        return { qid, value, timeMs: Math.round(times.current[qid] ?? 0) };
+      });
+    setEnded((s) => s && { ...s, sending: true, error: null });
+    try {
+      const r = isArena
+        ? await submitArena(session.sessionId, answers, { ended: true })
+        : await submitSeasonEventTest(session.sessionId, answers, { ended: true });
+      saveArena(session.sessionId, null);
+      setEnded((s) => s && { ...s, sending: false, result: r });
+    } catch (e) {
+      const code = e instanceof TreeApiError ? e.code : '';
+      const final = ['ALREADY_SUBMITTED', 'ARENA_CLOSED', 'EVENT_CLOSED', 'NO_SESSION'].includes(code);
+      if (final) saveArena(session.sessionId, null);
+      const msg =
+        code === 'ALREADY_SUBMITTED'
+          ? '採点はもう済んでいます。ツリーに戻って結果を確認してください。'
+          : code === 'ARENA_CLOSED'
+            ? 'このシーズンは終了しました。この挑戦は提出できません。'
+            : code === 'EVENT_CLOSED'
+              ? 'イベントの期間が終わりました。このテストは提出できません。'
+              : code === 'NO_SESSION'
+                ? 'この挑戦は見つかりませんでした。ツリーに戻ってください。'
+                : '採点を送れませんでした。通信状況を確かめて、もう一度送ってください。';
+      setEnded((s) => s && { ...s, sending: false, error: msg, final });
+    }
+  };
+
+  /** 1 回だけの挑戦をここで終了する（画面を離れた・中断・前回離れたまま開いた）*/
+  const endNow = (reason: EndReason) => {
+    if (!oneShot || endedRef.current || submittingRef.current) return;
+    endedRef.current = true;
+    setConfirmExit(false);
+    setZoomPath(null);
+    const decided = units.reduce((n, u) => n + u.qids.filter((id) => times.current[id] != null).length, 0);
+    setEnded({ reason, decided, sending: true, result: null, error: null, final: false });
+    void sendEnded();
+  };
+
+  // 画面が隠れたら（アプリの切り替え・ホーム・画面ロック・閉じる）終了。前回離れたまま開いたときは開いた時点で終了
+  useEffect(() => {
+    if (!oneShot) return;
+    if (sessionEnded) {
+      endNow('resume');
+      return;
+    }
+    const onVis = () => {
+      if (document.hidden) endNow('away');
+    };
+    const onPageHide = () => endNow('away');
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('pagehide', onPageHide);
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('pagehide', onPageHide);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /** 中断（採点中は押せない。ボタンの disabled が効かない端末でも、ここで止める）*/
   const exit = () => {
@@ -374,7 +472,7 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
 
   /** timeUp = 制限時間を過ぎた（イベントのテスト）。答えていない欄があってもそのまま進む */
   const decide = (timeUp = false) => {
-    if ((!allPicked && !timeUp) || submitting) return;
+    if ((!allPicked && !timeUp) || submitting || endedRef.current) return;
     decidedIdx.current = idx;
     const raw = unitStart.current === null ? 0 : performance.now() - unitStart.current;
     const spent = autoNext ? Math.min(raw, limitMs) : raw;
@@ -393,7 +491,7 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
 
   // イベントのテスト: 制限時間を過ぎたら次の問題へ（最後なら提出）。画像がそろう前は時計が動かないので進まない
   useEffect(() => {
-    if (!autoNext || submitting || unitStart.current === null || limitMs <= 0 || decidedIdx.current === idx) return;
+    if (!autoNext || submitting || endedRef.current || unitStart.current === null || limitMs <= 0 || decidedIdx.current === idx) return;
     if (now - unitStart.current < limitMs) return;
     setConfirmExit(false);
     setTimeUp(true);
@@ -525,9 +623,58 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
     ? (picks[first.id] ?? []).filter(Boolean).map(circled).join('・') || '—'
     : '—';
   const isLast = idx + 1 >= units.length;
+  const playRoot = isArena ? 'tr-play is-arena' : evKind ? `tr-play is-ev-${evKind}` : 'tr-play';
+
+  if (ended) {
+    const what = isArena ? 'この挑戦' : 'このテスト';
+    const why =
+      ended.reason === 'away'
+        ? `解答中に画面を離れた（アプリの切り替え・ホーム・画面ロックなど）ため、${what}はここで終了しました。`
+        : ended.reason === 'resume'
+          ? `前回、解答の途中で画面を離れたため、${what}は終了しています（続きは解けません）。`
+          : `中断したため、${what}はここで終了しました。`;
+    const done = ended.result;
+    return (
+      <div className={rootClass(playRoot)}>
+        <div className={`tr-overlay${isArena ? ' tr-ar-overlay' : ''}`}>
+          <div className={isArena ? 'tr-ar-dialog' : 'tr-card'} role="alertdialog" aria-label={isArena ? '挑戦の終了' : 'テストの終了'}>
+            <div style={{ fontWeight: 700, fontSize: 16 }}>{isArena ? '挑戦は終了しました' : 'テストは終了しました'}</div>
+            <div style={{ color: 'var(--tr-sub)', fontSize: 13, lineHeight: 1.8 }}>
+              {why}決定した <b className="tr-num">{ended.decided}</b> 問（{totalQ} 問中）で採点{done ? 'しました' : 'します'}。
+            </div>
+            {ended.error && <div style={{ fontSize: 13, lineHeight: 1.7 }}>{ended.error}</div>}
+            {done ? (
+              <button
+                type="button"
+                className={isArena ? 'tr-ar-btn' : 'tr-cta'}
+                onClick={() => (isArena ? onArenaDone?.(done as ArenaResult) : onEventTestDone?.(done as SeasonEventTestResult))}
+              >
+                結果を見る
+              </button>
+            ) : ended.error ? (
+              !ended.final && (
+                <button type="button" className={isArena ? 'tr-ar-btn' : 'tr-cta'} disabled={ended.sending} onClick={() => void sendEnded()}>
+                  {ended.sending ? '送信中…' : 'もう一度送る'}
+                </button>
+              )
+            ) : (
+              <div className="tr-num" style={{ color: 'var(--tr-sub)', fontSize: 13 }}>
+                採点しています…
+              </div>
+            )}
+            {!done && (
+              <button type="button" className={isArena ? 'tr-ar-btn2' : 'tr-ghost'} style={isArena ? { height: 50 } : undefined} disabled={ended.sending} onClick={onExit}>
+                ツリーへ戻る
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className={rootClass(isArena ? 'tr-play is-arena' : evKind ? `tr-play is-ev-${evKind}` : 'tr-play')}>
+    <div className={rootClass(playRoot)}>
       <div className="tr-bar">
         {/* 採点中（提出の応答待ち）は中断できない（2026-10-22 修正: 中断して別の挑戦を始めると、後から返った結果で出題中の画面が結果画面に置き換わっていた）*/}
         <button type="button" className="tr-iconbtn" aria-label="中断してツリーへ" disabled={submitting} onClick={() => !submitting && setConfirmExit(true)}>
@@ -766,16 +913,22 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
             <div style={{ fontWeight: 700, fontSize: 16 }}>中断しますか？</div>
             <div style={isArena ? { color: 'var(--tr-sub)', fontSize: 13, lineHeight: 1.8 } : { color: 'var(--tr-sub)' }}>
               {isArena
-                ? '今シーズンの挑戦はもう始まっています（やり直しはできません）。中断しても時間は進み続けます。ツリーの一番下のアリーナのノードから、続きの問題を再開できます。'
+                ? '中断すると、今シーズンの挑戦はここで終了し、決定した問題だけで採点します（続きは解けません・やり直しもできません）。'
                 : isEventTest
-                  ? 'テストはもう始まっています（受けられるのは 1 回だけです）。中断しても、イベント画面の「テストを再開」から続きの問題を解けます。中断している間もいまの問題の時間は進み、制限時間を過ぎると次の問題へ進みます。'
+                  ? '中断すると、テストはここで終了し、決定した問題だけで採点します（受けられるのは 1 回だけで、続きは解けません）。'
                   : 'この挑戦の解答は記録されません。'}
             </div>
             <button type="button" className={isArena ? 'tr-ar-btn' : 'tr-cta'} onClick={() => setConfirmExit(false)}>
               続ける
             </button>
-            <button type="button" className={isArena ? 'tr-ar-btn2' : 'tr-ghost'} style={isArena ? { height: 50 } : undefined} disabled={submitting} onClick={exit}>
-              中断してツリーへ
+            <button
+              type="button"
+              className={isArena ? 'tr-ar-btn2' : 'tr-ghost'}
+              style={isArena ? { height: 50 } : undefined}
+              disabled={submitting}
+              onClick={oneShot ? () => endNow('quit') : exit}
+            >
+              {oneShot ? '中断して採点' : '中断してツリーへ'}
             </button>
           </div>
         </div>

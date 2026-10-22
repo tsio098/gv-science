@@ -476,6 +476,8 @@ export interface ArenaSession extends TreeSession {
   arena: true;
   /** 途中で閉じた挑戦の再開（開始時刻はそのまま＝時間は進み続ける）*/
   resumed: boolean;
+  /** 始めて 15 秒より後の再開＝途中で画面を離れて終了（問題の画像なし・決定済みの解答を提出するだけ・2026-10-23）*/
+  ended?: boolean;
   season: ArenaSeason;
 }
 
@@ -518,8 +520,19 @@ export interface ArenaRanking {
 export const fetchArena = (subject: string) => get<ArenaInfo>(`/tree/arena?subject=${encodeURIComponent(subject)}`);
 /** season = 画面が読み込んだシーズン（切り替わっていたら 409 SEASON_CHANGED。前シーズンの途中は猶予内なら再開）*/
 export const startArena = (subject: string, season?: string) => post<ArenaSession>('/tree/arena/start', { subject, season });
-export const submitArena = (sessionId: string, answers: { qid: string; value: PartValue[]; timeMs: number }[]) =>
-  post<ArenaResult>(`/tree/arena/submit?${C2}`, { sessionId, answers });
+/**
+ * 1 回だけの挑戦（アリーナ・イベントのテスト）を途中で終了した提出（ended = 決定済みの問題だけ・2026-10-23）。
+ * 画面が隠れた直後に送るので keepalive（ページが止まっても送り切る）
+ */
+export interface EndedSubmit {
+  ended?: boolean;
+}
+const postEnded = <T>(path: string, body: Record<string, unknown>, opts: EndedSubmit) =>
+  opts.ended
+    ? call<T>(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body, ended: true }), keepalive: true })
+    : post<T>(path, body);
+export const submitArena = (sessionId: string, answers: { qid: string; value: PartValue[]; timeMs: number }[], opts: EndedSubmit = {}) =>
+  postEnded<ArenaResult>(`/tree/arena/submit?${C2}`, { sessionId, answers }, opts);
 /** 先生: 採点した挑戦を記録にする（何度押しても同じ）*/
 export const recordArena = (sessionId: string) => post<{ ok: true }>('/tree/arena/record', { sessionId });
 export type ArenaRankWhich = 'current' | 'prev' | 'pair';
@@ -943,6 +956,8 @@ export interface SeasonEventSession extends TreeSession {
 export interface SeasonEventTestSession extends TreeSession {
   eventTest: true;
   resumed: boolean;
+  /** 途中で画面を離れて終了（ArenaSession.ended と同じ）*/
+  ended?: boolean;
   event: { id: string; kind: string };
   passAt: number;
 }
@@ -975,8 +990,8 @@ export const startSeasonEventSession = (subject: string, eventId: string) =>
   post<SeasonEventSession>(`/tree/season-event/session/start?${C2}${evQ()}`, { subject, eventId });
 export const startSeasonEventTest = (subject: string, eventId: string) =>
   post<SeasonEventTestSession>(`/tree/season-event/test/start?${C2}${evQ()}`, { subject, eventId });
-export const submitSeasonEventTest = (sessionId: string, answers: { qid: string; value: PartValue[]; timeMs: number }[]) =>
-  post<SeasonEventTestResult>(`/tree/season-event/test/submit?${C2}${evQ()}`, { sessionId, answers });
+export const submitSeasonEventTest = (sessionId: string, answers: { qid: string; value: PartValue[]; timeMs: number }[], opts: EndedSubmit = {}) =>
+  postEnded<SeasonEventTestResult>(`/tree/season-event/test/submit?${C2}${evQ()}`, { sessionId, answers }, opts);
 
 /* ── 先生用 イベントの生徒の状況（2026-10-21）: 達成率・挑戦回数・テストの点数。生徒は key（本名は GAS treeNames から）── */
 

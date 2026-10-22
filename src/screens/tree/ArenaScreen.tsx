@@ -1,7 +1,8 @@
 /**
  * ANCHOR TREE — チャンピオンアリーナ（設計書 §5.7）の入口。ツリーの一番下のノードから開く。
  * シーズン（2 週間）・開放条件（全分野それぞれ今年度の正答率 70%。2026-10-17 夕方にマスター度から変更）・自分の挑戦・前シーズンのチャンピオン・先生のスコア。
- * 挑戦は 1 シーズン 1 回で、始めた時点で使う → 始める前に確認する。途中で閉じた挑戦は「続きから再開」。
+ * 挑戦は 1 シーズン 1 回で、始めた時点で使う → 始める前に確認する。解答中に画面を離れたら、その時点で終了して決定した問題だけで採点（2026-10-23）。
+ * 離れたまま閉じた挑戦は「採点して結果を見る」（再開はできない）。
  * 見た目は夜の紫 + 金（2026-10-17 先生決定・デザインボード A03〜A05・A14）。
  */
 import { useState } from 'react';
@@ -64,7 +65,7 @@ export function ArenaScreen({ info, manifest, starting, message, tickets = 0, ti
   // 開放条件の数え方（新しい Proxy = 正答率・古い Proxy = マスター度）
   const byRate = info.cond.basis === 'rate';
   const canStart = info.open && (staffSelf || !e || e.status === 'started');
-  const startLabel = e?.status === 'started' && !staffSelf ? '続きから再開' : '挑戦する';
+  const startLabel = e?.status === 'started' && !staffSelf ? '採点して結果を見る' : '挑戦する';
 
   return (
     <div className={rootClass('is-arena tr-ar-screen')}>
@@ -132,7 +133,7 @@ export function ArenaScreen({ info, manifest, starting, message, tickets = 0, ti
         ) : e?.status === 'started' && !staffSelf ? (
           <div className="tr-ar-card" style={{ display: 'flex', gap: 10, alignItems: 'center', color: 'var(--ar-gold)', fontSize: 13 }}>
             <Ico id="i-clock" size={18} />
-            <span>挑戦の途中です。時間は進み続けているので、早めに再開して提出してください。</span>
+            <span>解答の途中で画面を離れたため、この挑戦は終了しています。開くと、決定した問題だけで採点します。</span>
           </div>
         ) : null}
 
@@ -198,6 +199,9 @@ export function ArenaScreen({ info, manifest, starting, message, tickets = 0, ti
             <img src={CROWN} alt="" style={{ width: 52, height: 'auto', display: 'block' }} />
             <div style={{ fontSize: 17, fontWeight: 600 }}>今シーズンの挑戦を始めますか？</div>
             <div style={{ fontSize: 13, color: 'var(--tr-sub)' }}>挑戦は 1 シーズンにつき 1 回のみです。</div>
+            <div style={{ fontSize: 12, color: 'var(--tr-sub)', lineHeight: 1.7 }}>
+              解答中にアプリを切り替えたり閉じたりすると、その時点で終了し、決定した問題だけで採点されます。
+            </div>
             <button
               type="button"
               className="tr-ar-btn"

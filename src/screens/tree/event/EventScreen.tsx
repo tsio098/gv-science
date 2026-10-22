@@ -189,6 +189,13 @@ export function EventScreen({ state, subject, subjectName, starting, message, on
             </div>
           </div>
         )}
+        {cleared && testOpen && !testDone && (
+          <div className="ev-dot" style={{ fontSize: 12, lineHeight: 1.6, color: 'var(--ev-sub)' }}>
+            {test!.status === 'started'
+              ? 'テストの途中で画面を離れたため、テストは終了しています。開くと、決定した問題だけで採点します。'
+              : 'テストの解答中にアプリを切り替えたり閉じたりすると、その時点で終了し、決定した問題だけで採点されます。'}
+          </div>
+        )}
         {cleared && testDone && (
           <div className="ev-dot" style={{ fontSize: 12, lineHeight: 1.6, color: 'var(--ev-sub)' }}>
             テスト {test!.correct ?? 0}/{test!.total ?? 0}（{test!.pass ? '合格' : `合格は ${test!.passAt} 問以上`}）
@@ -227,7 +234,7 @@ export function EventScreen({ state, subject, subjectName, starting, message, on
             {testOpen && (
               <button type="button" className="ev-cta-wrap is-test" style={{ flex: 1.6 }} disabled={starting} onClick={onTest}>
                 <span className="ev-px2 ev-cta is-test">
-                  <span className="ev-dot" style={{ fontSize: 16, lineHeight: 1 }}>{test!.status === 'started' ? 'テストを再開' : test!.status === 'done' ? 'もう一度受ける' : 'テストを受ける'}</span>
+                  <span className="ev-dot" style={{ fontSize: 16, lineHeight: 1 }}>{test!.status === 'started' ? '採点して結果を見る' : test!.status === 'done' ? 'もう一度受ける' : 'テストを受ける'}</span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 6, lineHeight: 1 }}>
                     <span className="ev-arc" style={{ fontSize: 8 }}>{test!.size || 20}Q</span>
                     {!staff && <span className="ev-dot" style={{ fontSize: 11 }}>· 1 回のみ</span>}
