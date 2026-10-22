@@ -22,6 +22,8 @@
  * - 季節イベント（2026-10-20）: イベントの挑戦（field = '_event'）は 5 問が分野・種別をまたぐので、見出しの種別は問題ごと（アリーナと同じ）・
  *   提出はふつうの /tree/session/submit。テスト（eventTest）は 20 問・時間ボーナスなし・1 回だけなので、アリーナと同じく途中を端末に残して再開できる。
  *   提出は /tree/season-event/test/submit。画面はハロウィンの色（is-ev-halloween）
+ *   テストは問題ごとの制限時間（limitSec）を過ぎたら、答えたところまでで自動的に次の問題へ進む（最後の問題なら提出・2026-10-22 先生の指示）。
+ *   閉じて再開しても時間が戻らないよう、いまの問題の時計を始めた時刻（cur）も端末に残す
  * - 復習チェック（2026-10-19 先生の要望・設計書 §5.1）: 「あとで復習」を付けた問題は、正解でも結果画面の一覧に出す。
  *   端末の中だけで持つ（提出 API には送らない）。選択肢に重ねないよう、単問は解答パッドの見出し行、セット・ABYSS は小問の見出し行に置く。アリーナには出さない
  */
@@ -56,6 +58,8 @@ interface ArenaSaved {
   times: Record<string, number>;
   /** ABYSS の設問の欄の入力（共通テスト後のシーズン）。古い保存には無い */
   raws?: Record<string, RawVal[]>;
+  /** イベントのテスト: いまの問題（idx）の時計を始めた時刻（Date.now）。再開しても時間を戻さない */
+  cur?: { idx: number; at: number };
 }
 const arenaKey = (sessionId: string) => `tr-arena:${sessionId}`;
 function loadArena(sessionId: string): ArenaSaved | null {
@@ -80,6 +84,8 @@ type ImgState = Record<string, string | 'error'>;
 /** ROUTE のマーク欄（ABYSS の設問は空）*/
 /** タイムボーナスが減り始めるまでの猶予（Proxy の BONUS_GRACE_SEC）*/
 const BONUS_GRACE_MS = 25_000;
+/** イベントのテスト: 残りがこれ以下で時計を赤くする */
+const TIME_LOW_MS = 10_000;
 const boxesOf = (q: PlayQuestion) => (q.answer.kind === 'choice' ? q.answer.boxes : []);
 const boxLabel = (q: PlayQuestion) => boxesOf(q).map((b) => b.n).join('・');
 /**
@@ -168,6 +174,8 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
   const isEvent = !!evKind;
   /** 途中を端末に残して再開する挑戦（1 回だけのもの）*/
   const keepsProgress = isArena || isEventTest;
+  /** 制限時間を過ぎたら自動で次の問題へ（イベントのテスト）*/
+  const autoNext = isEventTest;
   const col = isArena ? ARENA_GOLD : isEvent ? '#FF9A1F' : groupColor(group);
   const bonusMax = isArena ? 75 : 25;
   const units = session.units;
@@ -203,6 +211,11 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
   const times = useRef<Record<string, number>>(saved?.times ?? {});
   const areaRef = useRef<HTMLDivElement>(null);
   const [away, reveal] = useAway(isArena);
+  /** 再開した問題の時計の始まり（autoNext のときだけ使う）*/
+  const resumeAt = useRef(saved?.cur ?? null);
+  /** 決定（または時間切れ）した単位。同じ単位で 2 回送らない */
+  const decidedIdx = useRef(-1);
+  const [timeUp, setTimeUp] = useState(false);
 
   const unit = units[idx]!;
   const qs = unit.qids.map((id) => session.questions[id]!).filter(Boolean);
@@ -246,7 +259,17 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
 
   const ready = unitPaths(idx).every((p) => imgs[p]);
   useEffect(() => {
-    if (ready && unitStart.current === null) unitStart.current = performance.now();
+    if (!ready || unitStart.current !== null) return;
+    const r = resumeAt.current;
+    resumeAt.current = null;
+    if (autoNext && r && r.idx === idx) {
+      // 再開: 前に始めた時刻から数える（閉じている間も時間は進む）
+      unitStart.current = performance.now() - Math.max(0, Date.now() - r.at);
+      return;
+    }
+    unitStart.current = performance.now();
+    if (autoNext) saveArena(session.sessionId, { idx, picks, times: times.current, raws, cur: { idx, at: Date.now() } });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, idx]);
 
   useEffect(() => {
@@ -349,9 +372,12 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
     onExit();
   };
 
-  const decide = () => {
-    if (!allPicked || submitting) return;
-    const spent = unitStart.current === null ? 0 : performance.now() - unitStart.current;
+  /** timeUp = 制限時間を過ぎた（イベントのテスト）。答えていない欄があってもそのまま進む */
+  const decide = (timeUp = false) => {
+    if ((!allPicked && !timeUp) || submitting) return;
+    decidedIdx.current = idx;
+    const raw = unitStart.current === null ? 0 : performance.now() - unitStart.current;
+    const spent = autoNext ? Math.min(raw, limitMs) : raw;
     for (const id of unit.qids) times.current[id] = spent / unit.qids.length;
     if (keepsProgress) saveArena(session.sessionId, { idx: Math.min(idx + 1, units.length - 1), picks, times: times.current, raws });
     if (idx + 1 >= units.length) {
@@ -364,6 +390,21 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
     setIdx(idx + 1);
     areaRef.current?.scrollTo({ top: 0 });
   };
+
+  // イベントのテスト: 制限時間を過ぎたら次の問題へ（最後なら提出）。画像がそろう前は時計が動かないので進まない
+  useEffect(() => {
+    if (!autoNext || submitting || unitStart.current === null || limitMs <= 0 || decidedIdx.current === idx) return;
+    if (now - unitStart.current < limitMs) return;
+    setConfirmExit(false);
+    setTimeUp(true);
+    decide(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [now, idx, submitting]);
+  useEffect(() => {
+    if (!timeUp) return;
+    const t = setTimeout(() => setTimeUp(false), 2200);
+    return () => clearTimeout(t);
+  }, [timeUp, idx]);
 
   const crumb = useMemo(
     () =>
@@ -520,12 +561,14 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
           </div>
         </div>
         <div className="tr-timer">
-          <div className="tr-num">
+          <div className="tr-num" style={autoNext && limitMs - elapsed <= TIME_LOW_MS ? { color: '#FF5A5A' } : undefined}>
             <Ico id="i-clock" size={13} />
-            {fmtTime(elapsed)}
+            {fmtTime(autoNext ? Math.min(elapsed, limitMs) : elapsed)}
             {!isBackStage && <span> / {fmtTime(limitMs)}</span>}
           </div>
-          {isBackStage || isEventTest || isEvent ? (
+          {autoNext ? (
+            <small style={{ color: alpha(T.text, 0.45) }}>時間切れで次へ</small>
+          ) : isBackStage || isEventTest || isEvent ? (
             <small style={{ color: alpha(T.text, 0.45) }}>時間ボーナスなし</small>
           ) : (
             <small className="tr-num" style={{ color: bonus > 0 ? T.accent : alpha(T.text, 0.45) }}>
@@ -534,6 +577,16 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
           )}
         </div>
       </div>
+
+      {timeUp && (
+        <div
+          role="status"
+          className="tr-num"
+          style={{ margin: '8px 12px 0', padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(255, 90, 90, 0.55)', background: 'rgba(255, 90, 90, 0.12)', color: '#FF8A8A', fontSize: 12, fontWeight: 700, textAlign: 'center', flex: 'none' }}
+        >
+          時間切れ — {submitting ? '採点しています' : '次の問題に進みました'}
+        </div>
+      )}
 
       <div className={`tr-qarea${isBack || isSet || leadPath ? '' : ' is-fill'}`} ref={areaRef}>
         {given(isSet ? [...new Set(qs.flatMap((q) => q.given))] : first?.given ?? [])}
@@ -693,7 +746,7 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
             </>
           )
         )}
-        <button type="button" className="tr-cta" disabled={!allPicked || submitting} onClick={decide}>
+        <button type="button" className="tr-cta" disabled={!allPicked || submitting} onClick={() => decide()}>
           {submitting ? '採点中…' : isLast ? '決定して採点へ' : '決定'}
         </button>
       </div>
@@ -715,7 +768,7 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
               {isArena
                 ? '今シーズンの挑戦はもう始まっています（やり直しはできません）。中断しても時間は進み続けます。ツリーの一番下のアリーナのノードから、続きの問題を再開できます。'
                 : isEventTest
-                  ? 'テストはもう始まっています（受けられるのは 1 回だけです）。中断しても、イベント画面の「テストを再開」から続きの問題を解けます。'
+                  ? 'テストはもう始まっています（受けられるのは 1 回だけです）。中断しても、イベント画面の「テストを再開」から続きの問題を解けます。中断している間もいまの問題の時間は進み、制限時間を過ぎると次の問題へ進みます。'
                   : 'この挑戦の解答は記録されません。'}
             </div>
             <button type="button" className={isArena ? 'tr-ar-btn' : 'tr-cta'} onClick={() => setConfirmExit(false)}>
