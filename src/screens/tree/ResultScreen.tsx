@@ -8,7 +8,8 @@
  * 2026-10-19 先生の要望: 出題中に「あとで復習」を付けた問題も結果に出す。間違いと見分けられるよう一覧を 2 つに分ける（同日 先生の指示）:
  * 「間違えた問題」（チェックも付けた問題は「チェック」の印）と「チェックした問題」（正解したがチェックを付けた問題・ラベンダー）。
  * 季節イベントの挑戦（result.event・ボード R05・2026-10-20）: ハロウィンの色（is-ev-halloween）・見出しは「HALLOWEEN · 科目 · 結果」・
- * 加算のカードの下に「EVENT MASTER 64% → 70%」の行と「定着 +4 題 · あと 6 日」・3 枚のタイルは科目の値（累積スコア・マスター度・順位）・
+ * 加算のカードの下に「EVENT MASTER 64% → 70%」の行と「定着 +4 題 · あと 6 日」・
+ * 2026-10-22 先生: イベントの解答は分野のスコア・マスター度に入れない（Proxy）→ 加算の数字と 3 枚のタイルは出さず、正答・時間と「入りません」の一文・
  * 左下のボタンは「イベントへ」（イベント画面に戻る）・出題状況はイベントの 70 題（2026-10-21 先生の指示・科目全体の問題数ではなく）
  */
 import { useRef, useState, type RefObject } from 'react';
@@ -374,7 +375,20 @@ export function ResultScreen({ result, session, marked, manifest, grade, nicknam
           </div>
         )}
 
-        {RETRO ? (
+        {ev ? (
+          // 季節イベントの挑戦は分野のスコア・マスター度に入らない（2026-10-22 先生）: 加算の数字は出さず、正答と時間だけ
+          <div className={'tr-card tr-hero' + (RETRO ? ' is-retro' : '')}>
+            <div className={RETRO ? 'tr-hero-sub' : undefined} style={RETRO ? undefined : { display: 'flex', gap: 16, fontSize: 13, color: T.sub, flexWrap: 'wrap' }}>
+              <span>
+                正答 <b className={RETRO ? 'tr-arc' : 'tr-num'} style={RETRO ? undefined : { fontSize: 16, color: T.text }}>{summary.correct}/{summary.total}</b>
+              </span>
+              <span>
+                時間 <b className={RETRO ? 'tr-arc' : 'tr-num'} style={RETRO ? undefined : { fontSize: 16, color: T.text }}>{fmtTime(summary.elapsedMs)}</b>
+              </span>
+            </div>
+            <div className="tr-note">イベントの解答は、分野のスコア・マスター度・ランキングには入りません</div>
+          </div>
+        ) : RETRO ? (
           // レトロ寄りの見た目（ボード R03）: 主色の枠 ＋ 押し出し ＋ 走査線・「+256」のクローム・内訳はチップ（数字は Press Start 2P）
           <div className="tr-card tr-hero is-retro">
             <div className="tr-hero-top">
@@ -450,7 +464,7 @@ export function ResultScreen({ result, session, marked, manifest, grade, nicknam
 
         {ev && <EventMasterRow ev={ev} />}
 
-        {RETRO ? (
+        {ev ? null : RETRO ? (
           // ボード R03: 3 枚のタイル = 前の値（小）→ 後の値（大）。順位が上がったら主色 ＋ ドットの ▲
           <div className="tr-stat3 is-retro">
             <div className="tr-stat">
