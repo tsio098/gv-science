@@ -465,6 +465,26 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
     void sendEnded(reason === 'away');
   };
 
+  // 1 回だけの挑戦（アリーナ・イベントのテスト）を解いている間は、画面を点けたままにする（Wake Lock）。
+  // 紙で計算していて自動ロックがかかると「画面を離れた」で終了してしまうため（2026-10-23 先生の指示）。使えない端末では何もしない
+  const holdScreen = oneShot && !ended && !sessionEnded;
+  useEffect(() => {
+    if (!holdScreen || !('wakeLock' in navigator)) return;
+    let alive = true;
+    let lock: WakeLockSentinel | null = null;
+    navigator.wakeLock
+      .request('screen')
+      .then((s) => {
+        if (alive) lock = s;
+        else void s.release().catch(() => {});
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+      void lock?.release().catch(() => {});
+    };
+  }, [holdScreen]);
+
   // 画面が隠れたら（アプリの切り替え・ホーム・画面ロック・閉じる）終了。前回離れたまま開いたときは開いた時点で終了。
   // 隠れた直後の提出が届かなかったときは、画面に戻ったら自動でもう一度送る（2026-10-23 不具合調査・iOS は戻った後に失敗が返ることがあるので少し待つ）
   useEffect(() => {
