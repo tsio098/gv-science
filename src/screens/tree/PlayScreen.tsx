@@ -82,7 +82,7 @@ interface ArenaSaved {
   ended?: boolean;
   /**
    * 時計（Date.now）: t0 = この端末で挑戦を始めた時刻・lastAt = 最後に問題を決定した時刻。提出に spanMs = lastAt − t0 を付け、
-   * 通信の失敗・離れたあとの遅れた提出で、離れていた時間まで所要時間を伸ばされないようにする（2026-10-24 不具合調査 ★2）
+   * 通信の失敗・離れたあとの遅れた提出で、離れていた時間まで所要時間を伸ばされないようにする（2026-10-23 不具合調査 ★2）
    */
   t0?: number;
   lastAt?: number;
@@ -112,7 +112,7 @@ type ImgState = Record<string, string | 'error'>;
 const BONUS_GRACE_MS = 25_000;
 /** イベントのテスト: 残りがこれ以下で時計を赤くする */
 const TIME_LOW_MS = 10_000;
-/** 離れたときの提出が返らない: 画面に戻ってこれ以上たっていたら送り直す / 見えている間にこれ以上返らなければ送り直す（2026-10-24 ○17）*/
+/** 離れたときの提出が返らない: 画面に戻ってこれ以上たっていたら送り直す / 見えている間にこれ以上返らなければ送り直す（2026-10-23 ○17）*/
 const STUCK_SEND_MS = 4000;
 const STUCK_SEND_VISIBLE_MS = 10_000;
 const boxesOf = (q: PlayQuestion) => (q.answer.kind === 'choice' ? q.answer.boxes : []);
@@ -425,7 +425,7 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
         );
       }
     } catch (e) {
-      // 前の送信が届いていた（応答だけ届かなかった）→ 保存した採点で結果画面へ（2026-10-24 不具合調査 ○16）
+      // 前の送信が届いていた（応答だけ届かなかった）→ 保存した採点で結果画面へ（2026-10-23 不具合調査 ○16）
       const stored = isArena ? storedResultOf<ArenaResult>(e) : isEventTest ? storedResultOf<SeasonEventTestResult>(e) : null;
       if (stored) {
         saveArena(session.sessionId, null);
@@ -437,7 +437,7 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
         if (keepsProgress) saveArena(session.sessionId, null);
         setSubmitError('この挑戦はすでに提出されています。ツリーに戻って結果を確認してください。');
       } else if (e instanceof TreeApiError && e.code === 'SEASON_CHANGED' && !keepsProgress) {
-        // 4/1 0:00 をまたいだ ROUTE / ABYSS の挑戦は記録しない（Proxy・2026-10-24 △19）
+        // 4/1 0:00 をまたいだ ROUTE / ABYSS の挑戦は記録しない（Proxy・2026-10-23 △19）
         setSubmitError('年度が替わったため、この挑戦は記録されません。ツリーに戻って、もう一度挑戦してください。');
       } else if (e instanceof TreeApiError && e.code === 'ARENA_CLOSED') {
         if (isArena) saveArena(session.sessionId, null);
@@ -461,7 +461,7 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
   /** 途中で終了した挑戦を、決定した問題だけで提出する。keepalive = 画面が隠れた直後（ページが止まっても送り切る）*/
   const sendEnded = async (keepalive = false, force = false) => {
     // 送信中（画面に戻ったときの自動の再送と「もう一度送る」が重なる等）は送らない。
-    // force = 固まった送信を見捨てて送り直す（2026-10-24 不具合調査 ○17: 隠れている間の送信が止まったまま、戻ってから最大 30 秒「採点しています…」だった）。
+    // force = 固まった送信を見捨てて送り直す（2026-10-23 不具合調査 ○17: 隠れている間の送信が止まったまま、戻ってから最大 30 秒「採点しています…」だった）。
     // 見捨てた送信が後から返っても、成功（保存した採点を含む）なら結果に使い、失敗は新しい送信に任せる
     if (sendingRef.current && !force) return;
     sendingRef.current = true;
@@ -487,7 +487,7 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
       saveArena(session.sessionId, null);
       setEnded((s) => s && { ...s, sending: false, result: r, error: null });
     } catch (e) {
-      // 前の送信（keepalive など）が届いていた → 保存した採点を結果として出す（2026-10-24 不具合調査 ○16）
+      // 前の送信（keepalive など）が届いていた → 保存した採点を結果として出す（2026-10-23 不具合調査 ○16）
       const stored = isArena ? storedResultOf<ArenaResult>(e) : storedResultOf<SeasonEventTestResult>(e);
       if (stored) {
         saveArena(session.sessionId, null);

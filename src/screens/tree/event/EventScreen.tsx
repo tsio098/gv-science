@@ -43,7 +43,7 @@ export function EventScreen({ state, subject, subjectName, starting, message, on
   const staff = !!state.staff;
   // 先生は提出した後も受け直せる（Proxy は先生の done を消して始め直す・2026-10-22 デバッグで修正: ボタンが出ず説明と食い違っていた）
   const testOpen = cleared && !!test && (test.status === 'ready' || test.status === 'started' || (staff && test.status === 'done'));
-  // テストを始める前に確かめる（アリーナと同じ・2026-10-24 不具合調査 ○7）。「採点して結果を見る」（started）と先生は確認なし
+  // テストを始める前に確かめる（アリーナと同じ・2026-10-23 不具合調査 ○7）。「採点して結果を見る」（started）と先生は確認なし
   const [confirmTest, setConfirmTest] = useState(false);
   const pressTest = () => (test?.status === 'started' || staff ? onTest() : setConfirmTest(true));
 

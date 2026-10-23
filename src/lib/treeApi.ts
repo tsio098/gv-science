@@ -115,7 +115,7 @@ export interface TreeProgress {
   unlockPlays?: number;
   total: NodeStats & { pct: number };
   fields: Record<string, FieldProgress>;
-  /** 解放した分野の新着の問題数（同じ問題のコピーは 1 問・2026-10-24。古い Proxy は無し）*/
+  /** 解放した分野の新着の問題数（同じ問題のコピーは 1 問・2026-10-23。古い Proxy は無し）*/
   newUnlocked?: number;
   /** 科目・分野ごとの自分の順位（Phase 4）*/
   rank?: { total: RankInfo; fields: Record<string, RankInfo> };
@@ -286,13 +286,13 @@ export interface TreeRanking {
 
 /** API のエラー。code は Worker の error（NOT_REGISTERED / LOCKED / TOO_MANY …）か HTTP_xxx */
 export class TreeApiError extends Error {
-  /** detail = エラーの応答の本文（ALREADY_SUBMITTED の result など・2026-10-24）*/
+  /** detail = エラーの応答の本文（ALREADY_SUBMITTED の result など・2026-10-23）*/
   constructor(public code: string, public status: number, public retryAfter?: number, public detail?: Record<string, unknown> | null) {
     super(code);
   }
 }
 
-/** 提出済みの挑戦を送り直したときに Proxy が付ける保存した採点（アリーナ・イベントのテスト・2026-10-24 不具合調査 ○16）*/
+/** 提出済みの挑戦を送り直したときに Proxy が付ける保存した採点（アリーナ・イベントのテスト・2026-10-23 不具合調査 ○16）*/
 export const storedResultOf = <T>(e: unknown): T | null => {
   const r = e instanceof TreeApiError && e.code === 'ALREADY_SUBMITTED' ? e.detail?.result : null;
   return r && typeof r === 'object' ? (r as T) : null;
@@ -418,7 +418,7 @@ const evQ = () => {
   return n ? `&now=${encodeURIComponent(n)}` : '';
 };
 export const submitTreeSession = (sessionId: string, answers: { qid: string; value: PartValue[]; timeMs: number }[]) =>
-  // nearAck = PROGRESS の通知は表示してから既読にする（noticeKey・2026-10-24）
+  // nearAck = PROGRESS の通知は表示してから既読にする（noticeKey・2026-10-23）
   post<SubmitResult>(`/tree/session/submit?${C2}${evQ()}`, { sessionId, answers, nearAck: true });
 export const saveTreeNickname = (nickname: string) => post<{ nickname: string }>('/tree/profile', { nickname });
 export const fetchTreeRanking = (subject: string, field = '*', qtype: QType | '*' = '*', stage: TreeStage = 'front') => {
@@ -542,7 +542,7 @@ export const startArena = (subject: string, season?: string) => post<ArenaSessio
 export interface EndedSubmit {
   ended?: boolean;
   keepalive?: boolean;
-  /** 始めてから最後に問題を決定するまで（端末の時計・ms）。Proxy は所要時間をこれより長く伸ばさない（2026-10-24）*/
+  /** 始めてから最後に問題を決定するまで（端末の時計・ms）。Proxy は所要時間をこれより長く伸ばさない（2026-10-23）*/
   spanMs?: number;
 }
 const postEnded = async <T>(path: string, body0: Record<string, unknown>, opts: EndedSubmit): Promise<T> => {
@@ -1091,7 +1091,7 @@ export const saveIconSkin = (icon: string | null) => post<{ selected: string | n
 const imageCache = new Map<string, Promise<string>>();
 /**
  * 覚えておく画像の数（古い順に捨てる）。捨てた blob URL は 10 分後に解放する（いま画面に出ている画像・画面が覚えている URL を壊さないように）
- * （2026-10-24 不具合調査 △22: 前は解放せず、長く解き続けると端末のメモリが増え続けた）
+ * （2026-10-23 不具合調査 △22: 前は解放せず、長く解き続けると端末のメモリが増え続けた）
  */
 const IMAGE_CACHE_MAX = 240;
 const IMAGE_REVOKE_DELAY_MS = 10 * 60_000;

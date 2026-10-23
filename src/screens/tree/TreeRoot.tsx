@@ -291,7 +291,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   const pendingAt = useRef(0);
   /**
    * 出題中だったので取らずに飛ばした（取り残し）。開いた直後に問題を始めると pendingAt が 0 のままで、
-   * 結果画面に移っても取りに行かず通知が来なくなっていた（2026-10-24 不具合調査 ○14）→ 次にツリー・結果画面に移ったら必ず取る
+   * 結果画面に移っても取りに行かず通知が来なくなっていた（2026-10-23 不具合調査 ○14）→ 次にツリー・結果画面に移ったら必ず取る
    */
   const pendingSkipped = useRef(false);
   const loadPending = useCallback(() => {
@@ -385,7 +385,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       });
   }, []);
 
-  // 読み込みに失敗しても前の一覧を残す（2026-10-24 不具合調査 ○8: 前は空にして 0 枚・一覧も空に見えた）。
+  // 読み込みに失敗しても前の一覧を残す（2026-10-23 不具合調査 ○8: 前は空にして 0 枚・一覧も空に見えた）。
   // 失敗したら 1 回だけ 5 秒後に読み直し、チケットの画面を開いたときにももう一度読む
   const ticketsFailed = useRef(false);
   const loadTickets = useCallback((retry = true) => {

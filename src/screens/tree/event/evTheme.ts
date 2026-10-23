@@ -93,7 +93,7 @@ export const evPeriod = (start: number, end: number) => {
 };
 
 /**
- * チケットを使える日「10/31」/「12/25-12/26」（ticketUntil は含まない）。無ければ null（2026-10-24 不具合調査 ○13: 先生用の画面が「10/31」の固定文字だった）
+ * チケットを使える日「10/31」/「12/25-12/26」（ticketUntil は含まない）。無ければ null（2026-10-23 不具合調査 ○13: 先生用の画面が「10/31」の固定文字だった）
  */
 export const evTicketDays = (from: number | null | undefined, until: number | null | undefined) => {
   if (from == null || until == null) return null;
