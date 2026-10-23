@@ -242,6 +242,8 @@ export interface SubmitResult {
   newlyUnlocked: string[];
   /** 分野の順位の前後（Phase 4）*/
   rank?: { before: RankInfo; after: RankInfo };
+  /** 科目ランキング（ROUTE の科目合計）の前後（2026-10-23〜・季節イベント・ABYSS は null。古い Proxy では無い）*/
+  subjectRank?: { before: RankInfo; after: RankInfo } | null;
   /** この提出で獲得したトロフィー（2026-10-19〜。古い Proxy では無い）*/
   trophies?: TrophyGet[];
   /** 数えるトロフィーが 80% に届いた（PROGRESS の通知。サーバが 1 回だけ返す）*/

@@ -106,6 +106,13 @@ export function FxLabScreen({ grade, nickname, subject, subjectName, season, onT
     { label: 'NODE OPEN（分野の解放）', items: () => [{ key: 'node', kind: 'node', head: 'NODE OPEN!', main: '気体の性質', sub: `${subjectName} · ROUTE` }] },
     { label: 'MASTER（種別のマスター）', items: () => [{ key: 'master', kind: 'master', head: 'MASTER!', main: '非金属 · 正誤', sub: 'マスター度 80%' }] },
     { label: 'RANK UP（順位アップ）', items: () => [{ key: 'rank', kind: 'rank', head: 'RANK UP!', main: '非金属 7 位 → 5 位', sub: '38 人中' }] },
+    {
+      label: 'RANK UP（分野＋科目ランキング）',
+      items: () => [
+        { key: 'rank2', kind: 'rank', head: 'RANK UP!', main: '非金属 7 位 → 5 位', sub: '38 人中' },
+        { key: 'rankS', kind: 'rank', head: 'RANK UP!', main: `${subjectName} 12 位 → 9 位`, sub: '科目ランキング · 38 人中' },
+      ],
+    },
     { label: 'RANK DOWN（順位ダウン）', items: () => [noticeToast({ key: 'rd', type: 'rank_down', subject, rank: 7, prevRank: 5, of: 38 }, subjectName)!] },
     {
       label: 'RANK DOWN（分野ランキング・2 分野）',

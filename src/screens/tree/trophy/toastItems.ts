@@ -170,6 +170,16 @@ export function submitToasts(r: SubmitResult, manifest: TreeManifest, subjectNam
       sub: `${r.rank.after.of} 人中`,
     });
   }
+  // 科目ランキングの順位アップ（2026-10-23 先生の依頼）。分野の RANK UP と並べて出す
+  const sb = r.subjectRank?.before?.rank ?? null;
+  const sa = r.subjectRank?.after?.rank ?? null;
+  if (r.subjectRank && sa != null && (sb == null || sa < sb)) {
+    out.push({
+      key: `rankS:${r.sessionId}`, kind: 'rank', head: 'RANK UP!',
+      main: sb == null ? `${subjectName} ${sa} 位に` : `${subjectName} ${sb} 位 → ${sa} 位`,
+      sub: `科目ランキング · ${r.subjectRank.after.of} 人中`,
+    });
+  }
   return out;
 }
 
