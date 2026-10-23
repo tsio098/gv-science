@@ -83,8 +83,8 @@ import '../../styles/tree-trophy.css';
 const subjectJa = (s: string) => TREE_SUBJECT_NAME[s as TreeSubject] ?? SUBJECT_JA[s as ScheduleSubject] ?? s;
 /** 季節イベントの挑戦（field = '_event'）か */
 const isEventSession = (s: TreeSession) => s.field === '_event' || !!(s as { event?: unknown }).event;
-/** 通知（pending）を開いたあとに取り直す間隔（ツリーに戻った・画面に戻ってきたとき）*/
-const PENDING_GAP_MS = 120_000;
+/** 通知（pending）を取り直す最短の間隔（画面の切替・画面に戻ってきたとき。D1 の読み取りを増やしすぎない）*/
+const PENDING_GAP_MS = 30_000;
 
 /**
  * LINE 内で開いたときの自分の LINE の ID（userId）。「塾生専用です」画面に出し、
@@ -310,15 +310,17 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
     run();
   }, [pushToasts]);
   /**
-   * 結果画面などからツリーに戻ったとき・LINE が画面を残したまま戻ってきたとき（visible）も取り直す（2 分に 1 回まで）。
-   * 2026-10-23 修正: 開いたとき・科目の切替だけだったので、続けて解いている間に抜かれても RANK DOWN（ほかの人のファースト・アリーナの通知も）が次に開き直すまで届かなかった
+   * 画面が切り替わったとき（結果・ランキング・トロフィー・ツリーに戻る など）・LINE が画面を残したまま戻ってきたとき（visible）も取り直す（30 秒に 1 回まで）。
+   * 出題中の画面に入るときは取らない（出題中は通知を出さないので、終わって切り替わったときに取る）。
+   * 2026-10-23 修正（先生の依頼）: 開いたとき・科目の切替だけだったので、続けて解いている間に抜かれても RANK DOWN（ほかの人のファースト・アリーナの通知も）が次に開き直すまで届かなかった
    */
   const viewKind = view.kind;
   const prevViewKind = useRef(viewKind);
   useEffect(() => {
     const from = prevViewKind.current;
     prevViewKind.current = viewKind;
-    if (viewKind === 'tree' && from !== 'tree' && pendingAt.current && Date.now() - pendingAt.current >= PENDING_GAP_MS) loadPending();
+    if (viewKind === from || viewKind === 'play' || viewKind === 'arenaPlay' || viewKind === 'eventTest') return;
+    if (pendingAt.current && Date.now() - pendingAt.current >= PENDING_GAP_MS) loadPending();
   }, [viewKind, loadPending]);
   useEffect(() => {
     const onVisible = () => {
