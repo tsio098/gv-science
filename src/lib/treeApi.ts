@@ -701,6 +701,8 @@ export type TreeNotice =
   | { key: string; type: 'arena_last_day'; subject: string; season: ArenaSeason }
   /** 科目ランキングの順位ダウン（2026-10-19・ほかの人に抜かれた。ツリーを開いたとき 1 回）*/
   | { key: string; type: 'rank_down'; subject: string; rank: number; prevRank: number; of: number }
+  /** 分野ランキングの順位ダウン（2026-10-23・1 分野 1 件。fieldName は manifest の分野名・読めなければ空）*/
+  | { key: string; type: 'field_rank_down'; subject: string; field: string; fieldName: string; rank: number; prevRank: number; of: number }
   /** LV.30 チケット（まだ知らせていないもの・2026-10-19）*/
   | { key: string; type: 'level30'; subject: string; ticketId: string }
   /** LV.50 チケット（まだ知らせていないもの・2026-10-22）*/

@@ -80,6 +80,9 @@ export function nearToast(n: TrophyNear): ToastItem {
   return { key: `near:${n.subject}:${n.id}`, kind: 'progress', head: `PROGRESS ${n.now}/${n.max}`, main: n.name, prog: { now: n.now, max: n.max } };
 }
 
+/** 表示幅（全角 1・半角 0.5）*/
+const textUnits = (t: string) => [...t].reduce((w, c) => w + (c.charCodeAt(0) < 0x2000 ? 0.5 : 1), 0);
+
 /** サーバのお知らせ（ファースト・アリーナ・先生の記録）*/
 export function noticeToast(n: TreeNotice, subjectName: string): ToastItem | null {
   switch (n.type) {
@@ -107,6 +110,16 @@ export function noticeToast(n: TreeNotice, subjectName: string): ToastItem | nul
         key: n.key, noticeKey: n.key, kind: 'rankDown', head: 'RANK DOWN',
         main: `${subjectName} ${n.prevRank} 位 → ${n.rank} 位`, sub: `${n.of} 人中 · 抜き返そう`,
       };
+    case 'field_rank_down': {
+      // 通知の 1 行に入るのはおよそ全角 13 字（.tt-main は折り返さず切る）→ 長い分野名は「12→15位」に詰め、それでも入らなければ順位を 3 行目へ
+      const name = n.fieldName || subjectName;
+      const full = `${name} ${n.prevRank} 位 → ${n.rank} 位`;
+      const compact = `${name} ${n.prevRank}→${n.rank}位`;
+      const fits = (t: string) => textUnits(t) <= 13;
+      const main = fits(full) ? full : fits(compact) ? compact : name;
+      const sub = main === name ? `${n.prevRank} 位 → ${n.rank} 位 · ${subjectName}` : `${subjectName} · ${n.of} 人中 · 抜き返そう`;
+      return { key: n.key, noticeKey: n.key, kind: 'rankDown', head: 'RANK DOWN', main, sub };
+    }
     case 'level30':
       return level30Toast(n, subjectName);
     case 'level50':

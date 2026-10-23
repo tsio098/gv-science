@@ -107,6 +107,13 @@ export function FxLabScreen({ grade, nickname, subject, subjectName, season, onT
     { label: 'MASTER（種別のマスター）', items: () => [{ key: 'master', kind: 'master', head: 'MASTER!', main: '非金属 · 正誤', sub: 'マスター度 80%' }] },
     { label: 'RANK UP（順位アップ）', items: () => [{ key: 'rank', kind: 'rank', head: 'RANK UP!', main: '非金属 7 位 → 5 位', sub: '38 人中' }] },
     { label: 'RANK DOWN（順位ダウン）', items: () => [noticeToast({ key: 'rd', type: 'rank_down', subject, rank: 7, prevRank: 5, of: 38 }, subjectName)!] },
+    {
+      label: 'RANK DOWN（分野ランキング・2 分野）',
+      items: () => [
+        noticeToast({ key: 'rdf1', type: 'field_rank_down', subject, field: 'a', fieldName: '化学結合と結晶', rank: 5, prevRank: 3, of: 38 }, subjectName)!,
+        noticeToast({ key: 'rdf2', type: 'field_rank_down', subject, field: 'b', fieldName: '化学結合と結晶の性質', rank: 15, prevRank: 12, of: 38 }, subjectName)!,
+      ],
+    },
     { label: 'NEW（新着）', items: () => [{ key: 'news', kind: 'news', head: 'NEW +3', main: '非金属に新着 3 問', sub: `${subjectName} · ROUTE` }] },
     { label: 'PROGRESS（80% に届いた）', items: () => [{ key: 'near', kind: 'progress', head: 'PROGRESS 40/50', main: '待て、そして希望せよ', prog: { now: 40, max: 50 } }] },
     { label: 'LAST DAY（アリーナ最終日）', items: () => [noticeToast({ key: 'ld', type: 'arena_last_day', subject, season: cur }, subjectName)!] },
