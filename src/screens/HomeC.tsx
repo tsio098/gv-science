@@ -8,7 +8,7 @@ import { fetchArticles, fetchHome, fetchSchedules } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
 import { prefetch } from '../lib/swrCache';
 import { importTreeShareModal, preloadScoresScreen, preloadTreeRoot } from '../lib/lazyImports';
-import { fetchTreeHome } from '../lib/treeApi';
+import { fetchTreeHome, seasonEventNowParam } from '../lib/treeApi';
 import { TreeBanner, treeBannerKind } from '../components/TreeBanner';
 import { rememberedIconSkin } from './tree/event/evTheme';
 import { TREE_SUBJECT_NAME, pickTreeSubject, treeSubjectsFor } from '../lib/treeSubject';
@@ -32,6 +32,13 @@ import {
   SearchIcon,
   TrendIcon,
 } from '../components/Icon';
+
+/** バナーの判定の時刻（先生の ?evnow のときはその日付で季節イベントのバナーを確認できる・2026-10-23）*/
+const bannerNow = () => {
+  const n = seasonEventNowParam();
+  const t = n ? Date.parse(n) : NaN;
+  return Number.isFinite(t) ? t : Date.now();
+};
 
 /** 科目キー → タイルに表示するアイコン */
 const SUBJECT_ICON: Record<ScheduleSubject, JSX.Element> = {
@@ -81,8 +88,9 @@ function AnchorTreeCard({ onOpen, subjects, staff }: { onOpen: () => void; subje
     <>
       <div className="at-home-banner">
         <TreeBanner
-          kind={treeBannerKind(p?.home)}
+          kind={treeBannerKind(p?.home, bannerNow())}
           season={p?.home?.season}
+          event={p?.home?.event}
           // Proxy が iconSkin を返したら null（錨を外した・持っていない）でもそれを使う。端末の記憶は返さない古い Proxy のときだけ（2026-10-21 検証で修正）
           iconSkin={p?.home && 'iconSkin' in p.home ? p.home.iconSkin ?? null : rememberedIconSkin()}
           onOpen={() => {

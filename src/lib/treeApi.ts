@@ -588,6 +588,15 @@ export interface TreeHomeFlags {
   season: ArenaSeason;
   /** 着せ替えの錨（季節イベント・2026-10-20）。古い Proxy は無し */
   iconSkin?: string | null;
+  /** 開催中の季節イベント（バナー・2026-10-23）。予告中・終わった後は null。古い Proxy は無し */
+  event?: TreeHomeEvent | null;
+}
+
+/** ホームのバナーに出す季節イベント（end = 終わりの時刻 ms・含まない）*/
+export interface TreeHomeEvent {
+  id: string;
+  kind: string;
+  end: number;
 }
 
 export const fetchArenaTickets = () => get<{ tickets: ArenaTicket[] }>('/tree/arena/tickets');
@@ -626,8 +635,9 @@ export const redeemTreeTicket = (kind: TreeTicketKind, id: string, sig: string) 
 export const redeemArenaTicket = (id: string, sig: string) => post<{ ok: boolean; usedAt: number }>('/tree/arena/ticket/use', { id, sig });
 export const fetchTreeEvents = () => get<{ events: TreeEvent[] }>('/tree/events');
 export const markTreeEventsSeen = (keys: string[]) => post<{ ok: boolean }>('/tree/events/seen', { keys });
+// 先生の ?evnow のときはその日付でイベントのバナーを出す（Proxy は先生だけ now= を使う・2026-10-23）
 export const fetchTreeHome = (subject: string) =>
-  get<TreeProgress & { home?: TreeHomeFlags }>(`/tree/progress?subject=${encodeURIComponent(subject)}&home=1`);
+  get<TreeProgress & { home?: TreeHomeFlags }>(`/tree/progress?subject=${encodeURIComponent(subject)}&home=1${evQ()}`);
 
 /* ── トロフィー・通知（2026-10-19・実装手順_トロフィー）────────────
  * 科目ごとに別に獲得。グレード B / S / G / P（プラチナ）/ F（ファースト = 塾内で最初の 1 人だけ）。

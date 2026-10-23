@@ -41,6 +41,15 @@
   object-fit: cover;
 }
 
+/* 季節イベントのバナー（2026-10-23）: 背景は 4px ドットの PNG → にじませない。地と影はハロウィンの紫 */
+.tb-banner.is-ev {
+  background: #1e0c36;
+  box-shadow: 0 6px 18px rgba(30, 12, 54, 0.32);
+}
+.tb-bg.is-pixel {
+  image-rendering: pixelated;
+}
+
 /* ── ログイン画面 ── */
 .tl-bg {
   position: absolute;
