@@ -1016,8 +1016,21 @@ export const startSeasonEventSession = (subject: string, eventId: string) =>
   post<SeasonEventSession>(`/tree/season-event/session/start?${C2}${evQ()}`, { subject, eventId });
 export const startSeasonEventTest = (subject: string, eventId: string) =>
   post<SeasonEventTestSession>(`/tree/season-event/test/start?${C2}${evQ()}`, { subject, eventId });
+/**
+ * テストの提出で、始めた後に先生が外した問題があったときの応答（2026-10-23）。採点はまだ。
+ * 代わりの問題（units・questions）を続けて解き、全部の答えでもう一度提出する。画面を離れた提出（ended）には返らない
+ */
+export interface SeasonEventTestMore {
+  sessionId: string;
+  eventTest: true;
+  more: true;
+  units: PlayUnit[];
+  questions: Record<string, PlayQuestion>;
+  passAt: number;
+}
+
 export const submitSeasonEventTest = (sessionId: string, answers: { qid: string; value: PartValue[]; timeMs: number }[], opts: EndedSubmit = {}) =>
-  postEnded<SeasonEventTestResult>(`/tree/season-event/test/submit?${C2}${evQ()}`, { sessionId, answers }, opts);
+  postEnded<SeasonEventTestResult | SeasonEventTestMore>(`/tree/season-event/test/submit?${C2}${evQ()}`, { sessionId, answers }, opts);
 
 /* ── 先生用 イベントの生徒の状況（2026-10-21）: 達成率・挑戦回数・テストの点数。生徒は key（本名は GAS treeNames から）── */
 

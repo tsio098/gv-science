@@ -200,7 +200,11 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
   const oneShot = keepsProgress;
   const col = isArena ? ARENA_GOLD : isEvent ? '#FF9A1F' : groupColor(group);
   const bonusMax = isArena ? 75 : 25;
-  const units = session.units;
+  /** テストの途中で先生が外した問題の代わりに、提出のときに足された問題（2026-10-23・Proxy の more）*/
+  const [extra, setExtra] = useState<{ units: TreeSession['units']; questions: TreeSession['questions'] } | null>(null);
+  const units = useMemo(() => (extra ? [...session.units, ...extra.units] : session.units), [session.units, extra]);
+  const questions = useMemo(() => (extra ? { ...session.questions, ...extra.questions } : session.questions), [session.questions, extra]);
+  const [extraNote, setExtraNote] = useState(false);
   const totalQ = units.reduce((s, u) => s + u.qids.length, 0);
   const [saved] = useState(() => (keepsProgress ? loadArena(session.sessionId) : null));
   const sessionEnded = (session as { ended?: boolean }).ended === true || saved?.ended === true;
@@ -253,7 +257,7 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
   rawsRef.current = raws;
 
   const unit = units[idx]!;
-  const qs = unit.qids.map((id) => session.questions[id]!).filter(Boolean);
+  const qs = unit.qids.map((id) => questions[id]!).filter(Boolean);
   const isSet = !!unit.set;
   const first = qs[0];
   // ABYSS の画面にするか: ABYSS の挑戦、またはアリーナの ABYSS の設問（共通テスト後）
@@ -262,7 +266,7 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
   const unitPaths = (i: number) => {
     const u = units[i];
     if (!u) return [];
-    const list = u.qids.map((id) => session.questions[id]);
+    const list = u.qids.map((id) => questions[id]);
     const leads = u.lead ? [u.lead] : list.map((q) => q?.img.lead).filter(Boolean);
     return [...new Set([...leads, ...list.map((q) => q?.img.body)].filter((p): p is string => !!p))];
   };
@@ -280,7 +284,7 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session.sessionId]);
+  }, [session.sessionId, units.length]);
 
   // キーパッドを出すと問題の枠が縮むので、入力中の数値欄を見える位置へ（スマホでキーパッドの裏に隠れないように）
   useEffect(() => {
@@ -327,7 +331,7 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
   const allPicked = qs.every(filledQ);
   const setRaw = (qid: string, i: number, v: RawVal) =>
     setRaws((s) => {
-      const q = session.questions[qid];
+      const q = questions[qid];
       const cur = s[qid] ? [...s[qid]!] : partsOf(q!).map(emptyRaw);
       cur[i] = v;
       return { ...s, [qid]: cur };
@@ -362,7 +366,7 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
     try {
       const answers = units.flatMap((u) =>
         u.qids.map((qid) => {
-          const q = session.questions[qid];
+          const q = questions[qid];
           const value =
             q && q.answer.kind === 'parts'
               ? partsOf(q).map((p, i) => toValue(p, raws[qid]?.[i]))
@@ -376,6 +380,19 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
         onArenaDone?.(r);
       } else if (isEventTest) {
         const r = await submitSeasonEventTest(session.sessionId, answers);
+        if ('more' in r) {
+          // 先生が外した問題の代わり → 採点せずに続けて解く（足した問題は今の一覧の後ろ）
+          const next = units.length;
+          setExtra((x) => ({ units: [...(x?.units ?? []), ...r.units], questions: { ...(x?.questions ?? {}), ...r.questions } }));
+          saveArena(session.sessionId, { idx: next, picks, times: times.current, raws });
+          unitStart.current = null;
+          setZoomPath(null);
+          setNumFocus(null);
+          setExtraNote(true);
+          setIdx(next);
+          areaRef.current?.scrollTo({ top: 0 });
+          return;
+        }
         saveArena(session.sessionId, null);
         onEventTestDone?.(r);
       } else {
@@ -416,7 +433,7 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
       .flatMap((u) => u.qids)
       .filter((qid) => times.current[qid] != null)
       .map((qid) => {
-        const q = session.questions[qid];
+        const q = questions[qid];
         const value =
           q && q.answer.kind === 'parts'
             ? partsOf(q).map((p, i) => toValue(p, rawsRef.current[qid]?.[i]))
@@ -428,6 +445,7 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
       const r = isArena
         ? await submitArena(session.sessionId, answers, { ended: true, keepalive })
         : await submitSeasonEventTest(session.sessionId, answers, { ended: true, keepalive });
+      if ('more' in r) throw new Error('more'); // 離れた提出（ended）には返らない
       saveArena(session.sessionId, null);
       setEnded((s) => s && { ...s, sending: false, result: r });
     } catch (e) {
@@ -780,6 +798,14 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
         </div>
       </div>
 
+      {extraNote && !timeUp && (
+        <div
+          role="status"
+          style={{ margin: '8px 12px 0', padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(255, 154, 31, 0.55)', background: 'rgba(255, 154, 31, 0.12)', color: '#FFB25C', fontSize: 12, fontWeight: 700, textAlign: 'center', flex: 'none' }}
+        >
+          先生が問題を差し替えました — 追加の問題に答えてから採点します
+        </div>
+      )}
       {timeUp && (
         <div
           role="status"
@@ -895,7 +921,7 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
       <div className="tr-pad">
         {isBack ? (
           (() => {
-            const fq = numFocus ? session.questions[numFocus.qid] : null;
+            const fq = numFocus ? questions[numFocus.qid] : null;
             const fp = fq ? partsOf(fq)[numFocus!.i] : null;
             if (fq && fp && fp.kind === 'numeric') {
               const v = (raws[fq.id]?.[numFocus!.i] as { m: string; e: string } | undefined) ?? { m: '', e: '' };
