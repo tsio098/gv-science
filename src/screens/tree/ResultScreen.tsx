@@ -338,6 +338,8 @@ export function ResultScreen({ result, session, marked, manifest, grade, nicknam
   const mBefore = before ? Math.round(before.mastery * 100) : 0;
   const mAfter = after ? Math.round(after.mastery * 100) : 0;
   const keep = result.results.filter((r) => r.correct && !r.firstCorrect && r.bonusUp === 0).length;
+  // 分母＝この挑戦で増やせた点の上限（2026-10-23 先生）。古い Proxy の応答では問題数 × 100
+  const gainMax = result.summary.max ?? result.summary.total * 100;
   const unlockedNames = result.newlyUnlocked
     .map((id) => manifest.fields.find((f) => f.id === id))
     .filter((f) => f && f.total > 0)
@@ -423,7 +425,7 @@ export function ResultScreen({ result, session, marked, manifest, grade, nicknam
             </div>
             <div className="tr-hero-line">
               <span className="tr-arc tr-chr tr-hero-big">+{fmtScore(summary.gain)}</span>
-              <span className="tr-arc tr-hero-max">/{summary.total * 100}</span>
+              <span className="tr-arc tr-hero-max">/{fmtScore(gainMax)}</span>
             </div>
             {(summary.newCorrect > 0 || summary.bonusPoints > 0 || keep > 0) && (
               <div className="tr-hero-chips">
@@ -458,7 +460,7 @@ export function ResultScreen({ result, session, marked, manifest, grade, nicknam
             <div style={{ fontSize: 12, color: T.sub }}>今回の加算</div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
               <span className="tr-num tr-hero-num">+{fmtScore(summary.gain)}</span>
-              <span style={{ fontSize: 13, color: T.sub }}>/ {summary.total * 100}</span>
+              <span style={{ fontSize: 13, color: T.sub }}>/ {fmtScore(gainMax)}</span>
             </div>
             <div style={{ display: 'flex', gap: 16, fontSize: 13, color: T.sub, flexWrap: 'wrap' }}>
               <span>

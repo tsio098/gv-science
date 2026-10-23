@@ -231,6 +231,8 @@ export interface SubmitResult {
     correct: number;
     total: number;
     elapsedMs: number;
+    /** この挑戦で増やせた点の上限（問ごとに 100 − 挑戦前の自己ベスト）。古い Proxy は返さない */
+    max?: number;
   };
   node: { field: string; qtype: QType; before: NodeStats | null; after: NodeStats | null };
   fieldScore: {
