@@ -47,7 +47,8 @@ export function numericLabel(p: AbyssPart & { kind: 'numeric' }, v: { m: string;
 
 const SYMBOLS: [string, string][] = [
   ['₂', '下付き 2'], ['₃', '下付き 3'], ['₄', '下付き 4'], ['⁺', '上付き プラス'], ['⁻', '上付き マイナス'], ['²⁺', '2 プラス'],
-  ['→', '右矢印'], ['⇌', '可逆矢印'], ['(', '左かっこ'], [')', '右かっこ'], ['・', '中点'],
+  ['→', '右矢印'], ['⇌', '可逆矢印'], ['(', '左かっこ'], [')', '右かっこ'], ['[', '左角かっこ'], [']', '右角かっこ'],
+  ['-', 'マイナス・単結合'], ['=', '二重結合'], ['・', '中点'],
 ];
 
 function TermInput({ value, equation, onChange, label }: { value: string; equation: boolean; onChange: (v: string) => void; label: string }) {

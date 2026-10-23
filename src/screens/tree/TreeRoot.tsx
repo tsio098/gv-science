@@ -230,7 +230,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   const [evNowTag, setEvNowTag] = useState<string | null>(() => seasonEventNowParam());
   setTreeStage(stage);
   /** 通知のコールバック（先に作る）から呼ぶ loadTickets */
-  const loadTicketsRef = useRef<() => void>(() => {});
+  const loadTicketsRef = useRef<(retry?: boolean) => void>(() => {});
 
   /* ── トロフィー・通知（2026-10-19・実装手順_トロフィー §6）──
    * キューは 1 つ。出題中（play / arenaPlay）と演出中（events）は出さず、終わったら続きを出す。
@@ -289,6 +289,11 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   const pendingRun = useRef({ busy: false, again: false });
   /** 最後に pending を取りに行った時刻（0 = まだ開いていない）*/
   const pendingAt = useRef(0);
+  /**
+   * 出題中だったので取らずに飛ばした（取り残し）。開いた直後に問題を始めると pendingAt が 0 のままで、
+   * 結果画面に移っても取りに行かず通知が来なくなっていた（2026-10-24 不具合調査 ○14）→ 次にツリー・結果画面に移ったら必ず取る
+   */
+  const pendingSkipped = useRef(false);
   const loadPending = useCallback(() => {
     const st = pendingRun.current;
     if (st.busy) {
@@ -299,10 +304,12 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
     const run = () => {
       // 問題を解いている画面に入っていたら取らない（2 本目のやり直しが出題中に走らないように。解き終わって画面が変わったときに取る）
       if (isSolvingView(viewRef.current.kind)) {
+        pendingSkipped.current = true;
         st.busy = false;
         st.again = false;
         return;
       }
+      pendingSkipped.current = false;
       pendingAt.current = Date.now();
       fetchTrophyPending()
         .then((p) => {
@@ -333,7 +340,9 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   useEffect(() => {
     const from = prevViewKind.current;
     prevViewKind.current = viewKind;
-    if (viewKind === from || !isPendingView(viewKind) || !pendingAt.current) return;
+    if (viewKind === from || !isPendingView(viewKind)) return;
+    if (pendingSkipped.current) return loadPending();
+    if (!pendingAt.current) return;
     if (isSolvingView(from) || Date.now() - pendingAt.current >= PENDING_GAP_MS) loadPending();
   }, [viewKind, loadPending]);
 
@@ -376,11 +385,23 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       });
   }, []);
 
-  const loadTickets = useCallback(() => {
+  // 読み込みに失敗しても前の一覧を残す（2026-10-24 不具合調査 ○8: 前は空にして 0 枚・一覧も空に見えた）。
+  // 失敗したら 1 回だけ 5 秒後に読み直し、チケットの画面を開いたときにももう一度読む
+  const ticketsFailed = useRef(false);
+  const loadTickets = useCallback((retry = true) => {
     fetchTreeTickets()
-      .then(setTickets)
-      .catch(() => setTickets([]));
+      .then((list) => {
+        ticketsFailed.current = false;
+        setTickets(list);
+      })
+      .catch(() => {
+        ticketsFailed.current = true;
+        if (retry) window.setTimeout(() => loadTicketsRef.current(false), 5000);
+      });
   }, []);
+  useEffect(() => {
+    if (view.kind === 'tickets' && ticketsFailed.current) loadTickets(false);
+  }, [view.kind, loadTickets]);
   loadTicketsRef.current = loadTickets;
 
   useEffect(() => {

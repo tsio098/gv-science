@@ -44,7 +44,7 @@ interface EndState {
   /** 送り直しても通らないエラー */
   final: boolean;
 }
-import { QTYPE_LABEL, TreeApiError, circled, submitArena, submitSeasonEventTest, submitTreeSession, treeImage } from '../../lib/treeApi';
+import { QTYPE_LABEL, TreeApiError, circled, storedResultOf, submitArena, submitSeasonEventTest, submitTreeSession, treeImage } from '../../lib/treeApi';
 import { EV_NAME } from './event/evTheme';
 import { Ico } from './TreeIcons';
 import { ZoomImage } from './ZoomImage';
@@ -80,6 +80,12 @@ interface ArenaSaved {
    * 端末側でも終了扱いにして続きを解かせない（2026-10-23 不具合調査）
    */
   ended?: boolean;
+  /**
+   * 時計（Date.now）: t0 = この端末で挑戦を始めた時刻・lastAt = 最後に問題を決定した時刻。提出に spanMs = lastAt − t0 を付け、
+   * 通信の失敗・離れたあとの遅れた提出で、離れていた時間まで所要時間を伸ばされないようにする（2026-10-24 不具合調査 ★2）
+   */
+  t0?: number;
+  lastAt?: number;
 }
 const arenaKey = (sessionId: string) => `tr-arena:${sessionId}`;
 function loadArena(sessionId: string): ArenaSaved | null {
@@ -106,6 +112,9 @@ type ImgState = Record<string, string | 'error'>;
 const BONUS_GRACE_MS = 25_000;
 /** イベントのテスト: 残りがこれ以下で時計を赤くする */
 const TIME_LOW_MS = 10_000;
+/** 離れたときの提出が返らない: 画面に戻ってこれ以上たっていたら送り直す / 見えている間にこれ以上返らなければ送り直す（2026-10-24 ○17）*/
+const STUCK_SEND_MS = 4000;
+const STUCK_SEND_VISIBLE_MS = 10_000;
 const boxesOf = (q: PlayQuestion) => (q.answer.kind === 'choice' ? q.answer.boxes : []);
 const boxLabel = (q: PlayQuestion) => boxesOf(q).map((b) => b.n).join('・');
 /**
@@ -208,6 +217,17 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
   const totalQ = units.reduce((s, u) => s + u.qids.length, 0);
   const [saved] = useState(() => (keepsProgress ? loadArena(session.sessionId) : null));
   const sessionEnded = (session as { ended?: boolean }).ended === true || saved?.ended === true;
+  // 途中経過の保存が前の版（t0 なし）なら時計は使わない（spanMs を送らない = 今までどおり）
+  const clock = useRef<{ t0: number | null; lastAt: number | null }>({
+    t0: saved ? (saved.t0 ?? null) : Date.now(),
+    lastAt: saved?.lastAt ?? null,
+  });
+  const saveProgress = (v: ArenaSaved) =>
+    saveArena(session.sessionId, { ...v, t0: clock.current.t0 ?? undefined, lastAt: clock.current.lastAt ?? undefined });
+  const spanMs = () => {
+    const { t0, lastAt } = clock.current;
+    return t0 != null && lastAt != null ? Math.max(0, Math.round(lastAt - t0)) : undefined;
+  };
   // 再開はまだ決定していない最初の問題から（決定した問題は times に入る。順番が変わっても取りこぼさない）
   const [idx, setIdx] = useState(() => {
     if (!saved) return 0;
@@ -249,6 +269,9 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
   endStateRef.current = ended;
   /** 途中終了の提出を送っている間 */
   const sendingRef = useRef(false);
+  /** 送信の世代（force で送り直すと増える）と、いまの送信を始めた時刻 */
+  const sendGen = useRef(0);
+  const sendAt = useRef(0);
   /** 最後の決定の提出中（このときは画面を離れても終了させない）*/
   const submittingRef = useRef(false);
   const picksRef = useRef(picks);
@@ -309,7 +332,7 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
       return;
     }
     unitStart.current = performance.now();
-    if (autoNext) saveArena(session.sessionId, { idx, picks, times: times.current, raws, cur: { idx, at: Date.now() } });
+    if (autoNext) saveProgress({ idx, picks, times: times.current, raws, cur: { idx, at: Date.now() } });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, idx]);
 
@@ -375,16 +398,16 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
         })
       );
       if (isArena) {
-        const r = await submitArena(session.sessionId, answers);
+        const r = await submitArena(session.sessionId, answers, { spanMs: spanMs() });
         saveArena(session.sessionId, null);
         onArenaDone?.(r);
       } else if (isEventTest) {
-        const r = await submitSeasonEventTest(session.sessionId, answers);
+        const r = await submitSeasonEventTest(session.sessionId, answers, { spanMs: spanMs() });
         if ('more' in r) {
           // 先生が外した問題の代わり → 採点せずに続けて解く（足した問題は今の一覧の後ろ）
           const next = units.length;
           setExtra((x) => ({ units: [...(x?.units ?? []), ...r.units], questions: { ...(x?.questions ?? {}), ...r.questions } }));
-          saveArena(session.sessionId, { idx: next, picks, times: times.current, raws });
+          saveProgress({ idx: next, picks, times: times.current, raws });
           unitStart.current = null;
           setZoomPath(null);
           setNumFocus(null);
@@ -402,9 +425,20 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
         );
       }
     } catch (e) {
+      // 前の送信が届いていた（応答だけ届かなかった）→ 保存した採点で結果画面へ（2026-10-24 不具合調査 ○16）
+      const stored = isArena ? storedResultOf<ArenaResult>(e) : isEventTest ? storedResultOf<SeasonEventTestResult>(e) : null;
+      if (stored) {
+        saveArena(session.sessionId, null);
+        if (isArena) onArenaDone?.(stored as ArenaResult);
+        else onEventTestDone?.(stored as SeasonEventTestResult);
+        return;
+      }
       if (e instanceof TreeApiError && e.code === 'ALREADY_SUBMITTED') {
         if (keepsProgress) saveArena(session.sessionId, null);
         setSubmitError('この挑戦はすでに提出されています。ツリーに戻って結果を確認してください。');
+      } else if (e instanceof TreeApiError && e.code === 'SEASON_CHANGED' && !keepsProgress) {
+        // 4/1 0:00 をまたいだ ROUTE / ABYSS の挑戦は記録しない（Proxy・2026-10-24 △19）
+        setSubmitError('年度が替わったため、この挑戦は記録されません。ツリーに戻って、もう一度挑戦してください。');
       } else if (e instanceof TreeApiError && e.code === 'ARENA_CLOSED') {
         if (isArena) saveArena(session.sessionId, null);
         setSubmitError('このシーズンは終了しました。この挑戦は提出できません。');
@@ -425,10 +459,14 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
   };
 
   /** 途中で終了した挑戦を、決定した問題だけで提出する。keepalive = 画面が隠れた直後（ページが止まっても送り切る）*/
-  const sendEnded = async (keepalive = false) => {
-    // 送信中（画面に戻ったときの自動の再送と「もう一度送る」が重なる等）は送らない
-    if (sendingRef.current) return;
+  const sendEnded = async (keepalive = false, force = false) => {
+    // 送信中（画面に戻ったときの自動の再送と「もう一度送る」が重なる等）は送らない。
+    // force = 固まった送信を見捨てて送り直す（2026-10-24 不具合調査 ○17: 隠れている間の送信が止まったまま、戻ってから最大 30 秒「採点しています…」だった）。
+    // 見捨てた送信が後から返っても、成功（保存した採点を含む）なら結果に使い、失敗は新しい送信に任せる
+    if (sendingRef.current && !force) return;
     sendingRef.current = true;
+    const gen = ++sendGen.current;
+    sendAt.current = Date.now();
     const answers = units
       .flatMap((u) => u.qids)
       .filter((qid) => times.current[qid] != null)
@@ -443,12 +481,21 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
     setEnded((s) => s && { ...s, sending: true, error: null });
     try {
       const r = isArena
-        ? await submitArena(session.sessionId, answers, { ended: true, keepalive })
-        : await submitSeasonEventTest(session.sessionId, answers, { ended: true, keepalive });
+        ? await submitArena(session.sessionId, answers, { ended: true, keepalive, spanMs: spanMs() })
+        : await submitSeasonEventTest(session.sessionId, answers, { ended: true, keepalive, spanMs: spanMs() });
       if ('more' in r) throw new Error('more'); // 離れた提出（ended）には返らない
       saveArena(session.sessionId, null);
-      setEnded((s) => s && { ...s, sending: false, result: r });
+      setEnded((s) => s && { ...s, sending: false, result: r, error: null });
     } catch (e) {
+      // 前の送信（keepalive など）が届いていた → 保存した採点を結果として出す（2026-10-24 不具合調査 ○16）
+      const stored = isArena ? storedResultOf<ArenaResult>(e) : storedResultOf<SeasonEventTestResult>(e);
+      if (stored) {
+        saveArena(session.sessionId, null);
+        setEnded((s) => s && { ...s, sending: false, result: stored, error: null });
+        return;
+      }
+      // 新しい送信が走っている・もう結果がある → この失敗は出さない
+      if (gen !== sendGen.current || endStateRef.current?.result) return;
       const code = e instanceof TreeApiError ? e.code : '';
       const final = ['ALREADY_SUBMITTED', 'ARENA_CLOSED', 'EVENT_CLOSED', 'NO_SESSION'].includes(code);
       if (final) saveArena(session.sessionId, null);
@@ -464,7 +511,7 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
                 : '採点を送れませんでした。通信状況を確かめて、もう一度送ってください。';
       setEnded((s) => s && { ...s, sending: false, error: msg, final });
     } finally {
-      sendingRef.current = false;
+      if (gen === sendGen.current) sendingRef.current = false;
     }
   };
   const sendEndedRef = useRef(sendEnded);
@@ -478,7 +525,7 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
     setZoomPath(null);
     const decided = units.reduce((n, u) => n + u.qids.filter((id) => times.current[id] != null).length, 0);
     // 提出が届かないまま開き直しても続きを解かせない印（端末の途中経過に残す・提出できたら消える）
-    saveArena(session.sessionId, { idx: 0, picks: picksRef.current, times: times.current, raws: rawsRef.current, ended: true });
+    saveProgress({ idx: 0, picks: picksRef.current, times: times.current, raws: rawsRef.current, ended: true });
     setEnded({ reason, decided, sending: true, result: null, error: null, final: false });
     void sendEnded(reason === 'away');
   };
@@ -513,7 +560,10 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
       window.clearTimeout(retryTimer);
       retryTimer = window.setTimeout(() => {
         const st = endStateRef.current;
-        if (!document.hidden && st && st.error && !st.final && !st.result) void sendEndedRef.current();
+        if (document.hidden || !st || st.final || st.result) return;
+        if (st.error) void sendEndedRef.current();
+        // 隠れている間に始めた送信が止まったまま（iOS の LINE）→ 見捨てて送り直す（○17）
+        else if (st.sending && Date.now() - sendAt.current > STUCK_SEND_MS) void sendEndedRef.current(false, true);
       }, 1200);
     };
     const onVis = () => {
@@ -533,6 +583,18 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 画面が見えているのに送信が長く返らない → 見捨てて送り直す（○17・2 回目は Proxy が保存した採点を返す）
+  const endedSending = !!ended?.sending;
+  useEffect(() => {
+    if (!endedSending) return;
+    const t = window.setInterval(() => {
+      const st = endStateRef.current;
+      if (document.hidden || !st || !st.sending || st.result) return;
+      if (Date.now() - sendAt.current > STUCK_SEND_VISIBLE_MS) void sendEndedRef.current(false, true);
+    }, 2000);
+    return () => window.clearInterval(t);
+  }, [endedSending]);
+
   /** 中断（採点中は押せない。ボタンの disabled が効かない端末でも、ここで止める）*/
   const exit = () => {
     if (submitting) return;
@@ -549,7 +611,8 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
     const raw = unitStart.current === null ? 0 : performance.now() - unitStart.current;
     const spent = autoNext ? Math.min(raw, limitMs) : raw;
     for (const id of unit.qids) times.current[id] = spent / unit.qids.length;
-    if (keepsProgress) saveArena(session.sessionId, { idx: Math.min(idx + 1, units.length - 1), picks, times: times.current, raws });
+    clock.current.lastAt = Date.now();
+    if (keepsProgress) saveProgress({ idx: Math.min(idx + 1, units.length - 1), picks, times: times.current, raws });
     if (idx + 1 >= units.length) {
       void submit();
       return;
@@ -1033,7 +1096,7 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
         <div className="tr-overlay" role="alertdialog">
           <div className="tr-card">
             <div>{submitError}</div>
-            {!/すでに提出|終了しました|見つかりませんでした|期間が終わりました/.test(submitError) && (
+            {!/すでに提出|終了しました|見つかりませんでした|期間が終わりました|年度が替わった/.test(submitError) && (
               <button type="button" className="tr-cta" disabled={submitting} onClick={() => void submit()}>
                 {submitting ? '送信中…' : 'もう一度送る'}
               </button>

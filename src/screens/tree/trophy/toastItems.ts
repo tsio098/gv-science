@@ -77,7 +77,8 @@ export function level50Toast(g: Pick<Level50Got, 'subject'>, subjectName: string
 
 /** 数えるトロフィーが 80% に届いた */
 export function nearToast(n: TrophyNear): ToastItem {
-  return { key: `near:${n.subject}:${n.id}`, kind: 'progress', head: `PROGRESS ${n.now}/${n.max}`, main: n.name, prog: { now: n.now, max: n.max } };
+  // noticeKey: 表示したら既読（Proxy は nearAck の提出では既読にしない・2026-10-24 不具合調査 ○15）
+  return { key: `near:${n.subject}:${n.id}`, noticeKey: `near:${n.subject}:${n.id}`, kind: 'progress', head: `PROGRESS ${n.now}/${n.max}`, main: n.name, prog: { now: n.now, max: n.max } };
 }
 
 /** 表示幅（全角 1・半角 0.5）*/
@@ -192,7 +193,8 @@ export function newsToast(manifest: TreeManifest, progress: TreeProgress, subjec
     /* 覚えられない端末は毎回出しうる */
   }
   const list = manifest.fields.map((f) => ({ name: f.name, n: progress.fields[f.id]?.unlocked ? progress.fields[f.id]?.newCount ?? 0 : 0 })).filter((x) => x.n > 0);
-  const n = list.reduce((s, x) => s + x.n, 0);
+  // 同じ問題のコピー（ほかの分野にも出る問題）は 1 問に数える（Proxy の newUnlocked・2026-10-24。古い Proxy は分野の和）
+  const n = list.length === 1 ? list[0]!.n : (progress.newUnlocked ?? list.reduce((s, x) => s + x.n, 0));
   try {
     localStorage.setItem(key, String(manifest.version));
   } catch {

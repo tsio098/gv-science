@@ -1068,3 +1068,30 @@ div.ev-node {
   text-shadow: 1px 1px 0 #021014;
   pointer-events: none;
 }
+
+/* テストを始める前の確認（2026-10-24 不具合調査 ○7・アリーナの確認と同じ文言）*/
+.ev-confirm-ov {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(5, 3, 12, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+.ev-confirm {
+  width: 100%;
+  max-width: 340px;
+  padding: 18px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: center;
+}
+.ev-confirm-text {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--ev-sub);
+  text-align: left;
+}

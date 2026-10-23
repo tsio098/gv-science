@@ -92,6 +92,16 @@ export const evPeriod = (start: number, end: number) => {
   return `${evMd(start)}-${midnight ? evMd(end - 1) : evMdHm(end)}`;
 };
 
+/**
+ * チケットを使える日「10/31」/「12/25-12/26」（ticketUntil は含まない）。無ければ null（2026-10-24 不具合調査 ○13: 先生用の画面が「10/31」の固定文字だった）
+ */
+export const evTicketDays = (from: number | null | undefined, until: number | null | undefined) => {
+  if (from == null || until == null) return null;
+  const a = evMd(from);
+  const b = evMd(until - 1);
+  return a === b ? a : `${a}-${b}`;
+};
+
 /** テストの合格ライン（%）。表示用（判定は Proxy・20 問なら 18 問。2026-10-21 先生: 80% → 90%）*/
 export const EV_TEST_PASS_PCT = 90;
 

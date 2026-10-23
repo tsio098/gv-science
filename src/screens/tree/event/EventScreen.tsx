@@ -1,3 +1,4 @@
+import { useState } from 'react';
 /**
  * 季節イベントの画面（ボード E02 進行中・E03 100% 達成。2026-10-20 先生の回答 3）。
  *   見出し（戻る・HALLOWEEN のドット文字・CHALLENGE · 科目）→ マスター度のカード（% のクローム・あと n 日・期間・70 マス・凡例）
@@ -42,6 +43,9 @@ export function EventScreen({ state, subject, subjectName, starting, message, on
   const staff = !!state.staff;
   // 先生は提出した後も受け直せる（Proxy は先生の done を消して始め直す・2026-10-22 デバッグで修正: ボタンが出ず説明と食い違っていた）
   const testOpen = cleared && !!test && (test.status === 'ready' || test.status === 'started' || (staff && test.status === 'done'));
+  // テストを始める前に確かめる（アリーナと同じ・2026-10-24 不具合調査 ○7）。「採点して結果を見る」（started）と先生は確認なし
+  const [confirmTest, setConfirmTest] = useState(false);
+  const pressTest = () => (test?.status === 'started' || staff ? onTest() : setConfirmTest(true));
 
   const ticketState = rewards?.ticket
     ? 'GET'
@@ -232,7 +236,7 @@ export function EventScreen({ state, subject, subjectName, starting, message, on
               </span>
             </button>
             {testOpen && (
-              <button type="button" className="ev-cta-wrap is-test" style={{ flex: 1.6 }} disabled={starting} onClick={onTest}>
+              <button type="button" className="ev-cta-wrap is-test" style={{ flex: 1.6 }} disabled={starting} onClick={pressTest}>
                 <span className="ev-px2 ev-cta is-test">
                   <span className="ev-dot" style={{ fontSize: 16, lineHeight: 1 }}>{test!.status === 'started' ? '採点して結果を見る' : test!.status === 'done' ? 'もう一度受ける' : 'テストを受ける'}</span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 6, lineHeight: 1 }}>
@@ -245,6 +249,36 @@ export function EventScreen({ state, subject, subjectName, starting, message, on
           </div>
         )}
       </div>
+
+      {confirmTest && (
+        <div className="ev-confirm-ov" role="dialog" aria-label="テストを始めますか？">
+          <div className="ev-px ev-card ev-confirm">
+            <div className="ev-dot" style={{ fontSize: 17, color: '#FFFFFF' }}>テストを始めますか？</div>
+            <div className="ev-dot ev-confirm-text">
+              テストは 1 回だけです（{test?.size || 20} 問・{EV_TEST_PASS_PCT}% 以上で合格）。問題ごとに制限時間があり、過ぎると次の問題へ進みます。
+            </div>
+            <div className="ev-dot ev-confirm-text">解答中にアプリを切り替えたり閉じたりすると、その時点で終了し、決定した問題だけで採点されます。</div>
+            <button
+              type="button"
+              className="ev-cta-wrap is-test"
+              disabled={starting}
+              onClick={() => {
+                setConfirmTest(false);
+                onTest();
+              }}
+            >
+              <span className="ev-px2 ev-cta is-test">
+                <span className="ev-dot" style={{ fontSize: 16 }}>始める</span>
+              </span>
+            </button>
+            <button type="button" className="ev-ghost-wrap ev-px2" onClick={() => setConfirmTest(false)}>
+              <span className="ev-px2 ev-ghost">
+                <span className="ev-dot" style={{ fontSize: 15 }}>やめる</span>
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

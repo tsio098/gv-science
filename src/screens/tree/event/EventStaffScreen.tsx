@@ -12,7 +12,7 @@ import { fetchSeasonEventStaff, fetchStaffNames, gradeLabel } from '../../../lib
 import { TREE_SUBJECTS, TREE_SUBJECT_NAME, type TreeSubject } from '../../../lib/treeSubject';
 import { Ico } from '../TreeIcons';
 import { rootClass } from '../treeTheme';
-import { evPeriod } from './evTheme';
+import { evPeriod, evTicketDays } from './evTheme';
 
 interface Props {
   /** 最初に開く科目（イベント画面の科目）*/
@@ -125,6 +125,7 @@ export function EventStaffScreen({ subject: initial, onBack }: Props) {
   );
 
   const ev = data?.event ?? null;
+  const ticketDays = ev ? evTicketDays(ev.ticketFrom, ev.ticketUntil) : null;
 
   return (
     <div className={rootClass('tr-rank st-root')}>
@@ -209,7 +210,7 @@ export function EventStaffScreen({ subject: initial, onBack }: Props) {
                 <Ico id="i-ticket" size={18} />
                 <span>チケットを獲得した生徒</span>
                 <b className="tr-num">{ticketRows.length} 人</b>
-                <small>テスト合格で 1 枚 · 10/31 だけ使える</small>
+                <small>テスト合格で 1 枚{ticketDays ? ` · ${ticketDays} だけ使える` : ''}</small>
               </div>
               {ticketRows.length === 0 ? (
                 <div className="st-tk-empty">まだいません。</div>
@@ -282,7 +283,7 @@ export function EventStaffScreen({ subject: initial, onBack }: Props) {
             )}
             <div className="st-foot">
               達成率 = 生徒のイベント画面の EVENT MASTER（2 回続けて正解で「定着」・100% の後は 100%）。挑戦回数 = イベントの挑戦（5 問）を提出した回数と解いた問題数。
-              正答率 = イベントの挑戦で解いた問題のうち正解の割合。テスト = MASTER 100% の後に 1 回だけ受けられる {data.testSize ?? 20} 問のテストの点数（合格で 10/31 限定のチケット）。
+              正答率 = イベントの挑戦で解いた問題のうち正解の割合。テスト = MASTER 100% の後に 1 回だけ受けられる {data.testSize ?? 20} 問のテストの点数（合格で{ticketDays ? ` ${ticketDays} 限定の` : ''}チケット）。
               先生用アカウントの記録は入りません。数字は 30 秒ごとに新しくなります（「更新」）。
             </div>
           </>

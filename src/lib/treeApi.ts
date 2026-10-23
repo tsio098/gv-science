@@ -115,6 +115,8 @@ export interface TreeProgress {
   unlockPlays?: number;
   total: NodeStats & { pct: number };
   fields: Record<string, FieldProgress>;
+  /** 解放した分野の新着の問題数（同じ問題のコピーは 1 問・2026-10-24。古い Proxy は無し）*/
+  newUnlocked?: number;
   /** 科目・分野ごとの自分の順位（Phase 4）*/
   rank?: { total: RankInfo; fields: Record<string, RankInfo> };
   newDays?: number;
@@ -284,10 +286,17 @@ export interface TreeRanking {
 
 /** API のエラー。code は Worker の error（NOT_REGISTERED / LOCKED / TOO_MANY …）か HTTP_xxx */
 export class TreeApiError extends Error {
-  constructor(public code: string, public status: number, public retryAfter?: number) {
+  /** detail = エラーの応答の本文（ALREADY_SUBMITTED の result など・2026-10-24）*/
+  constructor(public code: string, public status: number, public retryAfter?: number, public detail?: Record<string, unknown> | null) {
     super(code);
   }
 }
+
+/** 提出済みの挑戦を送り直したときに Proxy が付ける保存した採点（アリーナ・イベントのテスト・2026-10-24 不具合調査 ○16）*/
+export const storedResultOf = <T>(e: unknown): T | null => {
+  const r = e instanceof TreeApiError && e.code === 'ALREADY_SUBMITTED' ? e.detail?.result : null;
+  return r && typeof r === 'object' ? (r as T) : null;
+};
 
 function bearer(): string | null {
   const s = getLiffStatus();
@@ -319,7 +328,7 @@ async function call<T>(path: string, init: RequestInit = {}, auth = true): Promi
   const data = (await res.json().catch(() => null)) as ({ error?: string; retryAfter?: number } & T) | null;
   if (!res.ok || !data || data.error) {
     const code = (data && data.error) || `HTTP ${res.status}`;
-    throw new TreeApiError(code, res.status, data?.retryAfter);
+    throw new TreeApiError(code, res.status, data?.retryAfter, data as Record<string, unknown> | null);
   }
   return data;
 }
@@ -409,7 +418,8 @@ const evQ = () => {
   return n ? `&now=${encodeURIComponent(n)}` : '';
 };
 export const submitTreeSession = (sessionId: string, answers: { qid: string; value: PartValue[]; timeMs: number }[]) =>
-  post<SubmitResult>(`/tree/session/submit?${C2}${evQ()}`, { sessionId, answers });
+  // nearAck = PROGRESS の通知は表示してから既読にする（noticeKey・2026-10-24）
+  post<SubmitResult>(`/tree/session/submit?${C2}${evQ()}`, { sessionId, answers, nearAck: true });
 export const saveTreeNickname = (nickname: string) => post<{ nickname: string }>('/tree/profile', { nickname });
 export const fetchTreeRanking = (subject: string, field = '*', qtype: QType | '*' = '*', stage: TreeStage = 'front') => {
   const q = new URLSearchParams({ subject });
@@ -532,8 +542,11 @@ export const startArena = (subject: string, season?: string) => post<ArenaSessio
 export interface EndedSubmit {
   ended?: boolean;
   keepalive?: boolean;
+  /** 始めてから最後に問題を決定するまで（端末の時計・ms）。Proxy は所要時間をこれより長く伸ばさない（2026-10-24）*/
+  spanMs?: number;
 }
-const postEnded = async <T>(path: string, body: Record<string, unknown>, opts: EndedSubmit): Promise<T> => {
+const postEnded = async <T>(path: string, body0: Record<string, unknown>, opts: EndedSubmit): Promise<T> => {
+  const body = opts.spanMs != null ? { ...body0, spanMs: opts.spanMs } : body0;
   if (!opts.ended) return post<T>(path, body);
   const json = JSON.stringify({ ...body, ended: true });
   const init = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: json };
@@ -1076,18 +1089,35 @@ export const fetchCosmetics = () => get<TreeCosmetics>('/tree/cosmetics');
 export const saveIconSkin = (icon: string | null) => post<{ selected: string | null }>('/tree/cosmetics', { icon });
 
 const imageCache = new Map<string, Promise<string>>();
+/**
+ * 覚えておく画像の数（古い順に捨てる）。捨てた blob URL は 10 分後に解放する（いま画面に出ている画像・画面が覚えている URL を壊さないように）
+ * （2026-10-24 不具合調査 △22: 前は解放せず、長く解き続けると端末のメモリが増え続けた）
+ */
+const IMAGE_CACHE_MAX = 240;
+const IMAGE_REVOKE_DELAY_MS = 10 * 60_000;
 
 /** 認証付き画像 → blob URL（同じパスは 1 回だけ取る。失敗したら次回取り直す）*/
 export function treeImage(path: string): Promise<string> {
   let p = imageCache.get(path);
-  if (!p) {
-    p = withRetry(async () => {
-      const res = await rawFetch(path);
-      if (!res.ok) throw new TreeApiError(`HTTP ${res.status}`, res.status);
-      return URL.createObjectURL(await res.blob());
-    }, { retries: 2, shouldRetry: retryable });
-    p.catch(() => imageCache.delete(path));
+  if (p) {
+    imageCache.delete(path); // 使った順に並べ直す（LRU）
     imageCache.set(path, p);
+    return p;
+  }
+  const job = withRetry(async () => {
+    const res = await rawFetch(path);
+    if (!res.ok) throw new TreeApiError(`HTTP ${res.status}`, res.status);
+    return URL.createObjectURL(await res.blob());
+  }, { retries: 2, shouldRetry: retryable });
+  p = job;
+  job.catch(() => {
+    if (imageCache.get(path) === job) imageCache.delete(path);
+  });
+  imageCache.set(path, job);
+  while (imageCache.size > IMAGE_CACHE_MAX) {
+    const [k, old] = imageCache.entries().next().value as [string, Promise<string>];
+    imageCache.delete(k);
+    old.then((u) => window.setTimeout(() => URL.revokeObjectURL(u), IMAGE_REVOKE_DELAY_MS), () => {});
   }
   return p;
 }
