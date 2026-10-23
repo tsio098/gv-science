@@ -83,6 +83,8 @@ import '../../styles/tree-trophy.css';
 const subjectJa = (s: string) => TREE_SUBJECT_NAME[s as TreeSubject] ?? SUBJECT_JA[s as ScheduleSubject] ?? s;
 /** 季節イベントの挑戦（field = '_event'）か */
 const isEventSession = (s: TreeSession) => s.field === '_event' || !!(s as { event?: unknown }).event;
+/** 通知（pending）を開いたあとに取り直す間隔（ツリーに戻った・画面に戻ってきたとき）*/
+const PENDING_GAP_MS = 120_000;
 
 /**
  * LINE 内で開いたときの自分の LINE の ID（userId）。「塾生専用です」画面に出し、
@@ -278,6 +280,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
    * 走っている間は 2 本目を始めず、終わってから 1 回だけやり直す（2026-10-22 修正: 開いた直後の取得と科目の切替の取得が同時に 2 本走っていた）
    */
   const pendingRun = useRef({ busy: false, again: false });
+  /** 最後に pending を取りに行った時刻（0 = まだ開いていない）*/
+  const pendingAt = useRef(0);
   const loadPending = useCallback(() => {
     const st = pendingRun.current;
     if (st.busy) {
@@ -286,6 +290,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
     }
     st.busy = true;
     const run = () => {
+      pendingAt.current = Date.now();
       fetchTrophyPending()
         .then((p) => {
           setTrophyReady(p.available);
@@ -304,6 +309,24 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
     };
     run();
   }, [pushToasts]);
+  /**
+   * 結果画面などからツリーに戻ったとき・LINE が画面を残したまま戻ってきたとき（visible）も取り直す（2 分に 1 回まで）。
+   * 2026-10-23 修正: 開いたとき・科目の切替だけだったので、続けて解いている間に抜かれても RANK DOWN（ほかの人のファースト・アリーナの通知も）が次に開き直すまで届かなかった
+   */
+  const viewKind = view.kind;
+  const prevViewKind = useRef(viewKind);
+  useEffect(() => {
+    const from = prevViewKind.current;
+    prevViewKind.current = viewKind;
+    if (viewKind === 'tree' && from !== 'tree' && pendingAt.current && Date.now() - pendingAt.current >= PENDING_GAP_MS) loadPending();
+  }, [viewKind, loadPending]);
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && pendingAt.current && Date.now() - pendingAt.current >= PENDING_GAP_MS) loadPending();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [loadPending]);
 
   // アリーナは化学・生物だけ（2026-10-17 先生決定）。他の科目では取りに行かずノードも出さない。
   // 科目をすぐ切り替えたとき、遅れて返った前の科目のアリーナで上書きしない（最後に頼んだ科目だけ反映）
