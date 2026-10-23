@@ -292,7 +292,8 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
     return () => cancelAnimationFrame(id);
   }, [numFocus]);
 
-  const ready = unitPaths(idx).every((p) => imgs[p]);
+  // 画像がすべて表示できてから時計を動かす（読めなかった 'error' は数えない。タップで読み直せたら動き出す・2026-10-23 不具合調査）
+  const ready = unitPaths(idx).every((p) => imgs[p] && imgs[p] !== 'error');
   useEffect(() => {
     // 終了した後に画像がそろっても、端末の途中経過（ended の印）を上書きしない
     if (!ready || unitStart.current !== null || endedRef.current) return;
