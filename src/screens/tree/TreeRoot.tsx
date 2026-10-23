@@ -85,6 +85,8 @@ const subjectJa = (s: string) => TREE_SUBJECT_NAME[s as TreeSubject] ?? SUBJECT_
 const isEventSession = (s: TreeSession) => s.field === '_event' || !!(s as { event?: unknown }).event;
 /** 通知（pending）を取り直す最短の間隔（画面の切替・画面に戻ってきたとき。D1 の読み取りを増やしすぎない）*/
 const PENDING_GAP_MS = 30_000;
+/** 問題を解いている画面（ここにいる間は通知を取りに行かない）*/
+const isSolvingView = (k: string) => k === 'play' || k === 'arenaPlay' || k === 'eventTest';
 
 /**
  * LINE 内で開いたときの自分の LINE の ID（userId）。「塾生専用です」画面に出し、
@@ -290,6 +292,12 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
     }
     st.busy = true;
     const run = () => {
+      // 問題を解いている画面に入っていたら取らない（2 本目のやり直しが出題中に走らないように。解き終わって画面が変わったときに取る）
+      if (isSolvingView(viewRef.current.kind)) {
+        st.busy = false;
+        st.again = false;
+        return;
+      }
       pendingAt.current = Date.now();
       fetchTrophyPending()
         .then((p) => {
@@ -311,7 +319,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   }, [pushToasts]);
   /**
    * 画面が切り替わったとき（結果・ランキング・トロフィー・ツリーに戻る など）・LINE が画面を残したまま戻ってきたとき（visible）も取り直す（30 秒に 1 回まで）。
-   * 出題中の画面に入るときは取らない（出題中は通知を出さないので、終わって切り替わったときに取る）。
+   * 問題を解いている画面（ROUTE/ABYSS・イベントの出題・アリーナ・イベントのテスト）にいる間だけは取らない（先生の指示）。
+   * 解き終わって画面が変わったとき（結果画面へ）は 30 秒以内でも必ず取る。
    * 2026-10-23 修正（先生の依頼）: 開いたとき・科目の切替だけだったので、続けて解いている間に抜かれても RANK DOWN（ほかの人のファースト・アリーナの通知も）が次に開き直すまで届かなかった
    */
   const viewKind = view.kind;
@@ -319,12 +328,13 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   useEffect(() => {
     const from = prevViewKind.current;
     prevViewKind.current = viewKind;
-    if (viewKind === from || viewKind === 'play' || viewKind === 'arenaPlay' || viewKind === 'eventTest') return;
-    if (pendingAt.current && Date.now() - pendingAt.current >= PENDING_GAP_MS) loadPending();
+    if (viewKind === from || isSolvingView(viewKind) || !pendingAt.current) return;
+    if (isSolvingView(from) || Date.now() - pendingAt.current >= PENDING_GAP_MS) loadPending();
   }, [viewKind, loadPending]);
   useEffect(() => {
     const onVisible = () => {
-      if (document.visibilityState === 'visible' && pendingAt.current && Date.now() - pendingAt.current >= PENDING_GAP_MS) loadPending();
+      if (document.visibilityState !== 'visible' || isSolvingView(viewRef.current.kind)) return;
+      if (pendingAt.current && Date.now() - pendingAt.current >= PENDING_GAP_MS) loadPending();
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
