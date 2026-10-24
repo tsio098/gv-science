@@ -16,6 +16,9 @@
  *   出す順番は挑戦ごとに違う（2026-10-18 先生の指示・Proxy の arenaOrder）。再開は「まだ決定していない最初の問題」から
  *   共通テスト後のシーズンは最後の 2 問が ABYSS の設問（2026-10-18 先生決定・1 問 7 分・タイムボーナスあり）。
  *   ABYSS の画面（解答欄・キーパッド）は問題ごとに切り替える（answer.kind = 'parts'）。欄の入力も端末に残す
+ *   全体の制限時間（2026-10-24 先生の指示）: 問題ごとの制限時間の合計 + 3 分に達したら、その時点で解答を終了して採点する
+ *   （問題ごとには次へ進めない・問題ごとの制限時間はタイムボーナスの計算だけ）。数えるのは各問題の時計（画像がそろってから決定まで）の合計。
+ *   解いていた問題は、選んだ（入力した）所まで採点に入れる。採点は途中終了と同じ（決定した問題だけ・ended: true で時間を伸ばさない）
  * - 出題画面のスクショボタンは廃止（2026-10-17 追加→アリーナは 2026-10-18・通常も 2026-10-19 先生の指示で削除）。
  *   スクショは結果画面の間違えた問題のカード（PlayShot）だけ。アリーナは画面を離れている間（アプリ切替・通知センター等）問題を覆って隠す。
  *   スマホ本体のボタン操作のスクショは Web からは止められない（隠せるのは画面を離れたときだけ）
@@ -33,7 +36,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AbyssPart, ArenaResult, FieldGroup, PlayQuestion, SeasonEventTestResult, SubmitResult, TreeSession } from '../../lib/treeApi';
 /** 途中で終了した 1 回だけの挑戦（画面を離れた・中断・前回離れたまま開いた）*/
-type EndReason = 'away' | 'quit' | 'resume';
+type EndReason = 'away' | 'quit' | 'resume' | 'timeup';
 interface EndState {
   reason: EndReason;
   /** 決定した問題の数（採点に入る）*/
@@ -112,6 +115,9 @@ type ImgState = Record<string, string | 'error'>;
 const BONUS_GRACE_MS = 25_000;
 /** イベントのテスト: 残りがこれ以下で時計を赤くする */
 const TIME_LOW_MS = 10_000;
+/** アリーナ: 全体の制限時間 = 問題ごとの制限時間の合計 + これ（2026-10-24 先生の指示）／残りがこれ以下で全体の残りを赤くする */
+const ARENA_EXTRA_MS = 180_000;
+const ARENA_LOW_MS = 60_000;
 /** 離れたときの提出が返らない: 画面に戻ってこれ以上たっていたら送り直す / 見えている間にこれ以上返らなければ送り直す（2026-10-23 ○17）*/
 const STUCK_SEND_MS = 4000;
 const STUCK_SEND_VISIBLE_MS = 10_000;
@@ -347,6 +353,10 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
   const graceMs = limitMs > BONUS_GRACE_MS ? BONUS_GRACE_MS : 0;
   const bonus = Math.round(bonusMax * Math.min(1, Math.max(0, (limitMs - elapsed) / (limitMs - graceMs))));
   const doneQ = units.slice(0, idx).reduce((s, u) => s + u.qids.length, 0);
+  // アリーナの全体の時間: 決定した問題の時間の合計 + いまの問題の時計（決定した問題はもう数えない）
+  const arenaLimitMs = isArena ? units.reduce((s, u) => s + u.limitSec * 1000, 0) + ARENA_EXTRA_MS : 0;
+  const decidedMs = () => Object.values(times.current).reduce((s, v) => s + (Number(v) || 0), 0);
+  const arenaUsedMs = isArena ? decidedMs() + (decidedIdx.current === idx ? 0 : elapsed) : 0;
   const filledQ = (q: PlayQuestion) =>
     q.answer.kind === 'parts'
       ? partsOf(q).every((p, i) => isFilled(p, raws[q.id]?.[i]))
@@ -639,6 +649,27 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
     return () => clearTimeout(t);
   }, [timeUp, idx]);
 
+  // アリーナ: 全体の制限時間（合計 + 3 分）に達したら終了して採点。いまの問題は何か選んでいれば、残りの時間を付けて採点に入れる
+  useEffect(() => {
+    if (!isArena || arenaLimitMs <= 0 || submittingRef.current || endedRef.current || unitStart.current === null) return;
+    if (arenaUsedMs < arenaLimitMs) return;
+    if (decidedIdx.current !== idx) {
+      const touched = qs.some((q) =>
+        q.answer.kind === 'parts'
+          ? partsOf(q).some((p, i) => isFilled(p, rawsRef.current[q.id]?.[i]))
+          : (picksRef.current[q.id] ?? []).some(Boolean),
+      );
+      if (touched) {
+        decidedIdx.current = idx;
+        const spent = Math.max(0, arenaLimitMs - decidedMs());
+        for (const id of unit.qids) times.current[id] = spent / unit.qids.length;
+        clock.current.lastAt = Date.now();
+      }
+    }
+    endNow('timeup');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [now, idx]);
+
   const crumb = useMemo(
     () =>
       isArena
@@ -768,13 +799,15 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
         ? `解答中に画面を離れた（アプリの切り替え・ホーム・画面ロックなど）ため、${what}はここで終了しました。`
         : ended.reason === 'resume'
           ? `前回、解答の途中で画面を離れたため、${what}は終了しています（続きは解けません）。`
-          : `中断したため、${what}はここで終了しました。`;
+          : ended.reason === 'timeup'
+            ? `全体の制限時間（問題ごとの制限時間の合計 + 3 分）に達したため、${what}はここで終了しました。`
+            : `中断したため、${what}はここで終了しました。`;
     const done = ended.result;
     return (
       <div className={rootClass(playRoot)}>
         <div className={`tr-overlay${isArena ? ' tr-ar-overlay' : ''}`}>
           <div className={isArena ? 'tr-ar-dialog' : 'tr-card'} role="alertdialog" aria-label={isArena ? '挑戦の終了' : 'テストの終了'}>
-            <div style={{ fontWeight: 700, fontSize: 16 }}>{isArena ? '挑戦は終了しました' : 'テストは終了しました'}</div>
+            <div style={{ fontWeight: 700, fontSize: 16 }}>{ended.reason === 'timeup' ? '時間切れ' : isArena ? '挑戦は終了しました' : 'テストは終了しました'}</div>
             <div style={{ color: 'var(--tr-sub)', fontSize: 13, lineHeight: 1.8 }}>
               {why}決定した <b className="tr-num">{ended.decided}</b> 問（{totalQ} 問中）で採点{done ? 'しました' : 'します'}。
             </div>
@@ -856,6 +889,11 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
           ) : (
             <small className="tr-num" style={{ color: bonus > 0 ? T.accent : alpha(T.text, 0.45) }}>
               タイムボーナス +{bonus}
+            </small>
+          )}
+          {isArena && arenaLimitMs > 0 && (
+            <small className="tr-num" style={{ color: arenaLimitMs - arenaUsedMs <= ARENA_LOW_MS ? '#FF5A5A' : alpha(T.text, 0.45) }}>
+              全体の残り {fmtTime(Math.max(0, arenaLimitMs - arenaUsedMs))}
             </small>
           )}
         </div>
