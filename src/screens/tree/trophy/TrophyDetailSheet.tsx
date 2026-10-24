@@ -1,6 +1,6 @@
 /**
  * トロフィーの詳細シート（ボード「トロフィーの詳細」）。
- * 大きいトロフィー・グレード + pt・名前・出典と原文・条件・関係する分野のチップ・獲得した日・塾内の取得率・閉じる / ツリーで見る。
+ * 大きいトロフィー・グレード + pt・名前・出典と原文・条件・関係する分野のチップ・獲得した日・塾内の取得率・閉じる / 再生（獲得済みだけ）。
  */
 import { useEffect, useState } from 'react';
 import type { TrophyItem } from '../../../lib/treeApi';
@@ -21,15 +21,15 @@ interface Props {
   /** 分野 ID → 名前・系統（今の科目の manifest・進捗から。分からなければチップを出さない）*/
   fieldInfo: (id: string) => FieldInfo | null;
   onClose: () => void;
-  /** ツリーで見る（関係する分野があれば最初の分野を選ぶ）*/
-  onShowTree: (field: string | null) => void;
+  /** 再生: 獲得したときの通知をもう一度出す（獲得済みだけ・2026-10-24 先生の依頼で「ツリーで見る」から変更）*/
+  onReplay: (item: TrophyItem) => void;
   /** 先生用アカウント（2026-10-20）: 獲得者の表示名（本名。取れなければニックネーム）。あれば獲得者の一覧を出す */
   holderName?: (h: { key: string; nickname: string }) => string;
 }
 
 const SPARK = 'M2 0h1v2h2v1H3v2H2V3H0V2h2z';
 
-export function TrophyDetailSheet({ item, fieldInfo, onClose, onShowTree, holderName }: Props) {
+export function TrophyDetailSheet({ item, fieldInfo, onClose, onReplay, holderName }: Props) {
   const g = GRADE_COLOR[item.grade];
   const chrome = item.grade === 'P' ? PRISM : item.grade === 'F' ? CHROME.F : CHROME[item.grade];
   const got = item.earnedAt != null;
@@ -203,15 +203,17 @@ export function TrophyDetailSheet({ item, fieldInfo, onClose, onShowTree, holder
               <button type="button" className="tt-dot tt-px2" style={{ flex: 1, height: 50, background: 'rgba(4,48,57,.9)', border: 0, color: '#EAFBFF', fontSize: 15 }} onClick={onClose}>
                 閉じる
               </button>
-              <button
-                type="button"
-                className="tt-dot tt-px2"
-                style={{ flex: 1.4, height: 50, background: '#2DF4C6', border: 0, color: '#04302B', fontSize: 15, filter: 'drop-shadow(3px 3px 0 #0E9C9A)' }}
-                onClick={() => onShowTree(fields[0]?.id ?? null)}
-                disabled={!shown}
-              >
-                ツリーで見る ▶
-              </button>
+              {got && !item.hidden && (
+                <button
+                  type="button"
+                  className="tt-dot tt-px2"
+                  style={{ flex: 1.4, height: 50, background: '#2DF4C6', border: 0, color: '#04302B', fontSize: 15, filter: 'drop-shadow(3px 3px 0 #0E9C9A)' }}
+                  onClick={() => onReplay(item)}
+                  disabled={!shown}
+                >
+                  再生 ▶
+                </button>
+              )}
             </div>
             <div className="tt-scan" style={{ opacity: 0.5 }} />
           </div>

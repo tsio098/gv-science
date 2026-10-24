@@ -25,7 +25,8 @@ interface Props {
   subjects: TreeSubject[];
   fieldInfo: (subject: string, id: string) => FieldInfo | null;
   onBack: () => void;
-  onShowTree: (subject: TreeSubject, field: string | null) => void;
+  /** 詳細の「再生」: 獲得したときの通知をもう一度出す */
+  onReplay: (subject: TreeSubject, item: TrophyItem) => void;
   /** LV.50 チケットを見る（チケット画面）*/
   onTickets?: () => void;
 }
@@ -41,7 +42,7 @@ function readSeen(): number {
   }
 }
 
-export function TrophyScreen({ subject: initial, subjects, fieldInfo, onBack, onShowTree, onTickets }: Props) {
+export function TrophyScreen({ subject: initial, subjects, fieldInfo, onBack, onReplay, onTickets }: Props) {
   const [subject, setSubject] = useState<TreeSubject>(initial);
   const [data, setData] = useState<TrophyList | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -301,7 +302,7 @@ export function TrophyScreen({ subject: initial, subjects, fieldInfo, onBack, on
           item={detail}
           fieldInfo={(id) => fieldInfo(subject, id)}
           onClose={() => setDetail(null)}
-          onShowTree={(field) => onShowTree(subject, field)}
+          onReplay={(it) => onReplay(subject, it)}
           holderName={staff ? holderName : undefined}
         />
       )}

@@ -1,7 +1,7 @@
 /**
  * API の応答 → 通知（ToastItem）。文言はボード「通知のバリエーション」（実装手順_トロフィー §5.4・§5.5）。
  */
-import type { ArenaSeason, Level30Got, Level50Got, QType, SubmitResult, TreeManifest, TreeNotice, TreeProgress, TreeStage, TrophyGet, TrophyNear } from '../../../lib/treeApi';
+import type { ArenaSeason, Level30Got, Level50Got, QType, SubmitResult, TreeManifest, TreeNotice, TreeProgress, TreeStage, TrophyGet, TrophyItem, TrophyNear } from '../../../lib/treeApi';
 import { FIELD_TEST, gradeLabel } from '../../../lib/treeApi';
 import { MASTER_AT, fmtScore } from '../treeTheme';
 import type { ToastItem } from './toastQueue';
@@ -61,6 +61,11 @@ export function trophyToast(t: TrophyGet, subjectName: string, stage: TreeStage 
     abyss: stage === 'back',
     trophy: { subject: t.subject, id: t.id },
   };
+}
+
+/** 一覧のトロフィー → 獲得したときの通知（詳細の「再生」・2026-10-24）。pt はグレードの表示 pt */
+export function trophyItemToast(item: TrophyItem, subject: string, subjectName: string, pt: number): ToastItem {
+  return trophyToast({ subject, id: item.id, grade: item.grade, name: item.name, pt, first: item.first, desc: item.desc, event: item.event }, subjectName);
 }
 
 /** トロフィーレベル 30（LV.30 チケット）。既読は level30:{科目}（提出の直後もツリーを開いたときも同じキー）*/

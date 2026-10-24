@@ -57,6 +57,8 @@ export interface ToastItem {
   ticket?: boolean;
   /** 季節イベント（EVENT CLEAR!! / TICKET GET!）: イベントの kind・科目・札（「10/31」「100%」）。タップでイベント画面（evClear）*/
   ev?: { kind: string; subject: string; stamp: string; firstIcon?: boolean };
+  /** トロフィーの詳細の「再生」で出し直した通知（2026-10-24）: 既読・ヘッダーの点・タップの移動をしない */
+  replay?: boolean;
 }
 
 const GRADE_RANK: Record<ToastGrade, number> = { F: 0, P: 1, G: 2, S: 3, B: 4, Z: 6, E: 8 };

@@ -133,8 +133,24 @@ export function useToasts({
     return () => window.clearTimeout(t);
   }, [cur, out, close]);
 
+  /**
+   * トロフィーの詳細の「再生」（2026-10-24 先生の依頼）: キューを通さず、いまの通知と入れ替えてすぐ出す。
+   * 既読の送信（onShown）はしない（獲得済みのトロフィー）。キューに待っている通知はこの後に続けて出る
+   */
+  const replay = useCallback((item: ToastItem) => {
+    if (closing.current) window.clearTimeout(closing.current);
+    closing.current = 0;
+    setOut(false);
+    setCur({ item: { ...item, replay: true }, more: 0, peek: null, consumed: [], rest: [], n: ++seq.current });
+    playSfx(sfxFor(item), toastSpeed());
+  }, []);
+
   const tap = useCallback(() => {
     if (!cur || out) return;
+    if (cur.item.replay) {
+      close();
+      return;
+    }
     if (cur.item.kind === 'evClear' && cur.item.ev) cb.current.onOpenEvent?.(cur.item.ev.subject);
     else if (!cur.peek && cur.item.trophy) cb.current.onOpenTrophy?.(cur.item.trophy);
     else if (cur.item.ticket) cb.current.onOpenTickets?.();
@@ -145,5 +161,5 @@ export function useToasts({
     <ToastLayer key={cur.n} item={cur.item} more={cur.more} peek={cur.peek} wide={wide} out={out} onTap={tap} onSwipe={close} />
   ) : null;
 
-  return { layer, push };
+  return { layer, push, replay };
 }

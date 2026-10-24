@@ -75,7 +75,7 @@ import { TrophyScreen } from './trophy/TrophyScreen';
 import { TrophyDetailSheet, fieldInfoFrom } from './trophy/TrophyDetailSheet';
 import { TrophySprite, GRADE_COLOR } from './trophy/TrophyIcon';
 import { useToasts } from './trophy/useToasts';
-import { eventTicketToast, level30Toast, level50Toast, newsToast, noticeToast, submitToasts, trophyToast } from './trophy/toastItems';
+import { eventTicketToast, level30Toast, level50Toast, newsToast, noticeToast, submitToasts, trophyItemToast, trophyToast } from './trophy/toastItems';
 import { dropTrophyMemo, loadTrophies } from './trophy/trophyData';
 import type { ToastItem } from './trophy/toastQueue';
 import '../../styles/tree.css';
@@ -332,6 +332,40 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
     run();
   }, [pushToasts]);
   /**
+   * 演出（ABYSS 解放・アリーナ解放・優勝・新シーズン）。取り終わってから then（通知 = pending）を呼ぶ
+   * （通知は演出が決まってから取る: 先に通知が出て、演出が始まった瞬間に消えるのを防ぐ・2026-10-19 レビューで修正）。
+   * 2026-10-24 先生の依頼: 前はアプリを開いたときだけ取っていて、解いている途中でアリーナを開放しても開き直すまで演出が出なかった
+   * → ツリーに移ったときにも取る（下の effect）。演出を出している間は取らない。閉じて既読を送った演出は、
+   * 送信が届く前の応答で出し直さないように端末でも覚えておく（fxSeen）
+   */
+  const fxRun = useRef({ busy: false, at: 0, stale: false });
+  const fxSeen = useRef(new Set<string>());
+  const eventsShown = useRef(false);
+  eventsShown.current = events.length > 0;
+  const loadFx = useCallback((then: () => void) => {
+    const st = fxRun.current;
+    if (fxDisabled() || st.busy || eventsShown.current) {
+      then();
+      return;
+    }
+    st.busy = true;
+    st.at = Date.now();
+    st.stale = false;
+    fetchTreeEvents()
+      .then((r) => {
+        const list = (r.events ?? []).filter((e) => !fxSeen.current.has(e.key));
+        if (!list.length || eventsShown.current) return;
+        void preloadFxImages(); // 演出の画像を先にデコード（カクつき対策）
+        setEvents(mergeTreeEvents(list)); // 同じシーズンの新シーズン開始（化学・生物）は 1 回にまとめる
+        if (list.some((e) => e.type === 'unlock_abyss')) rememberAbyssStyle();
+      })
+      .catch(() => {})
+      .finally(() => {
+        st.busy = false;
+        then();
+      });
+  }, []);
+  /**
    * ツリー・結果画面（isPendingView）に移ったときも取り直す（30 秒に 1 回まで）。問題を解いている画面にいる間は取らない（先生の指示）。
    * 解き終わって結果画面に移ったときは 30 秒以内でも必ず取る。
    * 2026-10-23 修正（先生の依頼）: 開いたとき・科目の切替だけだったので、続けて解いている間に抜かれても RANK DOWN（ほかの人のファースト・アリーナの通知も）が次に開き直すまで届かなかった
@@ -342,11 +376,21 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   useEffect(() => {
     const from = prevViewKind.current;
     prevViewKind.current = viewKind;
-    if (viewKind === from || !isPendingView(viewKind)) return;
-    if (pendingSkipped.current) return loadPending();
-    if (!pendingAt.current) return;
-    if (isSolvingView(from) || Date.now() - pendingAt.current >= PENDING_GAP_MS) loadPending();
-  }, [viewKind, loadPending]);
+    if (viewKind === from) return;
+    // 解き始めたら、次にツリーへ戻ったとき演出を必ず取り直す（解いた結果でアリーナ・ABYSS が開くことがある）
+    if (isSolvingView(viewKind)) fxRun.current.stale = true;
+    if (!isPendingView(viewKind)) return;
+    const wantPending = pendingSkipped.current || (!!pendingAt.current && (isSolvingView(from) || Date.now() - pendingAt.current >= PENDING_GAP_MS));
+    // 演出はツリーに移ったときだけ（2026-10-24）。解いた後は必ず・それ以外は 30 秒に 1 回まで。開いた直後（at = 0）は load が取る
+    const fx = fxRun.current;
+    if (viewKind === 'tree' && fx.at && (fx.stale || Date.now() - fx.at >= PENDING_GAP_MS)) {
+      loadFx(() => {
+        if (wantPending) loadPending();
+      });
+      return;
+    }
+    if (wantPending) loadPending();
+  }, [viewKind, loadPending, loadFx]);
 
   // アリーナは化学・生物だけ（2026-10-17 先生決定）。他の科目では取りに行かずノードも出さない。
   // 科目をすぐ切り替えたとき、遅れて返った前の科目のアリーナで上書きしない（最後に頼んだ科目だけ反映）
@@ -482,24 +526,11 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
         if (!want) throw new TreeApiError('NO_CONTENT', 404); // 選択科目にツリーが無い（2026-10-16 先生決定: 他の科目は開けない）
         await openSubject(list, want);
         loadTickets();
-        // 演出（ABYSS 解放・アリーナ解放・優勝・新シーズン）は開いたときに 1 回だけ取る。
-        // 通知（pending）は演出が決まってから取る（先に通知が出て、演出が始まった瞬間に消えるのを防ぐ・2026-10-19 レビューで修正）
-        if (!fxDisabled()) {
-          fetchTreeEvents()
-            .then((r) => {
-              const list = r.events ?? [];
-              if (list.length) void preloadFxImages(); // 演出の画像を先にデコード（カクつき対策）
-              setEvents(mergeTreeEvents(list)); // 同じシーズンの新シーズン開始（化学・生物）は 1 回にまとめる
-              if (list.some((e) => e.type === 'unlock_abyss')) rememberAbyssStyle();
-            })
-            .catch(() => {})
-            .finally(loadPending);
-        } else {
-          loadPending();
-        }
+        // 演出を取ってから通知（loadFx）。ツリーに戻ったときにも取り直す（上の effect）
+        loadFx(loadPending);
       })
       .catch(fail);
-  }, [fail, openSubject, loadTickets, loadPending]);
+  }, [fail, openSubject, loadTickets, loadPending, loadFx]);
 
 
   /** 科目チップから科目を切り替える（ツリーに戻し、選択を外す）*/
@@ -557,6 +588,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   const closeFx = useCallback(
     (ev: MergedTreeEvent, action: 'tree' | 'arena' | 'ticket') => {
       markTreeEventsSeen(ev.seenKeys).catch(() => {});
+      for (const k of ev.seenKeys) fxSeen.current.add(k);
       setEvents((list) => list.filter((e) => e.key !== ev.key));
       if (action === 'tree') {
         setView({ kind: 'tree' });
@@ -844,26 +876,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wantManifests, subjects, subject, stage]);
 
-  /** トロフィーの「ツリーで見る」: その科目の ROUTE のツリーへ戻り、分野を選ぶ */
-  const showTreeField = (s: TreeSubject, field: string | null) => {
-    setToastDetail(null);
-    setMessage(null);
-    if (s !== subject) {
-      rememberTreeSubject(s);
-      setManifest(null);
-      setProgress(null);
-      setArena(null);
-      setSelected(null);
-      setView({ kind: 'tree' });
-      openSubject(subjects, s)
-        .then((ok) => ok && setSelected(field))
-        .catch(fail);
-      return;
-    }
-    setView({ kind: 'tree' });
-    if (stage !== 'front') void switchStage('front').then((ok) => ok && setSelected(field));
-    else setSelected(field);
-  };
+  /** トロフィーの詳細の「再生」: 獲得したときの通知をもう一度出す（2026-10-24 先生の依頼で「ツリーで見る」から変更）*/
+  const replayTrophy = (s: string, item: TrophyItem) => toasts.replay(trophyItemToast(item, s, subjectJa(s), GRADE_COLOR[item.grade].pt));
 
   /** 分野チップの名前・系統（今の科目は進捗も見て★）*/
   const trophyFieldInfo = (s: string, id: string) => {
@@ -1271,7 +1285,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           subjects={subjects}
           fieldInfo={trophyFieldInfo}
           onBack={() => setView(view.back)}
-          onShowTree={showTreeField}
+          onReplay={replayTrophy}
           onTickets={() => {
             loadTickets();
             setView({ kind: 'tickets', back: view });
@@ -1284,7 +1298,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           item={toastDetail.item}
           fieldInfo={(id) => trophyFieldInfo(toastDetail.subject, id)}
           onClose={() => setToastDetail(null)}
-          onShowTree={(field) => showTreeField(toastDetail.subject as TreeSubject, field)}
+          onReplay={(it) => replayTrophy(toastDetail.subject, it)}
         />
       )}
       {toasts.layer}
