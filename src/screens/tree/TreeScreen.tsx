@@ -10,7 +10,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePanZoom } from './usePanZoom';
-import type { ArenaInfo, QType, SeasonEventState, TreeManifest, TreeProgress, TreeStage } from '../../lib/treeApi';
+import type { ArenaInfo, PlayKind, SeasonEventState, TreeManifest, TreeProgress, TreeStage } from '../../lib/treeApi';
 import { TREE_SUBJECT_ICON, TREE_SUBJECT_NAME, type TreeSubject } from '../../lib/treeSubject';
 import { QTYPES } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
@@ -58,7 +58,7 @@ interface Props {
   onStage: (s: TreeStage) => void;
   selected: string | null;
   onSelect: (field: string | null) => void;
-  onStart: (field: string, qtype: QType) => void;
+  onStart: (field: string, qtype: PlayKind) => void;
   starting: boolean;
   /** LIFF 内ならホームへ戻るボタン、外部ブラウザならメニュー（ログアウト）*/
   onClose?: () => void;

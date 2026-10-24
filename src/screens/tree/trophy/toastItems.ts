@@ -2,7 +2,7 @@
  * API の応答 → 通知（ToastItem）。文言はボード「通知のバリエーション」（実装手順_トロフィー §5.4・§5.5）。
  */
 import type { ArenaSeason, Level30Got, Level50Got, QType, SubmitResult, TreeManifest, TreeNotice, TreeProgress, TreeStage, TrophyGet, TrophyNear } from '../../../lib/treeApi';
-import { gradeLabel } from '../../../lib/treeApi';
+import { FIELD_TEST, gradeLabel } from '../../../lib/treeApi';
 import { MASTER_AT, fmtScore } from '../treeTheme';
 import type { ToastItem } from './toastQueue';
 
@@ -156,10 +156,17 @@ export function submitToasts(r: SubmitResult, manifest: TreeManifest, subjectNam
   const ev = !!r.event;
   const b = r.node?.before?.mastery ?? 0;
   const a = r.node?.after?.mastery ?? 0;
-  if (r.node && !ev && b < MASTER_AT && a >= MASTER_AT) {
+  // 分野テスト（node.qtype = 'mix'・node は分野の値）は種別ごとの前後（typeNodes）で見る（2026-10-24）
+  const typeNodes: { qtype: QType; b: number; a: number }[] = !r.node || ev
+    ? []
+    : r.node.qtype === FIELD_TEST
+      ? (r.typeNodes ?? []).map((x) => ({ qtype: x.qtype, b: x.before?.mastery ?? 0, a: x.after?.mastery ?? 0 }))
+      : [{ qtype: r.node.qtype, b, a }];
+  for (const x of typeNodes) {
+    if (!(x.b < MASTER_AT && x.a >= MASTER_AT)) continue;
     out.push({
-      key: `master:${manifest.subject}:${stage}:${r.node.field}:${r.node.qtype}`, kind: 'master', head: 'MASTER!',
-      main: `${name(r.node.field)} · ${SHORT_TYPE[r.node.qtype]}`, sub: `マスター度 ${Math.round(MASTER_AT * 100)}%`,
+      key: `master:${manifest.subject}:${stage}:${r.node.field}:${x.qtype}`, kind: 'master', head: 'MASTER!',
+      main: `${name(r.node.field)} · ${SHORT_TYPE[x.qtype]}`, sub: `マスター度 ${Math.round(MASTER_AT * 100)}%`,
     });
   }
   const rb = r.rank?.before?.rank ?? null;

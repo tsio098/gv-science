@@ -17,6 +17,14 @@ export type QType = 'tf' | 'calc' | 'reason';
 export type TreeStage = 'front' | 'back';
 export const QTYPES: QType[] = ['tf', 'calc', 'reason'];
 export const QTYPE_LABEL: Record<QType, string> = { tf: '正誤問題', calc: '計算問題', reason: '考察問題' };
+/**
+ * 分野テスト（2026-10-24 先生決定）: 分野ノードの正誤・計算・考察から 10 問（分野の問題数の比率で配分・ROUTE だけ）。
+ * セッションの qtype = 'mix'。スコア・マスター度は種別の挑戦と同じ（各問題はその種別のノードに入る）
+ */
+export const FIELD_TEST = 'mix';
+export const FIELD_TEST_SIZE = 10;
+export type PlayKind = QType | typeof FIELD_TEST;
+export const playKindLabel = (k: PlayKind) => (k === FIELD_TEST ? '分野テスト' : QTYPE_LABEL[k]);
 
 /**
  * 系統（分野色）。モック v31 で理論化学を 化学基礎範囲（basic）/ 化学応用範囲（applied）に分けた。
@@ -199,7 +207,8 @@ export interface TreeSession {
   subject: string;
   stage?: TreeStage;
   field: string;
-  qtype: QType;
+  /** 'mix' = 分野テスト */
+  qtype: PlayKind;
   version: number;
   startedAt: number;
   units: PlayUnit[];
@@ -237,7 +246,10 @@ export interface SubmitResult {
     /** この挑戦で増やせた点の上限（問ごとに 100 − 挑戦前の自己ベスト）。古い Proxy は返さない */
     max?: number;
   };
-  node: { field: string; qtype: QType; before: NodeStats | null; after: NodeStats | null };
+  /** 分野テスト（qtype = 'mix'）は分野全体の値 */
+  node: { field: string; qtype: PlayKind; before: NodeStats | null; after: NodeStats | null };
+  /** 分野テストの種別ごとの前後（MASTER! の通知に使う・2026-10-24）*/
+  typeNodes?: { qtype: QType; before: NodeStats | null; after: NodeStats | null }[];
   fieldScore: {
     before: (NodeStats & { pct: number; unlocked: boolean; play?: { count: number; rate: number } }) | null;
     after: (NodeStats & { pct: number; unlocked: boolean; play?: { count: number; rate: number } }) | null;
@@ -349,7 +361,7 @@ export const fetchTreeManifest = (subject: string, stage: TreeStage = 'front') =
   get<TreeManifest>(`/tree/manifest?subject=${encodeURIComponent(subject)}${stageQ(stage)}`).then(normalizeGroups);
 export const fetchTreeProgress = (subject: string, stage: TreeStage = 'front') =>
   get<TreeProgress>(`/tree/progress?subject=${encodeURIComponent(subject)}${stageQ(stage)}`);
-export const startTreeSession = (subject: string, field: string, qtype: QType, stage: TreeStage = 'front') =>
+export const startTreeSession = (subject: string, field: string, qtype: PlayKind, stage: TreeStage = 'front') =>
   post<TreeSession>('/tree/session/start', stage === 'back' ? { subject, field, qtype, stage } : { subject, field, qtype });
 /**
  * c=2 = 残念トロフィー・LV.30 チケットに対応した LIFF（2026-10-19）。付けないと Proxy はそれらを返さない

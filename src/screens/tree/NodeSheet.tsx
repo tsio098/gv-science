@@ -4,9 +4,10 @@
  *   未解放   … 前提分野ごとの「52% / 70%」「達成」
  *   準備中   … 問題 0 問
  * 分野の順位・種別ごとの新着バッジ（Phase 4）。iPad 横（docked）は右の常設パネルに同じ中身を出す。
+ * 分野テスト（2026-10-24 先生決定）: 考察問題の下に 1 行。正誤・計算・考察から 10 問・20 マスは分野全体の出題状況。ROUTE だけ
  */
-import type { QType, RankInfo, TreeField, TreeManifest, TreeProgress } from '../../lib/treeApi';
-import { QTYPES, QTYPE_LABEL } from '../../lib/treeApi';
+import type { PlayKind, RankInfo, TreeField, TreeManifest, TreeProgress } from '../../lib/treeApi';
+import { FIELD_TEST, FIELD_TEST_SIZE, QTYPES, QTYPE_LABEL } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
 import { GROUP_NAME, QTYPE_ICON, REVIEW_COLOR, RETRO, T, alpha, distPct, fmtScore, groupColor, groupSide, pips20 } from './treeTheme';
 import type { Dist } from '../../lib/treeApi';
@@ -18,7 +19,7 @@ interface Props {
   progress: TreeProgress;
   starting: boolean;
   onClose: () => void;
-  onStart: (qtype: QType) => void;
+  onStart: (qtype: PlayKind) => void;
   onRanking?: () => void;
   /** iPad 横の右パネルに置く（ポップオーバーの枠・位置を使わない）*/
   docked?: boolean;
@@ -264,6 +265,54 @@ export function NodeSheet({ field, manifest, progress, starting, onClose, onStar
             </div>
           );
         })}
+        {T.name !== 'ABYSS' && (
+          <div className="tr-row tr-row-ft">
+            <div
+              className="tr-row-tile"
+              style={{
+                background: p.mastery > 0 ? col : 'transparent',
+                border: `1px solid ${col}`,
+                color: p.mastery > 0 ? T.onColor : col,
+                boxShadow: `0 0 ${p.mastery > 0 ? 10 : 6}px ${alpha(col, p.mastery > 0 ? 0.6 : 0.25)}`,
+              }}
+            >
+              <Ico id="i-star" size={15} />
+            </div>
+            <div className="tr-row-body">
+              <div className="tr-row-label">
+                <b style={{ whiteSpace: 'nowrap' }}>分野テスト</b>
+                <span style={{ whiteSpace: 'nowrap' }}>
+                  ランダム <span className="tr-num">{Math.min(FIELD_TEST_SIZE, field.total)}</span> 問
+                </span>
+              </div>
+              {RETRO ? (
+                <Pips dist={p.dist} total={field.total} color={col} label="分野テスト" />
+              ) : (
+                <div className="tr-distbar">
+                  {(() => {
+                    const w = distPct(p.dist, field.total);
+                    return (
+                      <>
+                        <i style={{ width: `${w.mastered}%`, background: col, boxShadow: `0 0 8px ${col}` }} />
+                        <i style={{ width: `${w.solved}%`, background: col, opacity: 0.45 }} />
+                        <i style={{ width: `${w.review}%`, background: REVIEW_COLOR }} />
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+            <button
+              type="button"
+              className="tr-go"
+              disabled={starting}
+              onClick={() => onStart(FIELD_TEST)}
+              style={{ ['--tr-go' as string]: col, ['--tr-go-side' as string]: side }}
+            >
+              挑戦
+            </button>
+          </div>
+        )}
       </div>
       {onRanking && (
         <div className="tr-pop-foot">

@@ -30,6 +30,8 @@
  * - 途中で画面を離れたら終了（2026-10-23 先生の指示）: アリーナとイベントのテストは、解答中に画面が隠れたら（アプリの切り替え・ホーム・画面ロック・
  *   閉じる）その時点で終了し、決定した問題だけで採点する（ended: true で提出・keepalive）。中断ボタンも同じ（終了して採点）。
  *   閉じた・落ちた後に開くと Proxy が ended のセッション（画像なし）を返すので、端末に残った決定済みの解答を提出するだけ。再開はできない
+ * - 分野テスト（2026-10-24 先生決定・session.qtype = 'mix'）: 1 分野の正誤・計算・考察が混ざる 10 問。見出しは「分野テスト › 計算問題」のように
+ *   問題ごとの種別（パンくずが長いと種別が切れるので分野名は出さない）。ほかは種別の挑戦と同じ（タイムボーナス・あとで復習・提出）
  * - 復習チェック（2026-10-19 先生の要望・設計書 §5.1）: 「あとで復習」を付けた問題は、正解でも結果画面の一覧に出す。
  *   端末の中だけで持つ（提出 API には送らない）。選択肢に重ねないよう、単問は解答パッドの見出し行、セット・ABYSS は小問の見出し行に置く。アリーナには出さない
  */
@@ -47,7 +49,7 @@ interface EndState {
   /** 送り直しても通らないエラー */
   final: boolean;
 }
-import { QTYPE_LABEL, TreeApiError, choiceText, circled, storedResultOf, submitArena, submitSeasonEventTest, submitTreeSession, treeImage } from '../../lib/treeApi';
+import { FIELD_TEST, TreeApiError, choiceText, playKindLabel, circled, storedResultOf, submitArena, submitSeasonEventTest, submitTreeSession, treeImage } from '../../lib/treeApi';
 import { EV_NAME } from './event/evTheme';
 import { Ico } from './TreeIcons';
 import { ZoomImage } from './ZoomImage';
@@ -207,6 +209,8 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
   const evKind = (session as { event?: { kind?: string } }).event?.kind ?? null;
   const isEventTest = (session as { eventTest?: boolean }).eventTest === true;
   const isEvent = !!evKind;
+  /** 分野テスト: 種別が問題ごとに変わる */
+  const isFieldTest = session.qtype === FIELD_TEST;
   /** 途中を端末に残して再開する挑戦（1 回だけのもの）*/
   const keepsProgress = isArena || isEventTest;
   /** 制限時間を過ぎたら自動で次の問題へ（イベントのテスト）*/
@@ -676,8 +680,10 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
         ? 'CHAMPION ARENA › '
         : evKind
           ? `${EV_NAME[evKind] ?? 'EVENT'} ${isEventTest ? 'TEST' : 'CHALLENGE'} › `
-          : `${subjectName} › ${fieldName} › `,
-    [isArena, evKind, isEventTest, subjectName, fieldName],
+          : isFieldTest
+            ? '分野テスト › '
+            : `${subjectName} › ${fieldName} › `,
+    [isArena, evKind, isEventTest, isFieldTest, subjectName, fieldName],
   );
 
   const renderImg = (path: string | null, alt: string, btn = true) => {
@@ -854,7 +860,7 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
             {isBack && <span className="ab-pill">ABYSS</span>}
             {isArena && <img src={CROWN_MONO} alt="" className="tr-ar-chipcrown" style={{ width: 16 }} />}
             {crumb}
-            <span style={{ color: col, fontWeight: 700 }}>{QTYPE_LABEL[(isArena || isEvent) && first ? first.type : session.qtype]}</span>
+            <span style={{ color: col, fontWeight: 700 }}>{playKindLabel((isArena || isEvent || isFieldTest) && first ? first.type : session.qtype)}</span>
           </div>
           <div className="tr-progress">
             {RETRO ? (

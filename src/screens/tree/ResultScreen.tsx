@@ -11,10 +11,11 @@
  * 加算のカードの下に「EVENT MASTER 64% → 70%」の行と「定着 +4 題 · あと 6 日」・
  * 2026-10-22 先生: イベントの解答は分野のスコア・マスター度に入れない（Proxy）→ 加算の数字と 3 枚のタイルは出さず、正答・時間と「入りません」の一文・
  * 左下のボタンは「イベントへ」（イベント画面に戻る）・出題状況はイベントの 70 題（2026-10-21 先生の指示・科目全体の問題数ではなく）
+ * 分野テスト（2026-10-24）: 見出しは「分野 › 分野テスト · 結果」・マスター度と出題状況は分野全体（Proxy の node が分野の値）。1 問ごとの加算の表は出さない（先生決定）
  */
 import { useRef, useState, type RefObject } from 'react';
 import type { Dist, FieldGroup, PartValue, PlayQuestion, SubmitResult, TreeManifest, TreeSession } from '../../lib/treeApi';
-import { QTYPE_LABEL, circledChoice, examLabel, gradeLabel, treeImage } from '../../lib/treeApi';
+import { FIELD_TEST, QTYPE_LABEL, circledChoice, examLabel, gradeLabel, playKindLabel, treeImage } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
 import { numericLabel } from './AbyssAnswer';
 import { PlayShot, SHOT_SKIP } from './PlayShot';
@@ -331,7 +332,7 @@ export function ResultScreen({ result, session, marked, manifest, grade, nicknam
       }
     : after
       ? {
-          label: QTYPE_LABEL[session.qtype] ?? manifest.name,
+          label: session.qtype === FIELD_TEST ? '分野全体' : (QTYPE_LABEL[session.qtype] ?? manifest.name),
           total: after.total,
           dist: { ...after.dist, fresh: Math.max(0, after.total - after.dist.mastered - after.dist.solved - after.dist.review) },
         }
@@ -385,7 +386,7 @@ export function ResultScreen({ result, session, marked, manifest, grade, nicknam
             </>
           ) : (
             <>
-              {field?.name ?? session.field} › <b>{QTYPE_LABEL[session.qtype]}</b> · 結果
+              {field?.name ?? session.field} › <b>{playKindLabel(session.qtype)}</b> · 結果
             </>
           )}
         </span>

@@ -9,6 +9,7 @@ import type {
   ArenaResult,
   ArenaSession,
   TreeTicket,
+  PlayKind,
   QType,
   SeasonEventState,
   SeasonEventTestResult,
@@ -23,6 +24,7 @@ import type {
 } from '../../lib/treeApi';
 import {
   ARENA_SUBJECTS,
+  FIELD_TEST,
   TreeApiError,
   fetchArena,
   fetchTreeTickets,
@@ -758,7 +760,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
     }
   };
 
-  const start = async (field: string, qtype: QType) => {
+  const start = async (field: string, qtype: PlayKind) => {
     setStarting(true);
     setMessage(null);
     try {
@@ -1064,7 +1066,8 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
             setView(
               isEventSession(view.session)
                 ? { kind: 'ranking', scope: 'subject', field: null, qtype: 'tf', back: view }
-                : { kind: 'ranking', scope: 'field', field: view.session.field, qtype: view.session.qtype, back: view }
+                : // 分野テストは分野のランキング（種別のタブは正誤から）
+                  { kind: 'ranking', scope: 'field', field: view.session.field, qtype: view.session.qtype === FIELD_TEST ? 'tf' : view.session.qtype, back: view }
             );
           }}
         />
