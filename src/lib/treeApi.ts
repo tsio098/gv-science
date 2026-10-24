@@ -143,7 +143,8 @@ export interface TreeMe {
 /** ROUTE のマーク式。min: 0 は ⓪〜⑨ の数字マーク（Phase 5 の Proxy から。無ければ 1）*/
 export interface ChoiceAnswer {
   kind: 'choice';
-  boxes: { n: number; choices: number; min?: number }[];
+  /** labels = 選択肢の表示名（冊子の ⓪ⓐⓑ など。無ければ番号。2026-10-24）*/
+  boxes: { n: number; choices: number; min?: number; labels?: string[] }[];
   group: 'unordered' | null;
 }
 
@@ -859,7 +860,7 @@ export const fetchStaffOverview = (date?: string) =>
 
 /** 先生用の正解。ROUTE = 欄ごとのマーク（'3' = ③。alts = 別の正しい組）・ABYSS = 欄ごと */
 export type StaffSolution =
-  | { kind: 'choice'; group: 'unordered' | null; boxes: { n: number; correct: string; min: number }[]; alts: string[][] }
+  | { kind: 'choice'; group: 'unordered' | null; boxes: { n: number; correct: string; min: number; labels?: string[] }[]; alts: string[][] }
   | {
       kind: 'parts';
       unordered: boolean;
@@ -1124,6 +1125,7 @@ export function treeImage(path: string): Promise<string> {
 
 export const CIRCLED = ['⓪', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
 export const circled = (v: string | number) => CIRCLED[Number(v)] ?? String(v);
+export { choiceText, circledChoice } from './choiceLabel';
 
 /** 学年の表示（D1 は 'H3' '既卒' など）*/
 export const gradeLabel = (g: string) => {

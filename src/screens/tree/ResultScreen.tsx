@@ -14,7 +14,7 @@
  */
 import { useRef, useState, type RefObject } from 'react';
 import type { Dist, FieldGroup, PartValue, PlayQuestion, SubmitResult, TreeManifest, TreeSession } from '../../lib/treeApi';
-import { QTYPE_LABEL, circled, examLabel, gradeLabel, treeImage } from '../../lib/treeApi';
+import { QTYPE_LABEL, circledChoice, examLabel, gradeLabel, treeImage } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
 import { numericLabel } from './AbyssAnswer';
 import { PlayShot, SHOT_SKIP } from './PlayShot';
@@ -209,7 +209,8 @@ function mineLabel(q: PlayQuestion | undefined, value: PartValue[]) {
       })
       .join(' / ');
   }
-  return value.map((v) => circled(String(v))).join('・');
+  const bs = q && q.answer.kind === 'choice' ? q.answer.boxes : [];
+  return value.map((v, i) => circledChoice(bs[i] ?? bs[0], String(v))).join('・');
 }
 
 /**

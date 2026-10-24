@@ -6,7 +6,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import type { AbyssPart, QType, StaffQuestion, StaffQuestions, StaffSolution, TreeManifest, TreeStage } from '../../lib/treeApi';
-import { QTYPE_LABEL, TreeApiError, circled, examLabel, fetchStaffQuestions, fetchTreeManifest, treeImage } from '../../lib/treeApi';
+import { QTYPE_LABEL, TreeApiError, circledChoice, examLabel, fetchStaffQuestions, fetchTreeManifest, treeImage } from '../../lib/treeApi';
 import { TREE_SUBJECTS, TREE_SUBJECT_NAME, type TreeSubject } from '../../lib/treeSubject';
 import { Ico } from './TreeIcons';
 import { PlayZoomScreen, type ZoomTab } from './PlayZoomScreen';
@@ -74,9 +74,9 @@ const fmtYmd = (s: string | undefined) => {
 function solutionLines(sol: StaffSolution, pub: AbyssPart[]): string[] {
   if (sol.kind === 'choice') {
     const one = sol.boxes.length === 1;
-    const main = sol.boxes.map((b) => (one ? circled(b.correct) : `${b.n}: ${circled(b.correct)}`)).join('　');
+    const main = sol.boxes.map((b) => (one ? circledChoice(b, b.correct) : `${b.n}: ${circledChoice(b, b.correct)}`)).join('　');
     const out = [main + (sol.group === 'unordered' ? '（順不同）' : '')];
-    if (sol.alts.length) out.push('別の正しい組: ' + sol.alts.map((t) => t.map((v) => circled(v)).join('')).join(' / '));
+    if (sol.alts.length) out.push('別の正しい組: ' + sol.alts.map((t) => t.map((v, i) => circledChoice(sol.boxes[i], v)).join('')).join(' / '));
     return out;
   }
   const out = sol.parts.map((p, i) => {

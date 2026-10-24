@@ -44,7 +44,7 @@ interface EndState {
   /** 送り直しても通らないエラー */
   final: boolean;
 }
-import { QTYPE_LABEL, TreeApiError, circled, storedResultOf, submitArena, submitSeasonEventTest, submitTreeSession, treeImage } from '../../lib/treeApi';
+import { QTYPE_LABEL, TreeApiError, choiceText, circled, storedResultOf, submitArena, submitSeasonEventTest, submitTreeSession, treeImage } from '../../lib/treeApi';
 import { EV_NAME } from './event/evTheme';
 import { Ico } from './TreeIcons';
 import { ZoomImage } from './ZoomImage';
@@ -701,11 +701,11 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
                   key={n}
                   type="button"
                   className={`tr-ch${on ? ' is-sel' : ''}${small ? ' is-sm' : ''}`}
-                  aria-label={`解答番号 ${bs.map((b) => b.n).join('・')} 選択肢 ${n}`}
+                  aria-label={`解答番号 ${bs.map((b) => b.n).join('・')} 選択肢 ${choiceText(b0, n)}`}
                   aria-pressed={on}
                   onClick={() => pickMulti(q.id, n, bs.length)}
                 >
-                  {n}
+                  {choiceText(b0, n)}
                 </button>
               );
             })}
@@ -729,11 +729,11 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
                 key={n}
                 type="button"
                 className={`tr-ch${on ? ' is-sel' : ''}${small ? ' is-sm' : ''}`}
-                aria-label={`解答番号 ${b.n} 選択肢 ${n}`}
+                aria-label={`解答番号 ${b.n} 選択肢 ${choiceText(b, n)}`}
                 aria-pressed={on}
                 onClick={() => pick(q.id, k, n, boxesOf(q).length)}
               >
-                {n}
+                {choiceText(b, n)}
               </button>
             );
           })}
