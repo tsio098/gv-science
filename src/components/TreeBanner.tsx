@@ -10,6 +10,8 @@
  * （route / abyss のバナーだけ。アリーナのバナーは王冠なのでそのまま）。ホーム画面に追加したアイコンは人ごとに変えられないので対象外
  *   event      = 季節イベントの開催中（2026-10-23 先生「全員に出す・シーズンよりイベントが優先」）。背景 ev/banner-bg_ev_<kind>@2x.png（4px ドット・
  *                pixelated）に、かぼちゃの錨・ドット文字「HALLOWEEN / CHALLENGE」・締め切り・TAP TO START を重ねる。素材の無いイベントは出さない
+ *                Message in a Bottle（2026-10-25・kind 'bottle'）: 背景 banner-bg_ev_bottle（月夜の海）にボトル（−14°）・ロゴ「MESSAGE / IN A / BOTTLE」
+ *                （画像にせず SVG の文字・Press Start 2P と羊皮紙のクローム）・ドットの波線・締め切り・TAP TO START
  */
 import type { ButtonHTMLAttributes } from 'react';
 import type { ArenaSeason, TreeHomeEvent } from '../lib/treeApi';
@@ -31,6 +33,9 @@ const md = (ms: number) => {
   return `${d.getUTCMonth() + 1}/${d.getUTCDate()}（${WEEKDAY[d.getUTCDay()]}）`;
 };
 
+/** バナーの素材のあるイベント（着せ替えの素材 EV_HAS_ART ＋ ボトル。ボトルは着せ替えが無いので別に持つ）*/
+const BANNER_ART = new Set([...EV_HAS_ART, 'bottle']);
+
 /**
  * どのバナーを出すか（実装手順 §5.8）。アリーナは開放済みのアカウントだけ・シーズン開始日と最終日の 2 日だけ。
  * プレシーズン（n < 1）はアリーナのバナーを出さない。
@@ -42,7 +47,7 @@ export function treeBannerKind(
 ): TreeBannerKind {
   if (!home) return 'route';
   const ev = home.event;
-  if (ev && EV_HAS_ART.has(ev.kind) && now < ev.end) return 'event';
+  if (ev && BANNER_ART.has(ev.kind) && now < ev.end) return 'event';
   const s = home.season;
   if (home.arenaOpen && s && s.n >= 1) {
     const today = jstDay(now);
@@ -82,6 +87,9 @@ const LABEL: Record<TreeBannerKind, string> = {
 };
 
 export function TreeBanner({ kind, season, event, iconSkin, onOpen, buttonProps }: Props) {
+  if (kind === 'event' && event && event.kind === 'bottle') {
+    return <BottleBanner event={event} onOpen={onOpen} buttonProps={buttonProps} />;
+  }
   if (kind === 'event' && event && EV_HAS_ART.has(event.kind)) {
     return <EventBanner event={event} onOpen={onOpen} buttonProps={buttonProps} />;
   }
@@ -160,6 +168,84 @@ function EventBanner({ event, onOpen, buttonProps }: { event: TreeHomeEvent; onO
       <svg className="tb-over" viewBox="0 0 1200 400" aria-hidden="true">
         <image href={`${BRAND}ev/icon_ev_${k}.svg`} x={40} y={74} width={168} height={168} style={{ imageRendering: 'pixelated' }} />
         <image href={`${BRAND}ev/text_ev_${k}_2line.svg`} x={190} y={92} width={450} height={132} />
+        <text x={82} y={304} fontFamily={JP} fontSize={24} fill={c.text}>
+          {evUntil(event.end)}
+        </text>
+        <text x={82} y={348} fontFamily={MONO} fontSize={18} fill={c.main} letterSpacing={5}>
+          TAP TO START ▶
+        </text>
+      </svg>
+    </button>
+  );
+}
+
+/** ドットの波線（100×3 のマス・ボードのロゴの下の線）*/
+const WAVE_D = (() => {
+  let d = '';
+  for (let x = 0; x < 100; x += 4) d += `M${x} 2h2v1H${x}zM${x + 2} 1h1v1H${x + 2}zM${x + 3} 0h1v1H${x + 3}z`;
+  return d;
+})();
+const PS2P = "'Press Start 2P', 'DotGothic16', monospace";
+
+/**
+ * Message in a Bottle のバナー（2026-10-25・ボード Main のロゴ: MESSAGE 小・IN A 極小（シーグラス・線ではさむ）・BOTTLE 大（羊皮紙のクローム）＋ドットの波線）。
+ * 文字は画像にせず SVG の文字（1200×400 の座標でそのまま縮む）。クロームは縦のグラデ・押し出しは同じ文字を右下にずらした影
+ */
+function BottleBanner({ event, onOpen, buttonProps }: { event: TreeHomeEvent; onOpen: () => void; buttonProps?: Props['buttonProps'] }) {
+  const c = evColor('bottle');
+  const chrome = (x: number, y: number, size: number, text: string, shadow: number) => (
+    <>
+      <text x={x + shadow} y={y + shadow} fontFamily={PS2P} fontSize={size} fill="#120A00">
+        {text}
+      </text>
+      <text x={x} y={y} fontFamily={PS2P} fontSize={size} fill="url(#tb-bt-chrome)">
+        {text}
+      </text>
+    </>
+  );
+  return (
+    <button
+      type="button"
+      className="tb-banner is-ev is-ev-bottle"
+      aria-label={`MESSAGE IN A BOTTLE 開催中（${evUntil(event.end)}）。ANCHOR TREE をひらく`}
+      onClick={onOpen}
+      {...buttonProps}
+    >
+      <img className="tb-bg is-pixel" src={`${BRAND}ev/banner-bg_ev_bottle@2x.png`} alt="" aria-hidden="true" draggable={false} />
+      <svg className="tb-over" viewBox="0 0 1200 400" aria-hidden="true">
+        <defs>
+          <linearGradient id="tb-bt-chrome" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#FFFFFF" />
+            <stop offset=".3" stopColor="#FFF1CF" />
+            <stop offset=".52" stopColor="#F6D58E" />
+            <stop offset=".52" stopColor="#A9792E" />
+            <stop offset=".74" stopColor="#E7B85C" />
+            <stop offset="1" stopColor="#FFE7A8" />
+          </linearGradient>
+          <filter id="tb-bt-glow" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="9" />
+          </filter>
+        </defs>
+        {/* ボトル（4px ドット・−14°）とシーグラスの弱い光 */}
+        <g transform="rotate(-14 124 170)">
+          <ellipse cx={124} cy={186} rx={52} ry={64} fill="#7EEBC6" opacity={0.18} filter="url(#tb-bt-glow)" />
+          <image href={`${BRAND}ev/icon_ev_bottle_flat.svg`} x={44} y={84} width={160} height={168} style={{ imageRendering: 'pixelated' }} />
+        </g>
+        {/* MESSAGE ＋ —IN A— */}
+        {chrome(236, 122, 28, 'MESSAGE', 3)}
+        <rect x={448} y={106} width={22} height={5} fill="#7EEBC6" />
+        <text x={482} y={120} fontFamily={PS2P} fontSize={16} fill="#04102A">
+          IN A
+        </text>
+        <text x={480} y={118} fontFamily={PS2P} fontSize={16} fill="#7EEBC6">
+          IN A
+        </text>
+        <rect x={552} y={106} width={22} height={5} fill="#7EEBC6" />
+        {/* BOTTLE（大）*/}
+        {chrome(230, 214, 68, 'BOTTLE', 5)}
+        <svg x={232} y={232} width={404} height={12} viewBox="0 0 100 3" preserveAspectRatio="none" shapeRendering="crispEdges">
+          <path d={WAVE_D} fill="#7EEBC6" opacity={0.8} />
+        </svg>
         <text x={82} y={304} fontFamily={JP} fontSize={24} fill={c.text}>
           {evUntil(event.end)}
         </text>

@@ -1,0 +1,299 @@
+/* ============================================================
+   ANCHOR TREE — Message in a Bottle（2026-11-01〜12-04 5:00・ボード版 81・実装手順_ボトルメール §0）
+   色: 地 #1C3F6E → #0E2748 → #06132A／カード #183C68 → #0A1C38／主色 羊皮紙 #F6D58E（文字 #241500・側面 #7E5A1E）／
+       差し色 シーグラス #7EEBC6（側面 #2A8C72）／文字 #F2F5FF・サブ #A9BBD9。招待状・欠片・ABYSS の条件は ABYSS の色（#0A1636 → #02050E・シアン #00E5FF）
+   部品はハロウィンと同じ（tree-event.css の ev-px / ev-px2 / ev-scan / ev-arc / ev-dot・.is-ev-bottle の変数）。
+   clip-path の要素に box-shadow を付けない → 押し出し・発光は外側の filter: drop-shadow。基底（animation なし）が最後の状態
+   ============================================================ */
+
+/* ── ロゴ（CSS の文字）── */
+.bt-logo {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1;
+}
+.bt-logo-row {
+  display: flex;
+  align-items: center;
+}
+.bt-chrome {
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  background-image: linear-gradient(180deg, #ffffff 0%, #fff1cf 30%, #f6d58e 52%, #a9792e 52%, #e7b85c 74%, #ffe7a8 100%);
+  filter: drop-shadow(2px 2px 0 #120a00);
+  line-height: 1;
+}
+.bt-chrome.is-glass {
+  background-image: linear-gradient(180deg, #ffffff 0%, #d8fff1 30%, #7eebc6 52%, #2a8c72 52%, #55c9a6 74%, #c2ffea 100%);
+}
+.bt-chrome.is-miss {
+  background-image: linear-gradient(180deg, #ffffff 0%, #ffe3d2 30%, #ffb38a 52%, #b5603a 52%, #e58a62 74%, #ffd2bc 100%);
+}
+.bt-chrome.is-abyss {
+  background-image: linear-gradient(180deg, #ffffff 0%, #c8f8ff 30%, #00e5ff 52%, #0a6a8a 52%, #18a8c8 74%, #a8f4ff 100%);
+  filter: drop-shadow(2px 2px 0 #01060f);
+}
+.bt-ina {
+  color: #7eebc6;
+  text-shadow: 1px 1px 0 #04102a;
+  line-height: 1;
+}
+
+/* ── ポイントのバー（20 マス）── */
+.bt-bar-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.bt-bar {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  padding-top: 4px;
+}
+.bt-bar > span {
+  flex: 1;
+  height: 10px;
+  background: rgba(242, 245, 255, 0.1);
+}
+.bt-bar > span.is-on {
+  background: #f6d58e;
+}
+.bt-bar > span.is-next {
+  background: rgba(255, 241, 207, 0.45);
+}
+.bt-bar-mark {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 18px;
+  background: #00e5ff;
+  box-shadow: 0 0 6px #00e5ff;
+}
+.bt-bar-labels {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #a9bbd9;
+}
+.bt-bar-mid {
+  position: absolute;
+  transform: translateX(6px);
+  color: #7fefff;
+}
+
+/* ── 招待状の欠片（33 マス）── */
+.bt-frag {
+  display: grid;
+  gap: 3px;
+  justify-content: center;
+}
+.bt-frag-cell {
+  width: var(--cell, 22px);
+  height: var(--cell, 22px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--cell, 22px) * 0.6);
+  color: #e8eeff;
+  background: #111e3e;
+  box-shadow: inset 0 0 0 1px rgba(138, 154, 200, 0.3);
+}
+.bt-frag-cell.is-mine {
+  background: rgba(0, 229, 255, 0.18);
+  box-shadow: inset 0 0 0 2px #00e5ff, 0 0 6px rgba(0, 229, 255, 0.4);
+}
+
+/* ── 問題 ID と「コピー」（結果画面の WrongCard・B09）── */
+.bt-qid {
+  /* 狭いときは操作の行の次の行に回る（ID が 2 行に収まる幅を取る）*/
+  flex: 1 1 150px;
+  min-width: 150px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.bt-qid-text {
+  font-family: 'Hiragino Sans', var(--f-jp), sans-serif;
+  font-size: 10px;
+  line-height: 1.35;
+  text-align: right;
+  word-break: break-all;
+  color: var(--tr-sub, #a9bbd9);
+  user-select: all;
+  -webkit-user-select: all;
+  /* 2 行まで */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.bt-qid-copy {
+  flex: none;
+  border: 0;
+  padding: 1px;
+  background: rgba(var(--tr-accent-rgb, 246, 213, 142), 0.5);
+  cursor: pointer;
+  color: var(--tr-text, #f2f5ff);
+}
+.bt-qid-copy > span {
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  background: var(--tr-well, #102c52);
+  font-size: 11px;
+  line-height: 1;
+}
+
+/* ── 通知（BottleToast.tsx・ボード FX_bottle / FX_trophy）──
+ * 動きの部品はトロフィーの通知と同じ（.tt-toast.is-ev）。足すのはボトルが浮かび上がる bt-rise と泡の bt-bub だけ */
+@keyframes btRise {
+  0% { transform: translateY(26px); opacity: 0; }
+  40% { opacity: 1; }
+  75% { transform: translateY(-3px); }
+  100% { transform: none; }
+}
+@keyframes btBubble {
+  0% { transform: translateY(10px); opacity: 0; }
+  25% { opacity: 1; }
+  100% { transform: translateY(-26px); opacity: 0; }
+}
+@keyframes btFill {
+  from { width: 0; }
+  to { width: 100%; }
+}
+.tt-toast.is-ev .bt-rise { animation: btRise 0.5s steps(6) 0.62s backwards; }
+.bt-bub {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px solid #b8ffe6;
+  opacity: 0;
+  pointer-events: none;
+  animation: btBubble 0.6s steps(6) 1.3s 3 both;
+}
+.bt-stamp {
+  background: #f6d58e;
+  color: #241500;
+  box-shadow: 3px 3px 0 #7e5a1e, 0 0 12px rgba(246, 213, 142, 0.75);
+}
+.bt-stamp.is-cyan {
+  background: #00e5ff;
+  color: #031b24;
+  box-shadow: 3px 3px 0 #01060f, 0 0 12px rgba(0, 229, 255, 0.75);
+}
+.ev-tslot .tt-l30bar > .bt-fill {
+  background: repeating-linear-gradient(90deg, #f6d58e 0 6px, rgba(0, 0, 0, 0) 6px 8px, #fff1cf 8px 14px, rgba(0, 0, 0, 0) 14px 16px);
+  animation: btFill 0.4s steps(8) 0.72s backwards;
+}
+.tt-slot.is-done .bt-rise,
+.tt-slot.is-done .bt-fill {
+  animation: none !important;
+}
+.tt-slot.is-done .bt-bub {
+  animation: none !important;
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bt-rise,
+  .bt-fill,
+  .bt-bub {
+    animation: none !important;
+  }
+  .bt-bub {
+    opacity: 0;
+  }
+}
+
+/* ── ABYSS が未開放のシート（AbyssLockedSheet・ボード B12）── */
+.tr-overlay.bt-lock-overlay {
+  position: fixed;
+  z-index: 60;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+}
+.bt-lock-sheet {
+  width: 100%;
+  max-width: 576px;
+  filter: drop-shadow(0 -6px 22px rgba(0, 229, 255, 0.22));
+}
+.bt-lock-frame {
+  padding: 2px 2px 0;
+  background: rgba(0, 229, 255, 0.6);
+  clip-path: polygon(12px 0, calc(100% - 12px) 0, calc(100% - 12px) 4px, calc(100% - 8px) 4px, calc(100% - 8px) 8px, calc(100% - 4px) 8px, calc(100% - 4px) 12px, 100% 12px, 100% 100%, 0 100%, 0 12px, 4px 12px, 4px 8px, 8px 8px, 8px 4px, 12px 4px);
+}
+.bt-lock-body {
+  padding: 18px 18px calc(28px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, #0a1636, #02050e);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  color: #e8eeff;
+  clip-path: polygon(12px 0, calc(100% - 12px) 0, calc(100% - 12px) 4px, calc(100% - 8px) 4px, calc(100% - 8px) 8px, calc(100% - 4px) 8px, calc(100% - 4px) 12px, 100% 12px, 100% 100%, 0 100%, 0 12px, 4px 12px, 4px 8px, 8px 8px, 8px 4px, 12px 4px);
+}
+.bt-lock-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.bt-lock-tag {
+  padding: 3px 8px;
+  font-size: 11px;
+  background: rgba(232, 238, 255, 0.12);
+  color: #8a9ac8;
+}
+.bt-lock-cta {
+  flex: 1;
+  border: 0;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+  filter: drop-shadow(3px 3px 0 #01060f) drop-shadow(0 0 10px rgba(0, 229, 255, 0.45));
+}
+.bt-lock-cta > span {
+  height: 48px;
+  background: #00e5ff;
+  color: #031b24;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+}
+.bt-lock-close {
+  flex: none;
+  width: 96px;
+  height: 48px;
+  border: 0;
+  padding: 2px;
+  background: rgba(0, 229, 255, 0.45);
+  cursor: pointer;
+}
+.bt-lock-close > span {
+  height: 100%;
+  background: #0a1328;
+  color: #e8eeff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+}
+.bt-lock-close:only-child {
+  flex: 1;
+}
+/* ツリーの鍵つきの ABYSS ボタン（未開放）*/
+.tr-stagetoggle .bt-abyss-lock {
+  position: relative;
+  opacity: 0.75;
+}
+.tr-stagetoggle .bt-abyss-lock i {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+}

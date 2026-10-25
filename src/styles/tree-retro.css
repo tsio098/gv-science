@@ -101,6 +101,43 @@
   --rx-ink: #140600;
 }
 
+/* Message in a Bottle の出題・結果（.is-ev-bottle・実装手順_ボトルメール §0-1）。招待状は ABYSS の色（.is-abyss）*/
+.tr-root.is-ev-bottle {
+  --tr-text: #f2f5ff;
+  --tr-text-rgb: 242, 245, 255;
+  --tr-sub: #a9bbd9;
+  --tr-accent: #f6d58e;
+  --tr-accent-rgb: 246, 213, 142;
+  --tr-on: #241500;
+  --tr-accent-deep: #7e5a1e;
+  --tr-card: #183c68;
+  --tr-well: #071631;
+  --tr-ground: #06132a;
+  --tr-ground-rgb: 6, 19, 42;
+  --tr-shadow-dark: #04102a;
+  --tr-line: rgba(246, 213, 142, 0.5);
+  --tr-line-soft: rgba(242, 245, 255, 0.25);
+  --tr-glow: 0 0 20px rgba(246, 213, 142, 0.14);
+  --tr-cta-glow: 0 0 12px rgba(246, 213, 142, 0.5);
+  --tr-page: linear-gradient(180deg, #1c3f6e 0%, #0e2748 45%, #06132a 100%);
+  --tr-caustic: none;
+  --tr-fade-top: #1c3f6e;
+  --tr-fade-top-0: rgba(28, 63, 110, 0);
+  --tr-fade-bot: #06132a;
+  --tr-fade-bot-0: rgba(6, 19, 42, 0);
+  --ev-lilac: #7eebc6;
+  --ev-light: #fff1cf;
+}
+.tr-root.is-retro.is-ev-bottle {
+  --rx-face: #071631;
+  --rx-card: linear-gradient(180deg, #183c68, #0a1c38);
+  --rx-side: #7e5a1e;
+  --rx-edge: rgba(246, 213, 142, 0.45);
+  --rx-row: rgba(7, 22, 49, 0.92);
+  --rx-chrome: linear-gradient(180deg, #ffffff 0%, #fff1cf 30%, #f6d58e 52%, #a9792e 52%, #e7b85c 74%, #ffe7a8 100%);
+  --rx-ink: #120a00;
+}
+
 /* ── 共通の字 ──────────────────────────────────────────── */
 
 .tr-root.is-retro .tr-arc {

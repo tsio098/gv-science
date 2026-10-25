@@ -392,7 +392,7 @@ function Row({ it, isNew, onOpen, holderName }: { it: TrophyItem; isNew: boolean
           ) : oops ? (
             <TrophyIcon grade="Z" size={30} chip style={{ transform: 'rotate(-14deg)' }} />
           ) : (
-            <TrophyIcon grade={it.grade} size={ev ? 34 : 30} style={{ opacity: got ? 1 : it.first ? 0.55 : 0.4, filter: got ? `drop-shadow(0 0 4px rgba(${g.rgb},.6))` : 'saturate(.3)' }} />
+            <TrophyIcon grade={it.grade} eventKind={it.eventKind} size={ev ? 34 : 30} style={{ opacity: got ? 1 : it.first ? 0.55 : 0.4, filter: got ? `drop-shadow(0 0 4px rgba(${g.rgb},.6))` : 'saturate(.3)' }} />
           )}
         </div>
         {it.first && !it.hidden && <span className="tt-mini1 tt-arc" aria-hidden="true" style={{ left: 40, right: 'auto', top: 2 }}>1ST</span>}

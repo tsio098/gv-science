@@ -50,6 +50,7 @@ export const EV_NAME: Record<string, string> = {
   xmas: 'CHRISTMAS',
   newyear: 'OTOSHIDAMA',
   setsubun: 'ONIWASOTO',
+  bottle: 'BOTTLE',
 };
 
 /** 配色（§0-3）: 地・カード・主色 / 主色の上の文字・側面・文字 / サブ・差し色・rgb */
@@ -65,6 +66,19 @@ export const EV_COLOR: Record<string, { bg: string; card: string; main: string; 
     accent: '#C9A2FF',
     rgb: '255,154,31',
     chrome: 'linear-gradient(180deg,#FFFFFF 0%,#FFE6C2 30%,#FF9A1F 52%,#B8480A 52%,#FF9A1F 74%,#FFC872 100%)',
+  },
+  // Message in a Bottle（実装手順_ボトルメール §0-1）: 月夜の海＋羊皮紙（主色）＋シーグラス（差し色）
+  bottle: {
+    bg: 'linear-gradient(180deg,#1C3F6E 0%,#0E2748 45%,#06132A 100%)',
+    card: 'linear-gradient(180deg,#183C68,#0A1C38)',
+    main: '#F6D58E',
+    onMain: '#241500',
+    side: '#7E5A1E',
+    text: '#F2F5FF',
+    sub: '#A9BBD9',
+    accent: '#7EEBC6',
+    rgb: '246,213,142',
+    chrome: 'linear-gradient(180deg,#FFFFFF 0%,#FFF1CF 30%,#F6D58E 52%,#A9792E 52%,#E7B85C 74%,#FFE7A8 100%)',
   },
 };
 export const evColor = (kind: string) => EV_COLOR[kind] ?? EV_COLOR.halloween!;
@@ -116,6 +130,13 @@ export const EV_TROPHY_NAME: Record<string, Record<string, string>> = {
     biology: '生き物の鈍い黄色の眼が開く',
     'biology-basic': '夜の子らの奏でる音楽',
     'earth-basic': '今は魔の刻、墓場が口を開く',
+  },
+  bottle: {
+    chemistry: '決して明かされぬ秘密',
+    biology: 'その骨は珊瑚となる',
+    'chemistry-basic': '手紙は魂を混ぜ合わせる',
+    'biology-basic': '水、水、どこを見ても水',
+    'earth-basic': 'うねれ、深く青き大洋よ',
   },
 };
 

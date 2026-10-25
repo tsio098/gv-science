@@ -1,0 +1,816 @@
+/* ============================================================
+   ANCHOR TREE — Message in a Bottle の画面（ボード版 81 の B02〜B11b）
+   部品（ロゴ・バー・欠片・問題 ID）は tree-bottle.css、枠・ボタンは tree-event.css（ev-*・.is-ev-bottle の変数）。
+   clip-path の要素に box-shadow を付けない（押し出し・発光は外側の filter）。アニメーションは使わない（基底が最後の見た目）
+   ============================================================ */
+
+.tr-root.ev-screen.is-ev-bottle {
+  background-color: #06132a;
+}
+.is-ev-bottle .ev-sqbtn {
+  background: rgba(242, 245, 255, 0.3);
+  color: #f2f5ff;
+}
+.is-ev-bottle .ev-sqbtn > span {
+  background: #102c52;
+}
+.is-ev-bottle .ev-ghost-wrap {
+  background: rgba(246, 213, 142, 0.5);
+}
+.is-ev-bottle .ev-ghost {
+  background: #102c52;
+}
+.is-ev-bottle .ev-cta-wrap:disabled .ev-cta {
+  background: #0e2748;
+  color: #7f93b8;
+}
+
+/* 月と光（右上）*/
+.bt-glow {
+  position: absolute;
+  right: -60px;
+  top: -60px;
+  width: 260px;
+  height: 220px;
+  background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(255, 236, 190, 0.18), rgba(255, 236, 190, 0) 70%);
+  pointer-events: none;
+}
+.bt-moon {
+  position: absolute;
+  right: 40px;
+  top: calc(var(--tr-top) + 26px);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #fff1cf;
+  box-shadow: 0 0 22px rgba(255, 236, 190, 0.6);
+  pointer-events: none;
+}
+
+/* 見出し（文字だけの見出し・B03 / B05）*/
+.bt-htitle {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 400;
+}
+.bt-period {
+  font-size: 12px;
+  color: #a9bbd9;
+}
+.bt-body {
+  top: calc(var(--tr-top) + 82px);
+}
+.bt-body.is-wide-top {
+  top: calc(var(--tr-top) + 90px);
+}
+
+/* ── B02 ポイントのカード ── */
+.bt-points {
+  padding: 12px 14px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+.bt-points-top {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+.bt-points-num {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.bt-points-break {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  color: #c4d1e8;
+  padding-bottom: 2px;
+}
+.bt-points-break > span {
+  display: flex;
+  justify-content: space-between;
+}
+
+/* 今日 流せる */
+.bt-thin-frame {
+  padding: 2px;
+  background: rgba(126, 235, 198, 0.4);
+  flex: none;
+}
+.bt-thin {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  background: rgba(7, 22, 49, 0.92);
+}
+
+.bt-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 2px;
+}
+
+/* ── INBOX の行 ── */
+.bt-inbox {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.bt-row-frame {
+  display: block;
+  width: 100%;
+  padding: 2px;
+  border: 0;
+  background: rgba(246, 213, 142, 0.55);
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+.bt-row-frame.is-done {
+  background: rgba(242, 245, 255, 0.2);
+  cursor: default;
+}
+.bt-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 8px 10px 8px 9px;
+  background: rgba(7, 22, 49, 0.94);
+}
+.bt-row-well {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  background: #102c52;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.bt-row-frame.is-done .bt-row-well {
+  opacity: 0.55;
+}
+.bt-row-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.bt-row-main {
+  font-size: 14px;
+  color: #f2f5ff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bt-row-sub {
+  font-size: 11px;
+  color: #a9bbd9;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bt-tag {
+  flex: none;
+  padding: 5px 6px;
+  font-size: 7px;
+  line-height: 1;
+}
+.bt-tag.is-new {
+  background: #ff7a45;
+  color: #140a05;
+}
+.bt-tag.is-open {
+  background: #7eebc6;
+  color: #04261c;
+}
+.bt-tag.is-ok {
+  background: #f6d58e;
+  color: #241500;
+}
+.bt-tag.is-miss {
+  background: rgba(169, 187, 217, 0.35);
+  color: #e4eaf8;
+}
+.bt-tag.is-abyss {
+  padding: 3px 4px;
+  font-size: 6px;
+  background: rgba(0, 229, 255, 0.18);
+  color: #7fefff;
+  vertical-align: 1px;
+}
+.bt-empty {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #a9bbd9;
+  padding: 10px 2px;
+}
+
+/* ── ABYSS の色のカード（???・欠片）── */
+.bt-abyss-shadow {
+  display: block;
+  flex: none;
+  filter: drop-shadow(4px 4px 0 #01060f) drop-shadow(0 0 12px rgba(0, 229, 255, 0.28));
+  border: 0;
+  padding: 0;
+  background: none;
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.bt-abyss-frame {
+  display: block;
+  padding: 3px;
+  background: rgba(0, 229, 255, 0.7);
+}
+.bt-abyss-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 11px 12px 12px;
+  background: linear-gradient(180deg, #111e3e, #0a1328);
+  overflow: hidden;
+  color: #e8eeff;
+}
+.bt-abyss-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.bt-closed-note {
+  font-size: 12px;
+  color: #8a9ac8;
+}
+
+/* ── 下のボタン（2 つ並び）── */
+.bt-foot-row {
+  display: flex;
+  gap: 8px;
+}
+
+/* ── B03 流す ── */
+.bt-left-pill {
+  flex: none;
+  padding: 2px;
+  background: rgba(126, 235, 198, 0.45);
+}
+.bt-left-pill > span {
+  display: block;
+  padding: 6px 9px;
+  background: #071631;
+  font-size: 12px;
+  color: #c4d1e8;
+  white-space: nowrap;
+}
+.bt-flabel {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 13px;
+  color: #f2f5ff;
+}
+.bt-input-frame {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  height: 50px;
+  box-sizing: border-box;
+  padding: 2px;
+  background: rgba(246, 213, 142, 0.55);
+}
+.bt-input-frame.is-ng {
+  background: rgba(255, 179, 138, 0.75);
+}
+.bt-input-frame.is-ok {
+  background: rgba(126, 235, 198, 0.6);
+}
+.bt-input-frame.is-plain {
+  background: rgba(242, 245, 255, 0.25);
+}
+.bt-input {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  border: 0;
+  background: #071631;
+  color: #f2f5ff;
+  font-family: 'DotGothic16', 'Hiragino Sans', var(--f-jp), sans-serif;
+  font-size: 16px;
+  padding: 0 12px;
+  outline: none;
+}
+.bt-input.is-id {
+  font-family: 'Hiragino Sans', var(--f-jp), sans-serif;
+  font-size: 13px;
+}
+.bt-input::placeholder {
+  color: #7f93b8;
+}
+.bt-paste {
+  flex: none;
+  width: 76px;
+  height: 50px;
+  border: 0;
+  padding: 2px;
+  background: rgba(246, 213, 142, 0.5);
+  cursor: pointer;
+}
+.bt-paste > span {
+  height: 100%;
+  background: #102c52;
+  color: #f2f5ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+}
+.bt-preview-frame {
+  padding: 2px;
+  background: rgba(246, 213, 142, 0.4);
+  flex: none;
+}
+.bt-preview {
+  position: relative;
+  display: flex;
+  gap: 11px;
+  padding: 9px;
+  background: rgba(7, 22, 49, 0.94);
+  overflow: hidden;
+}
+.bt-preview-img {
+  flex: none;
+  width: 86px;
+  height: 64px;
+  background: #fbf8f1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-family: 'Hiragino Sans', var(--f-jp), sans-serif;
+  font-size: 10px;
+  color: #7a8a90;
+  text-align: center;
+  line-height: 1.5;
+}
+.bt-preview-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top left;
+  display: block;
+}
+.bt-preview-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.bt-err-frame {
+  padding: 2px;
+  background: rgba(255, 179, 138, 0.6);
+  flex: none;
+}
+.bt-err {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(40, 18, 10, 0.85);
+}
+.bt-err-tag {
+  flex: none;
+  padding: 4px 5px;
+  font-size: 7px;
+  background: #ffb38a;
+  color: #2a0e00;
+}
+.bt-err-text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #ffe3d2;
+}
+.bt-hint {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.bt-notes-frame {
+  padding: 2px;
+  background: rgba(242, 245, 255, 0.2);
+  margin-top: 10px;
+  flex: none;
+}
+.bt-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 11px 13px;
+  background: rgba(6, 19, 42, 0.85);
+  font-size: 12px;
+  line-height: 1.5;
+  color: #c4d1e8;
+}
+.bt-notes > span {
+  display: flex;
+  gap: 9px;
+}
+.bt-notes i {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-top: 6px;
+  background: #f6d58e;
+}
+
+/* ── B04 流した（海と月）── */
+.bt-scene {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--tr-top);
+  height: 480px;
+  pointer-events: none;
+  overflow: hidden;
+}
+.bt-scene-glow {
+  position: absolute;
+  left: 50%;
+  top: 70px;
+  width: 300px;
+  height: 260px;
+  margin-left: -150px;
+  background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(255, 236, 190, 0.2), rgba(255, 236, 190, 0) 70%);
+}
+.bt-scene-moon {
+  position: absolute;
+  left: 50%;
+  top: 150px;
+  width: 64px;
+  height: 64px;
+  margin-left: 66px;
+  border-radius: 50%;
+  background: #fff1cf;
+  box-shadow: 0 0 34px rgba(255, 236, 190, 0.6);
+}
+.bt-scene-star {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: #fff1cf;
+}
+.bt-sea {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 304px;
+  height: 170px;
+  background: linear-gradient(180deg, #123764, #081c3c);
+}
+.bt-sea-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 4px;
+}
+.bt-sent-text {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--tr-top) + 500px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 0 20px;
+  text-align: center;
+}
+@media (max-height: 700px) {
+  .bt-scene {
+    height: 400px;
+    transform: translateY(-60px);
+  }
+  .bt-sent-text {
+    top: calc(var(--tr-top) + 400px);
+  }
+}
+.bt-pt-chip {
+  padding: 7px 9px;
+  font-size: 9px;
+  line-height: 1;
+}
+.bt-pt-chip.is-glass {
+  background: #7eebc6;
+  color: #04261c;
+}
+.bt-pt-chip.is-gold {
+  background: #f6d58e;
+  color: #241500;
+}
+
+/* ── B05 手紙 ── */
+.bt-letter-shadow {
+  position: relative;
+  margin: 70px 4px 0 8px;
+  filter: drop-shadow(5px 5px 0 #7e5a1e) drop-shadow(0 0 18px rgba(246, 213, 142, 0.25));
+  flex: none;
+}
+.bt-letter-frame {
+  padding: 3px;
+  background: #d9b97c;
+}
+.bt-letter {
+  position: relative;
+  padding: 20px 20px 22px;
+  background: #f6e3b4;
+  color: #3a2608;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: hidden;
+}
+.bt-letter::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(180deg, rgba(0, 0, 0, 0) 0 27px, rgba(138, 98, 40, 0.18) 27px 29px);
+  pointer-events: none;
+}
+.bt-letter-band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 10px;
+  background: #e9cf96;
+}
+.bt-letter > * {
+  position: relative;
+}
+.bt-letter-chip {
+  padding: 5px 9px;
+  font-size: 13px;
+  background: rgba(42, 26, 6, 0.12);
+  color: #2a1a06;
+}
+.bt-letter-chip.is-dark {
+  background: #2a1a06;
+  color: #f6e3b4;
+}
+.bt-letter-bottle {
+  position: absolute;
+  right: 18px;
+  top: -64px;
+  filter: drop-shadow(4px 4px 0 #04102a) drop-shadow(0 0 12px rgba(126, 235, 198, 0.4));
+}
+
+/* ── B07 / B08 結果 ── */
+.bt-rhead {
+  position: absolute;
+  left: 16px;
+  right: 14px;
+  max-width: 576px;
+  margin: 0 auto;
+  top: calc(var(--tr-top) + 14px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 2;
+}
+.bt-rhead-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  color: #a9bbd9;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bt-ok-glow {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--tr-top) + 120px);
+  width: 360px;
+  height: 320px;
+  margin-left: -180px;
+  background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(246, 213, 142, 0.2), rgba(246, 213, 142, 0) 70%);
+  pointer-events: none;
+}
+.bt-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  text-align: center;
+  margin: 70px 0 16px;
+  flex: none;
+}
+.bt-miss-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin: 6px 0 4px;
+  flex: none;
+}
+
+/* ── 招待状（ABYSS の色・B10 / B11 / B11b）── */
+.tr-root.ev-screen.is-ev-bottle.bt-deep {
+  background: linear-gradient(180deg, #0a1636 0%, #050b1c 45%, #02050e 100%);
+  background-color: #02050e;
+  color: #e8eeff;
+}
+.bt-deep .ev-sqbtn {
+  background: rgba(232, 238, 255, 0.25);
+  color: #e8eeff;
+}
+.bt-deep .ev-sqbtn > span {
+  background: #0a1328;
+}
+.bt-mote {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: #00e5ff;
+  box-shadow: 0 0 6px #00e5ff;
+  pointer-events: none;
+}
+.bt-deep-foot {
+  background: rgba(2, 5, 14, 0.92);
+  border-top-color: rgba(0, 229, 255, 0.3);
+}
+.bt-deep-foot.is-closed {
+  border-top-color: rgba(138, 154, 200, 0.3);
+}
+.bt-deep-ghost {
+  flex: 1;
+  height: 52px;
+  border: 0;
+  padding: 2px;
+  background: rgba(0, 229, 255, 0.45);
+  cursor: pointer;
+  color: #e8eeff;
+}
+.bt-deep-ghost.is-closed {
+  background: rgba(138, 154, 200, 0.45);
+}
+.bt-deep-ghost > span {
+  height: 100%;
+  background: #0a1328;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+}
+.bt-deep-cta {
+  flex: 2;
+  border: 0;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+  filter: drop-shadow(4px 4px 0 #01060f) drop-shadow(0 0 12px rgba(0, 229, 255, 0.55));
+}
+.bt-deep-cta.is-closed {
+  filter: drop-shadow(4px 4px 0 #01060f);
+}
+.bt-deep-cta:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.bt-deep-cta > span {
+  height: 52px;
+  background: #00e5ff;
+  color: #031b24;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+}
+.bt-deep-cta.is-closed > span {
+  background: #8a9ac8;
+  color: #02050e;
+}
+.bt-deep-cta:active > span,
+.bt-deep-ghost:active > span {
+  transform: translate(2px, 2px);
+}
+.bt-invite-shadow {
+  flex: none;
+  margin: 14px 6px 0 6px;
+  filter: drop-shadow(5px 5px 0 #01060f) drop-shadow(0 0 22px rgba(0, 229, 255, 0.28));
+}
+.bt-invite-frame {
+  padding: 3px;
+  background: #00e5ff;
+}
+.bt-invite {
+  position: relative;
+  padding: 58px 20px 22px;
+  background: linear-gradient(180deg, #111e3e, #0a1328);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+  overflow: hidden;
+}
+.bt-invite-flap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 64px;
+  background: linear-gradient(160deg, rgba(0, 229, 255, 0.12) 0 50%, rgba(0, 229, 255, 0) 50%),
+    linear-gradient(200deg, rgba(0, 229, 255, 0.12) 0 50%, rgba(0, 229, 255, 0) 50%);
+}
+.bt-invite-seal {
+  position: absolute;
+  left: 50%;
+  top: 28px;
+  margin-left: -30px;
+}
+.bt-invite > *:not(.bt-invite-flap):not(.bt-invite-seal):not(.ev-scan) {
+  position: relative;
+}
+.bt-invite-chip {
+  padding: 5px 7px;
+  font-size: 7px;
+  background: rgba(0, 229, 255, 0.16);
+  color: #b8f7ff;
+}
+.bt-en {
+  font-family: 'DotGothic16', 'Hiragino Sans', var(--f-jp), sans-serif;
+  font-weight: 400;
+}
+.bt-frag-shadow {
+  flex: none;
+  filter: drop-shadow(4px 4px 0 #01060f) drop-shadow(0 0 16px rgba(0, 229, 255, 0.3));
+}
+.bt-frag-card {
+  position: relative;
+  padding: 14px 14px 16px;
+  background: linear-gradient(180deg, #111e3e, #0a1328);
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  overflow: hidden;
+}
+.bt-shot-btn {
+  flex: 1;
+  height: 52px;
+  border: 0;
+  padding: 2px;
+  background: rgba(0, 229, 255, 0.45);
+  cursor: pointer;
+  color: #e8eeff;
+  display: block;
+}
+.bt-shot-btn > * {
+  pointer-events: none;
+}
+/* PlayShot のボタン（className で渡す）*/
+.bt-shot {
+  flex: 1;
+  height: 52px;
+  border: 0;
+  padding: 0 10px;
+  background: #0a1328;
+  color: #e8eeff;
+  box-shadow: inset 0 0 0 2px rgba(0, 229, 255, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: 'DotGothic16', 'Hiragino Sans', var(--f-jp), sans-serif;
+  font-size: 15px;
+  cursor: pointer;
+}
+.bt-shot svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* iPad 横など広い画面: 中身を中央の 600px に（ev-body と同じ）*/
+.bt-wide {
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}

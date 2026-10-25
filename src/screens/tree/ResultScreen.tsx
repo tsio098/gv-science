@@ -12,6 +12,8 @@
  * 2026-10-22 先生: イベントの解答は分野のスコア・マスター度に入れない（Proxy）→ 加算の数字と 3 枚のタイルは出さず、正答・時間と「入りません」の一文・
  * 左下のボタンは「イベントへ」（イベント画面に戻る）・出題状況はイベントの 70 題（2026-10-21 先生の指示・科目全体の問題数ではなく）
  * 分野テスト（2026-10-24）: 見出しは「分野 › 分野テスト · 結果」・マスター度と出題状況は分野全体（Proxy の node が分野の値）。1 問ごとの加算の表は出さない（先生決定）
+ * 問題 ID（Message in a Bottle・ボード B09・2026-10-25）: 間違えた問題・チェックした問題のカードを開いたとき、「この問題への改善要望」の横に
+ * 問題 ID（10px・2 行まで）と「コピー」。スクショにも ID が写る（ボタンだけ SHOT_SKIP）
  */
 import { useRef, useState, type RefObject } from 'react';
 import type { Dist, FieldGroup, PartValue, PlayQuestion, SubmitResult, TreeManifest, TreeSession } from '../../lib/treeApi';
@@ -22,6 +24,8 @@ import { PlayShot, SHOT_SKIP } from './PlayShot';
 import { CHECK_COLOR, REVIEW_COLOR, RETRO, T, alpha, fmtScore, fmtTime, groupColor, groupSide, rootClass } from './treeTheme';
 import { Pips } from './NodeSheet';
 import { EV_ASSET, EV_NAME, evPct } from './event/evTheme';
+import { PxCopy } from './event/BottleParts';
+import '../../styles/tree-bottle.css';
 
 interface Props {
   result: SubmitResult;
@@ -50,12 +54,60 @@ type ReportState = 'idle' | 'open' | 'sending' | 'sent' | 'already' | 'error';
 
 const REPORT_MAX = 500;
 
+/**
+ * 問題 ID ＋「コピー」（ボトルに入れる ID・B09）。コピーできない WebView では ID の文字を選ぶ（長押しでコピー）。押したら「コピーしました」を 1.5 秒
+ */
+export function QidCopy({ qid }: { qid: string }) {
+  const text = useRef<HTMLSpanElement>(null);
+  const [done, setDone] = useState<'ok' | 'select' | null>(null);
+  const copy = async () => {
+    let ok = false;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(qid);
+        ok = true;
+      }
+    } catch {
+      ok = false;
+    }
+    if (!ok && text.current) {
+      // 選択して端末のコピーに任せる
+      const r = document.createRange();
+      r.selectNodeContents(text.current);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(r);
+      try {
+        ok = document.execCommand('copy');
+      } catch {
+        ok = false;
+      }
+    }
+    setDone(ok ? 'ok' : 'select');
+    window.setTimeout(() => setDone(null), 1500);
+  };
+  return (
+    <span className="bt-qid">
+      <span className="bt-qid-text" ref={text}>
+        {qid}
+      </span>
+      <button type="button" className={`ev-px2 bt-qid-copy ${SHOT_SKIP}`} aria-label="問題 ID をコピー" onClick={() => void copy()}>
+        <span className="ev-px2 ev-dot">
+          <PxCopy />
+          {done === 'ok' ? 'コピーしました' : done === 'select' ? '長押しでコピー' : 'コピー'}
+        </span>
+      </button>
+    </span>
+  );
+}
+
 /** 問題画像 1 枚（読み込み中・失敗の表示つき）*/
 function PaperImg({ url, failed, alt }: { url: string | null; failed: boolean; alt: string }) {
   return url ? <img src={url} alt={alt} /> : <div className="tr-imgph">{failed ? '画像を読み込めませんでした' : '読み込み中…'}</div>;
 }
 
 function WrongItem({
+  qid,
   label,
   mine,
   wrong,
@@ -66,6 +118,8 @@ function WrongItem({
   onReport,
   reported,
 }: {
+  /** 問題 ID（ボトルに入れる・コピーできる）*/
+  qid: string;
   label: string;
   mine: string;
   /** 不正解か（チェックした問題の一覧の、正解した問題は false）*/
@@ -138,17 +192,20 @@ function WrongItem({
           <div className="tr-paper">
             <PaperImg url={url} failed={failed} alt={label} />
           </div>
-          <div className={`tr-wrong-actions ${SHOT_SKIP}`} ref={actions}>
+          {/* 操作の行: ボタンはスクショに写さず、問題 ID だけ写す（2026-10-25・B09）。切るのは行の下（actions の後ろの印）*/}
+          <div className="tr-wrong-actions">
             <PlayShot target={card} layer={layer} cropAt={actions} className={`tr-report ${SHOT_SKIP}`}>
               スクショ
             </PlayShot>
             {report === 'idle' && (
-              <button type="button" className="tr-report" onClick={() => setReport('open')}>
+              <button type="button" className={`tr-report ${SHOT_SKIP}`} onClick={() => setReport('open')}>
                 <Ico id="i-flag" size={13} />
                 この問題への改善要望
               </button>
             )}
+            <QidCopy qid={qid} />
           </div>
+          <div ref={actions} aria-hidden="true" />
           {writing && (
             <div className={`tr-report-form ${SHOT_SKIP}`}>
               <textarea
@@ -253,6 +310,7 @@ export function WrongList({
     return (
       <WrongItem
         key={r.qid}
+        qid={r.qid}
         label={label}
         mine={mineLabel(q, r.value)}
         wrong={!r.correct}

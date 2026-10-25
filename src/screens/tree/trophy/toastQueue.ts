@@ -29,7 +29,15 @@ export type ToastKind =
   /** 季節イベントの MASTER 100%（EVENT トロフィー ＋ 錨）。タップでイベント画面 */
   | 'evClear'
   /** 季節イベントのテスト合格（イベント限定チケット）。タップでチケット画面 */
-  | 'evTicket';
+  | 'evTicket'
+  /**
+   * Message in a Bottle（2026-10-25・ボード Nodes / FX_bottle / FX_trophy）: NEW BOTTLE!（未読のボトル・タップでイベント画面）/
+   * ???（50 pt・招待状とは書かない・タップで招待状）/ RETURNED（相手が見つからず戻った）/ EVENT CLEAR!!（100 pt・金のボトル）。どれも畳まず最後に
+   */
+  | 'bottleNew'
+  | 'bottleMystery'
+  | 'bottleReturned'
+  | 'bottleClear';
 
 export interface ToastItem {
   /** 一意のキー（同じキーは 2 回入れない）*/
@@ -59,11 +67,17 @@ export interface ToastItem {
   ev?: { kind: string; subject: string; stamp: string; firstIcon?: boolean };
   /** トロフィーの詳細の「再生」で出し直した通知（2026-10-24）: 既読・ヘッダーの点・タップの移動をしない */
   replay?: boolean;
+  /** Message in a Bottle の通知: スタンプ（x2・50PT・100PT）・タップの行き先・表示したら /tree/events/seen に送るキー */
+  bottle?: { stamp?: string; open: 'event' | 'invite'; seenKey?: string };
+  /** 一緒に既読にするトロフィー（EVENT CLEAR!! を科目ごとにまとめた分・ボトル）*/
+  moreTrophies?: { subject: string; id: string }[];
 }
 
 const GRADE_RANK: Record<ToastGrade, number> = { F: 0, P: 1, G: 2, S: 3, B: 4, Z: 6, E: 8 };
 /** 畳まずに最後に 1 件ずつ出す通知（LEVEL 30 → EVENT CLEAR!! → TICKET GET!）*/
-const LATE: Partial<Record<ToastKind, number>> = { level30: 9, level50: 9, evClear: 10, evTicket: 11 };
+const LATE: Partial<Record<ToastKind, number>> = { level30: 9, level50: 9, evClear: 10, bottleClear: 10, evTicket: 11, bottleNew: 12, bottleReturned: 12, bottleMystery: 13 };
+/** Message in a Bottle の通知か（札は BottleToast.tsx）*/
+export const isBottleToast = (t: Pick<ToastItem, 'kind'>) => t.kind === 'bottleNew' || t.kind === 'bottleMystery' || t.kind === 'bottleReturned' || t.kind === 'bottleClear';
 /** LEVEL 30 / LEVEL 50（同じ見た目・大きさ）*/
 export const isLevelToast = (t: Pick<ToastItem, 'kind'>) => t.kind === 'level30' || t.kind === 'level50';
 export const isLateToast = (t: ToastItem) => LATE[t.kind] != null;
@@ -125,7 +139,7 @@ export const toastMs = (t: ToastItem) =>
 /** 名前の文字サイズ（px）: 12 字まで 14・13 字は 13（プラチナ 15・iPad 14）*/
 export function toastNameSize(t: Pick<ToastItem, 'kind' | 'grade' | 'main'>, wide = false): number {
   // EVENT CLEAR!! は 13 字の名前を 13px・TICKET GET! は 14px（ボード「獲得の演出と効果音」）
-  if (t.kind === 'evClear') return 13;
+  if (t.kind === 'evClear' || isBottleToast(t)) return 13;
   if (t.kind === 'evTicket') return 14;
   if ((t.kind === 'trophy' && t.grade === 'P') || isLevelToast(t)) return 15;
   if (wide) return 14;
@@ -134,7 +148,7 @@ export function toastNameSize(t: Pick<ToastItem, 'kind' | 'grade' | 'main'>, wid
 
 /** 通知の幅（px）*/
 export function toastWidth(t: Pick<ToastItem, 'kind' | 'grade'>, wide = false): number {
-  if ((t.kind === 'trophy' && t.grade === 'P') || isLevelToast(t) || t.kind === 'evClear' || t.kind === 'evTicket') return 272;
+  if ((t.kind === 'trophy' && t.grade === 'P') || isLevelToast(t) || t.kind === 'evClear' || t.kind === 'evTicket' || isBottleToast(t)) return 272;
   if (t.kind === 'trophy' && t.grade === 'F') return 260;
   return wide ? 264 : 248;
 }

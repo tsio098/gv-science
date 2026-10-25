@@ -65,6 +65,21 @@
   --ev-foot: rgba(10, 4, 24, 0.9);
 }
 
+/* Message in a Bottle（実装手順_ボトルメール §0-1）。部品は同じで色だけ違う */
+.is-ev-bottle {
+  --ev-bg: linear-gradient(180deg, #1c3f6e 0%, #0e2748 45%, #06132a 100%);
+  --ev-card: linear-gradient(180deg, #183c68, #0a1c38);
+  --ev-main: #f6d58e;
+  --ev-main-rgb: 246, 213, 142;
+  --ev-on: #241500;
+  --ev-side: #7e5a1e;
+  --ev-text: #f2f5ff;
+  --ev-sub: #a9bbd9;
+  --ev-accent: #7eebc6;
+  --ev-well: #071631;
+  --ev-foot: rgba(6, 19, 42, 0.94);
+}
+
 /* ── 画面（E02〜E04）── */
 .tr-root.ev-screen {
   background: var(--ev-bg);
@@ -1031,6 +1046,15 @@ div.ev-node {
   letter-spacing: 0.04em;
   white-space: nowrap;
   cursor: pointer;
+}
+/* Message in a Bottle の目印（羊皮紙の枠・月夜の海の地）*/
+.ev-mark.is-bottle {
+  border-color: #f6d58e;
+  background: rgba(14, 39, 72, 0.94);
+  color: #fff1cf;
+}
+.ev-mark.is-bottle .ev-mark-chev {
+  color: #f6d58e;
 }
 .ev-mark:focus-visible {
   outline: 2px solid #eafbff;

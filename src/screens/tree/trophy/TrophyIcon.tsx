@@ -72,8 +72,14 @@ export const PRISM = 'linear-gradient(90deg,#2DF4C6 0 20%,#4FC3FF 20% 40%,#D08BF
 export const LV30_BAND = 'linear-gradient(90deg,#D9FFF6 0 25%,#4FC3FF 25% 50%,#B05BD6 50% 75%,#FFB8E6 75%)';
 
 const gid = (g: ToastGrade) => g.toLowerCase();
-/** EVENT トロフィーの絵（今はハロウィンだけ。次のイベントの杯は TrophyItem の id で分ける）*/
-export const EVENT_TROPHY_IMG = '/tree/brand/ev/icon_trophy_ev_halloween.svg';
+/**
+ * EVENT トロフィーの絵（イベントの種類ごと: ハロウィン = かぼちゃの杯・Message in a Bottle = 金のボトル・2026-10-25）。
+ * 種類が分からない（古い Proxy）ときはハロウィン
+ */
+const EVENT_TROPHY_KINDS = new Set(['halloween', 'bottle']);
+export const eventTrophyImg = (kind?: string | null) =>
+  `/tree/brand/ev/icon_trophy_ev_${kind && EVENT_TROPHY_KINDS.has(kind) ? kind : 'halloween'}.svg`;
+export const EVENT_TROPHY_IMG = eventTrophyImg('halloween');
 
 /** グラデの定義（画面に 1 つ）*/
 export function TrophySprite() {
@@ -116,6 +122,7 @@ export function TrophyIcon({
   stroke = 0.7,
   scan = true,
   chip = false,
+  eventKind = null,
   style,
   className,
 }: {
@@ -124,14 +131,16 @@ export function TrophyIcon({
   stroke?: number;
   scan?: boolean;
   chip?: boolean;
+  /** EVENT トロフィーのイベントの種類（'halloween' / 'bottle'）*/
+  eventKind?: string | null;
   style?: CSSProperties;
   className?: string;
 }) {
-  // EVENT トロフィーは素材の絵（かぼちゃの杯・外に月と星）。4px ドットなので pixelated
+  // EVENT トロフィーは素材の絵（かぼちゃの杯・金のボトル）。ドット絵なので pixelated
   if (grade === 'E') {
     return (
       <img
-        src={EVENT_TROPHY_IMG}
+        src={eventTrophyImg(eventKind)}
         alt=""
         aria-hidden="true"
         width={size}

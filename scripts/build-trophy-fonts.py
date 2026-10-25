@@ -8,6 +8,7 @@ LIFF の WebView では Google Fonts が遅い・出ないことがあるので�
                                  ＋ 分野名 ＋ ASCII・ひらがな・カタカナ・記号。ニックネームの漢字など入っていない字は var(--f-jp) に落ちる
                                  ＋（2026-10-20 レトロ寄りの見た目）画面全体の文言 = src/ 以下のすべての .ts / .tsx の字（新しい画面を足したら
                                    もう一度実行すれば拾う）・カニの名前 729 種（gv-science-proxy/src/crabNames.js）
+                                 ＋（2026-10-25）トロフィーの定義の正本 gv-science-proxy/src/trophies.js（名前・出典・原文）
 
 元フォント（OFL）は google/fonts の ofl/dotgothic16・ofl/pressstart2p から取る。必要: pip install fonttools brotli
 使い方:
@@ -28,6 +29,8 @@ FONTS = os.path.join(ROOT, 'public', 'fonts')
 DEFAULT_LIST = os.path.expanduser('~/Documents/Claude/Projects/大学リサーチ+app/vault/GV Science/進捗チェックツリー/トロフィー一覧.md')
 FIELDS = os.path.join(ROOT, '..', 'gv-science-proxy', 'tools', 'tree-content', 'fields')
 CRABS = os.path.join(ROOT, '..', 'gv-science-proxy', 'src', 'crabNames.js')
+# トロフィーの名前・条件・出典・原文の正本（2026-10-25: vault の一覧に載る前の EVENT トロフィーの出典「卿」「瓶」が無かった）
+TROPHIES_JS = os.path.join(ROOT, '..', 'gv-science-proxy', 'src', 'trophies.js')
 BUILD = os.path.expanduser('~/Documents/GV問題PDF/_build/content')  # build.py の出力（R2 と同じ）。試験名・分野名の字を拾う
 
 RANGES = [
@@ -88,7 +91,7 @@ def main():
     # 画面全体（2026-10-20）: src/ 以下の全 .ts / .tsx（コメントの字も入るが、ふつうに使う字なので問題ない）・カニの名前
     dot |= chars_of_files(glob.glob(os.path.join(ROOT, 'src', '**', '*.ts'), recursive=True))
     dot |= chars_of_files(glob.glob(os.path.join(ROOT, 'src', '**', '*.tsx'), recursive=True))
-    dot |= chars_of_files([p for p in [CRABS] if os.path.exists(p)])
+    dot |= chars_of_files([p for p in [CRABS, TROPHIES_JS] if os.path.exists(p)])
     # 試験名・分野名（2026-10-21: 結果画面の間違えた問題の見出しなどに出る「浜」などが無かった）。各科目・ABYSS の最新の版の manifest
     for d in glob.glob(os.path.join(BUILD, '*')) + glob.glob(os.path.join(BUILD, '*', 'back')):
         vs = sorted(glob.glob(os.path.join(d, 'v*', 'manifest.json')))

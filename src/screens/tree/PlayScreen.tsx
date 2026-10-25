@@ -34,9 +34,12 @@
  *   問題ごとの種別（パンくずが長いと種別が切れるので分野名は出さない）。ほかは種別の挑戦と同じ（タイムボーナス・あとで復習・提出）
  * - 復習チェック（2026-10-19 先生の要望・設計書 §5.1）: 「あとで復習」を付けた問題は、正解でも結果画面の一覧に出す。
  *   端末の中だけで持つ（提出 API には送らない）。選択肢に重ねないよう、単問は解答パッドの見出し行、セット・ABYSS は小問の見出し行に置く。アリーナには出さない
+ * - Message in a Bottle（2026-10-25・ボード B06）: 届いたボトル（session.bottleId）と ABYSS からの招待状（session.invite）は 1 問・制限時間なし・
+ *   アリーナと同じく画面を離れたら即採点（中断も採点）。1 問だけなので、決定していなくても選んだ（入力した）答えで採点する。
+ *   提出は /tree/bottle/submit・/tree/bottle/invite/submit。ボトルは羊皮紙の色（is-ev-bottle）・招待状は ABYSS の色。「あとで復習」は出さない
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { AbyssPart, ArenaResult, FieldGroup, PlayQuestion, SeasonEventTestResult, SubmitResult, TreeSession } from '../../lib/treeApi';
+import type { AbyssPart, ArenaResult, BottleResult, FieldGroup, InviteResult, PlayQuestion, SeasonEventTestResult, SubmitResult, TreeSession } from '../../lib/treeApi';
 /** 途中で終了した 1 回だけの挑戦（画面を離れた・中断・前回離れたまま開いた）*/
 type EndReason = 'away' | 'quit' | 'resume' | 'timeup';
 interface EndState {
@@ -44,12 +47,12 @@ interface EndState {
   /** 決定した問題の数（採点に入る）*/
   decided: number;
   sending: boolean;
-  result: ArenaResult | SeasonEventTestResult | null;
+  result: ArenaResult | SeasonEventTestResult | BottleResult | InviteResult | null;
   error: string | null;
   /** 送り直しても通らないエラー */
   final: boolean;
 }
-import { FIELD_TEST, TreeApiError, choiceText, playKindLabel, circled, storedResultOf, submitArena, submitSeasonEventTest, submitTreeSession, treeImage } from '../../lib/treeApi';
+import { FIELD_TEST, TreeApiError, choiceText, playKindLabel, circled, storedResultOf, submitArena, submitBottle, submitInvite, submitSeasonEventTest, submitTreeSession, treeImage } from '../../lib/treeApi';
 import { EV_NAME } from './event/evTheme';
 import { Ico } from './TreeIcons';
 import { ZoomImage } from './ZoomImage';
@@ -69,6 +72,9 @@ interface Props {
   onArenaDone?: (result: ArenaResult) => void;
   /** 季節イベントのテストの提出結果（session.eventTest のとき）*/
   onEventTestDone?: (result: SeasonEventTestResult) => void;
+  /** Message in a Bottle: 届いたボトル（session.bottleId）・招待状（session.invite）の採点 */
+  onBottleDone?: (result: BottleResult) => void;
+  onInviteDone?: (result: InviteResult) => void;
 }
 
 /** アリーナの途中経過（端末に残す）*/
@@ -203,8 +209,13 @@ export function PlayScreen(props: Props) {
   return <PlayBody {...props} />;
 }
 
-function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onArenaDone, onEventTestDone }: Props) {
+function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onArenaDone, onEventTestDone, onBottleDone, onInviteDone }: Props) {
   const isArena = (session as { arena?: boolean }).arena === true;
+  /** Message in a Bottle: 届いたボトル・ABYSS からの招待状（1 問・制限時間なし・離れたら即採点）*/
+  const bottleId = (session as { bottleId?: string }).bottleId ?? null;
+  const isBottle = !!bottleId;
+  const isInvite = (session as { invite?: boolean }).invite === true;
+  const isMsg = isBottle || isInvite;
   /** 季節イベント: 挑戦（5 問・ふつうの提出）とテスト（20 問・1 回だけ）*/
   const evKind = (session as { event?: { kind?: string } }).event?.kind ?? null;
   const isEventTest = (session as { eventTest?: boolean }).eventTest === true;
@@ -212,12 +223,12 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
   /** 分野テスト: 種別が問題ごとに変わる */
   const isFieldTest = session.qtype === FIELD_TEST;
   /** 途中を端末に残して再開する挑戦（1 回だけのもの）*/
-  const keepsProgress = isArena || isEventTest;
+  const keepsProgress = isArena || isEventTest || isMsg;
   /** 制限時間を過ぎたら自動で次の問題へ（イベントのテスト）*/
   const autoNext = isEventTest;
   /** 途中で画面を離れたら終了する挑戦（keepsProgress と同じ）。sessionEnded = 前回離れたまま開いた（Proxy の ended）*/
   const oneShot = keepsProgress;
-  const col = isArena ? ARENA_GOLD : isEvent ? '#FF9A1F' : groupColor(group);
+  const col = isArena ? ARENA_GOLD : isInvite ? '#00E5FF' : isBottle ? '#F6D58E' : isEvent ? '#FF9A1F' : groupColor(group);
   const bonusMax = isArena ? 75 : 25;
   /** テストの途中で先生が外した問題の代わりに、提出のときに足された問題（2026-10-23・Proxy の more）*/
   const [extra, setExtra] = useState<{ units: TreeSession['units']; questions: TreeSession['questions'] } | null>(null);
@@ -253,7 +264,7 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
       else n.add(qid);
       return n;
     });
-  const mark = (qid: string) => (isArena || isEventTest ? null : <MarkToggle on={marked.has(qid)} onToggle={() => toggleMark(qid)} />);
+  const mark = (qid: string) => (isArena || isEventTest || isMsg ? null : <MarkToggle on={marked.has(qid)} onToggle={() => toggleMark(qid)} />);
   /** ABYSS: 設問ごとの欄の入力と、キーパッドで入力中の数値欄 */
   const isBackStage = session.stage === 'back';
   const [raws, setRaws] = useState<Record<string, RawVal[]>>(() => saved?.raws ?? {});
@@ -415,6 +426,11 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
         const r = await submitArena(session.sessionId, answers, { spanMs: spanMs() });
         saveArena(session.sessionId, null);
         onArenaDone?.(r);
+      } else if (isMsg) {
+        const r = isBottle ? await submitBottle(bottleId!, answers) : await submitInvite(answers);
+        saveArena(session.sessionId, null);
+        if (isBottle) onBottleDone?.(r as BottleResult);
+        else onInviteDone?.(r as InviteResult);
       } else if (isEventTest) {
         const r = await submitSeasonEventTest(session.sessionId, answers, { spanMs: spanMs() });
         if ('more' in r) {
@@ -440,11 +456,10 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
       }
     } catch (e) {
       // 前の送信が届いていた（応答だけ届かなかった）→ 保存した採点で結果画面へ（2026-10-23 不具合調査 ○16）
-      const stored = isArena ? storedResultOf<ArenaResult>(e) : isEventTest ? storedResultOf<SeasonEventTestResult>(e) : null;
+      const stored = isArena ? storedResultOf<ArenaResult>(e) : isEventTest || isMsg ? storedResultOf<SeasonEventTestResult | BottleResult | InviteResult>(e) : null;
       if (stored) {
         saveArena(session.sessionId, null);
-        if (isArena) onArenaDone?.(stored as ArenaResult);
-        else onEventTestDone?.(stored as SeasonEventTestResult);
+        doneWith(stored);
         return;
       }
       if (e instanceof TreeApiError && e.code === 'ALREADY_SUBMITTED') {
@@ -458,8 +473,8 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
         setSubmitError('このシーズンは終了しました。この挑戦は提出できません。');
       } else if (e instanceof TreeApiError && e.code === 'EVENT_CLOSED') {
         if (keepsProgress) saveArena(session.sessionId, null);
-        setSubmitError('イベントの期間が終わりました。このテストは提出できません。');
-      } else if (e instanceof TreeApiError && e.code === 'NO_SESSION') {
+        setSubmitError(`イベントの期間が終わりました。${isMsg ? 'この解答' : 'このテスト'}は提出できません。`);
+      } else if (e instanceof TreeApiError && (e.code === 'NO_SESSION' || e.code === 'NO_BOTTLE' || e.code === 'INVITE_LOCKED')) {
         // 別の端末で始め直した（先生）などで、この挑戦がもう無い。何度送っても通らないので再送ボタンは出さない
         if (keepsProgress) saveArena(session.sessionId, null);
         setSubmitError('この挑戦は見つかりませんでした（別の端末で始め直した可能性があります）。ツリーに戻ってください。');
@@ -481,9 +496,10 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
     sendingRef.current = true;
     const gen = ++sendGen.current;
     sendAt.current = Date.now();
+    // ボトル・招待状は 1 問だけなので、決定していなくても選んだ（入力した）答えで採点する（「画面を離れたら即採点」）
     const answers = units
       .flatMap((u) => u.qids)
-      .filter((qid) => times.current[qid] != null)
+      .filter((qid) => isMsg || times.current[qid] != null)
       .map((qid) => {
         const q = questions[qid];
         const value =
@@ -496,13 +512,17 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
     try {
       const r = isArena
         ? await submitArena(session.sessionId, answers, { ended: true, keepalive, spanMs: spanMs() })
-        : await submitSeasonEventTest(session.sessionId, answers, { ended: true, keepalive, spanMs: spanMs() });
+        : isBottle
+          ? await submitBottle(bottleId!, answers, { ended: true, keepalive })
+          : isInvite
+            ? await submitInvite(answers, { ended: true, keepalive })
+            : await submitSeasonEventTest(session.sessionId, answers, { ended: true, keepalive, spanMs: spanMs() });
       if ('more' in r) throw new Error('more'); // 離れた提出（ended）には返らない
       saveArena(session.sessionId, null);
       setEnded((s) => s && { ...s, sending: false, result: r, error: null });
     } catch (e) {
       // 前の送信（keepalive など）が届いていた → 保存した採点を結果として出す（2026-10-23 不具合調査 ○16）
-      const stored = isArena ? storedResultOf<ArenaResult>(e) : storedResultOf<SeasonEventTestResult>(e);
+      const stored = isArena ? storedResultOf<ArenaResult>(e) : storedResultOf<SeasonEventTestResult | BottleResult | InviteResult>(e);
       if (stored) {
         saveArena(session.sessionId, null);
         setEnded((s) => s && { ...s, sending: false, result: stored, error: null });
@@ -511,7 +531,7 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
       // 新しい送信が走っている・もう結果がある → この失敗は出さない
       if (gen !== sendGen.current || endStateRef.current?.result) return;
       const code = e instanceof TreeApiError ? e.code : '';
-      const final = ['ALREADY_SUBMITTED', 'ARENA_CLOSED', 'EVENT_CLOSED', 'NO_SESSION'].includes(code);
+      const final = ['ALREADY_SUBMITTED', 'ARENA_CLOSED', 'EVENT_CLOSED', 'NO_SESSION', 'NO_BOTTLE', 'INVITE_LOCKED'].includes(code);
       if (final) saveArena(session.sessionId, null);
       const msg =
         code === 'ALREADY_SUBMITTED'
@@ -519,8 +539,8 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
           : code === 'ARENA_CLOSED'
             ? 'このシーズンは終了しました。この挑戦は提出できません。'
             : code === 'EVENT_CLOSED'
-              ? 'イベントの期間が終わりました。このテストは提出できません。'
-              : code === 'NO_SESSION'
+              ? `イベントの期間が終わりました。${isMsg ? 'この解答' : 'このテスト'}は提出できません。`
+              : code === 'NO_SESSION' || code === 'NO_BOTTLE' || code === 'INVITE_LOCKED'
                 ? 'この挑戦は見つかりませんでした。ツリーに戻ってください。'
                 : '採点を送れませんでした。通信状況を確かめて、もう一度送ってください。';
       setEnded((s) => s && { ...s, sending: false, error: msg, final });
@@ -530,6 +550,13 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
   };
   const sendEndedRef = useRef(sendEnded);
   sendEndedRef.current = sendEnded;
+  /** 採点の結果を画面ごとの受け取り先へ（テスト・ボトル・招待状）*/
+  function doneWith(r: ArenaResult | SeasonEventTestResult | BottleResult | InviteResult) {
+    if (isArena) onArenaDone?.(r as ArenaResult);
+    else if (isBottle) onBottleDone?.(r as BottleResult);
+    else if (isInvite) onInviteDone?.(r as InviteResult);
+    else onEventTestDone?.(r as SeasonEventTestResult);
+  }
 
   /** 1 回だけの挑戦をここで終了する（画面を離れた・中断・前回離れたまま開いた）*/
   const endNow = (reason: EndReason) => {
@@ -537,7 +564,7 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
     endedRef.current = true;
     setConfirmExit(false);
     setZoomPath(null);
-    const decided = units.reduce((n, u) => n + u.qids.filter((id) => times.current[id] != null).length, 0);
+    const decided = isMsg ? totalQ : units.reduce((n, u) => n + u.qids.filter((id) => times.current[id] != null).length, 0);
     // 提出が届かないまま開き直しても続きを解かせない印（端末の途中経過に残す・提出できたら消える）
     saveProgress({ idx: 0, picks: picksRef.current, times: times.current, raws: rawsRef.current, ended: true });
     setEnded({ reason, decided, sending: true, result: null, error: null, final: false });
@@ -678,12 +705,16 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
     () =>
       isArena
         ? 'CHAMPION ARENA › '
+        : isInvite
+          ? 'INVITATION › '
+        : isBottle
+          ? `BOTTLE · ${subjectName} › `
         : evKind
           ? `${EV_NAME[evKind] ?? 'EVENT'} ${isEventTest ? 'TEST' : 'CHALLENGE'} › `
           : isFieldTest
             ? '分野テスト › '
             : `${subjectName} › ${fieldName} › `,
-    [isArena, evKind, isEventTest, isFieldTest, subjectName, fieldName],
+    [isArena, isInvite, isBottle, evKind, isEventTest, isFieldTest, subjectName, fieldName],
   );
 
   const renderImg = (path: string | null, alt: string, btn = true) => {
@@ -795,11 +826,11 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
     ? (picks[first.id] ?? []).filter(Boolean).map(circled).join('・') || '—'
     : '—';
   const isLast = idx + 1 >= units.length;
-  const playRoot = isArena ? 'tr-play is-arena' : evKind ? `tr-play is-ev-${evKind}` : 'tr-play';
+  const playRoot = isArena ? 'tr-play is-arena' : isInvite ? 'tr-play is-abyss' : evKind ? `tr-play is-ev-${evKind}` : 'tr-play';
 
   // ここから先で早く return する。hook（useState・useEffect など）は必ずこの行より上に書く（下に書くと終了画面に切り替わった時点で React が落ちる）
   if (ended) {
-    const what = isArena ? 'この挑戦' : 'このテスト';
+    const what = isArena ? 'この挑戦' : isBottle ? 'このボトル' : isInvite ? 'この招待状' : 'このテスト';
     const why =
       ended.reason === 'away'
         ? `解答中に画面を離れた（アプリの切り替え・ホーム・画面ロックなど）ため、${what}はここで終了しました。`
@@ -813,16 +844,20 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
       <div className={rootClass(playRoot)}>
         <div className={`tr-overlay${isArena ? ' tr-ar-overlay' : ''}`}>
           <div className={isArena ? 'tr-ar-dialog' : 'tr-card'} role="alertdialog" aria-label={isArena ? '挑戦の終了' : 'テストの終了'}>
-            <div style={{ fontWeight: 700, fontSize: 16 }}>{ended.reason === 'timeup' ? '時間切れ' : isArena ? '挑戦は終了しました' : 'テストは終了しました'}</div>
+            <div style={{ fontWeight: 700, fontSize: 16 }}>{ended.reason === 'timeup' ? '時間切れ' : isArena ? '挑戦は終了しました' : isMsg ? '採点しました' : 'テストは終了しました'}</div>
             <div style={{ color: 'var(--tr-sub)', fontSize: 13, lineHeight: 1.8 }}>
-              {why}決定した <b className="tr-num">{ended.decided}</b> 問（{totalQ} 問中）で採点{done ? 'しました' : 'します'}。
+              {isMsg ? (
+                <>{why}選んでいた答えで採点{done ? 'しました' : 'します'}。</>
+              ) : (
+                <>{why}決定した <b className="tr-num">{ended.decided}</b> 問（{totalQ} 問中）で採点{done ? 'しました' : 'します'}。</>
+              )}
             </div>
             {ended.error && <div style={{ fontSize: 13, lineHeight: 1.7 }}>{ended.error}</div>}
             {done ? (
               <button
                 type="button"
                 className={isArena ? 'tr-ar-btn' : 'tr-cta'}
-                onClick={() => (isArena ? onArenaDone?.(done as ArenaResult) : onEventTestDone?.(done as SeasonEventTestResult))}
+                onClick={() => (isArena ? onArenaDone?.(done as ArenaResult) : doneWith(done))}
               >
                 結果を見る
               </button>
@@ -886,9 +921,11 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
           <div className="tr-num" style={autoNext && limitMs - elapsed <= TIME_LOW_MS ? { color: '#FF5A5A' } : undefined}>
             <Ico id="i-clock" size={13} />
             {fmtTime(autoNext ? Math.min(elapsed, limitMs) : elapsed)}
-            {!isBackStage && <span> / {fmtTime(limitMs)}</span>}
+            {!isBackStage && !isMsg && <span> / {fmtTime(limitMs)}</span>}
           </div>
-          {autoNext ? (
+          {isMsg ? (
+            <small style={{ color: alpha(T.text, 0.45) }}>制限時間なし</small>
+          ) : autoNext ? (
             <small style={{ color: alpha(T.text, 0.45) }}>時間切れで次へ</small>
           ) : isBackStage || isEventTest || isEvent ? (
             <small style={{ color: alpha(T.text, 0.45) }}>時間ボーナスなし</small>
@@ -1098,13 +1135,15 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
       {confirmExit && (
         <div className={`tr-overlay${isArena ? ' tr-ar-overlay' : ''}`} role="dialog" aria-label="中断の確認">
           <div className={isArena ? 'tr-ar-dialog' : 'tr-card'}>
-            <div style={{ fontWeight: 700, fontSize: 16 }}>中断しますか？</div>
+            <div style={{ fontWeight: 700, fontSize: 16 }}>{isMsg ? 'やめますか？' : '中断しますか？'}</div>
             <div style={isArena ? { color: 'var(--tr-sub)', fontSize: 13, lineHeight: 1.8 } : { color: 'var(--tr-sub)' }}>
               {isArena
                 ? '中断すると、今シーズンの挑戦はここで終了し、決定した問題だけで採点します（続きは解けません・やり直しもできません）。'
                 : isEventTest
                   ? '中断すると、テストはここで終了し、決定した問題だけで採点します（受けられるのは 1 回だけで、続きは解けません）。'
-                  : 'この挑戦の解答は記録されません。'}
+                  : isMsg
+                    ? `やめると、いま選んでいる答えで採点します（${isInvite ? '招待状は 1 回だけで、やり直しはできません' : 'ボトルは 1 回だけ解けます'}）。`
+                    : 'この挑戦の解答は記録されません。'}
             </div>
             <button type="button" className={isArena ? 'tr-ar-btn' : 'tr-cta'} onClick={() => setConfirmExit(false)}>
               続ける
@@ -1116,7 +1155,7 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
               disabled={submitting}
               onClick={oneShot ? () => endNow('quit') : exit}
             >
-              {oneShot ? '中断して採点' : '中断してツリーへ'}
+              {isMsg ? 'やめて採点' : oneShot ? '中断して採点' : '中断してツリーへ'}
             </button>
           </div>
         </div>

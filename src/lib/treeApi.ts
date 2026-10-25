@@ -130,10 +130,10 @@ export interface TreeProgress {
   newDays?: number;
   stage?: TreeStage;
   /**
-   * ABYSS が開いているか（先生は常に）。2026-10-17 夕方から 条件 = 全分野マスター度 60% 以上（cond・未達の分野）。
-   * 一度 ABYSS で挑戦した生徒は条件を割っても開いたまま
+   * ABYSS が開いているか（先生は常に）。一度 ABYSS を開いた生徒は条件を割っても開いたまま。
+   * 2026-10-25 から開放条件は画面に出さない（Proxy も返さない）。fragment = 招待状の欠片（Message in a Bottle・正解した人だけ）
    */
-  abyss?: { open: boolean; cond?: { need: number; done: number; of: number; fields: { id: string; mastery: number }[] } };
+  abyss?: { open: boolean; fragment?: BottleFragment | null };
 }
 
 export interface TreeMe {
@@ -663,7 +663,7 @@ export async function fetchTreeTickets(): Promise<TreeTicket[]> {
 export const redeemTreeTicket = (kind: TreeTicketKind, id: string, sig: string) =>
   kind === 'grand' ? redeemArenaTicket(id, sig) : post<{ ok: boolean; usedAt: number }>('/tree/ticket/use', { kind, id, sig });
 export const redeemArenaTicket = (id: string, sig: string) => post<{ ok: boolean; usedAt: number }>('/tree/arena/ticket/use', { id, sig });
-export const fetchTreeEvents = () => get<{ events: TreeEvent[] }>('/tree/events');
+export const fetchTreeEvents = () => get<{ events: TreeEvent[]; bottle?: BottleNotice }>('/tree/events');
 export const markTreeEventsSeen = (keys: string[]) => post<{ ok: boolean }>('/tree/events/seen', { keys });
 // 先生の ?evnow のときはその日付でイベントのバナーを出す（Proxy は先生だけ now= を使う・2026-10-23）
 export const fetchTreeHome = (subject: string) =>
@@ -767,6 +767,8 @@ export interface TrophyItem {
   oops?: boolean;
   /** EVENT トロフィー（獲得したものだけ items に入る・2026-10-20）*/
   event?: boolean;
+  /** EVENT トロフィーのイベントの種類（'halloween' / 'bottle'・絵を分ける・2026-10-25）。古い Proxy は無し（= ハロウィン）*/
+  eventKind?: string | null;
   /** 関係する分野 ID（詳細のチップ）*/
   fields: string[];
   order: number;
@@ -938,6 +940,8 @@ export type SeasonEventPhase = 'soon' | 'open' | 'closed';
 export interface SeasonEventInfo {
   id: string;
   kind: string;
+  /** 遊び方（2026-10-25）: 'challenge' = 70 題（ハロウィン）/ 'bottle' = Message in a Bottle。古い Proxy は無し（= challenge）*/
+  mode?: 'challenge' | 'bottle';
   name: string;
   startAt: number;
   endAt: number;
@@ -981,6 +985,8 @@ export interface SeasonEventState {
   rewards?: { icon: boolean; trophy: boolean; trophyName?: string | null; ticket: { id: string; usedAt: number | null } | null } | null;
   test?: SeasonEventTest | null;
   staff?: boolean;
+  /** Message in a Bottle のノードの札（mode = 'bottle' で開催中のとき）*/
+  bottle?: BottleNode | null;
 }
 
 /** 提出（/tree/session/submit）の event */
@@ -1147,3 +1153,167 @@ export const gradeLabel = (g: string) => {
 
 /** '2025_河合_共通テストK-パック_化学' → '2025 河合 共通テストK-パック 化学' */
 export const examLabel = (exam: string) => exam.replace(/_/g, ' ');
+
+/* ── Message in a Bottle（2026-11-01 0:00〜12-04 5:00・vault 実装手順_ボトルメール.md・Proxy src/bottles.js）──────────────
+ * 1 日 2 通、自分が解いた問題の ID を入れてボトルを流す（+1 pt）。届いたボトルに正解すると +2 pt。ポイントは科目をまたいで合計。
+ * 50 pt で ???（ABYSS からの招待状・化学か生物の人に 1 通）・100 pt で EVENT トロフィー。解答は普段の記録に入らない */
+
+/** 招待状の欠片: 条件の文 len 字のうち、自分の位置の文字（cells）だけ */
+export interface BottleFragment {
+  len: number;
+  k: number;
+  cells: { i: number; ch: string }[];
+}
+
+/** ツリーのノードの札（/tree/season-event の bottle）*/
+export interface BottleNode {
+  points: number;
+  /** 未回答のボトルの数 */
+  unread: number;
+  /** 50 pt 以上・招待状をまだ開いていない（化学か生物の人だけ）*/
+  mystery: boolean;
+  cleared: boolean;
+  inviteAt: number;
+  clearAt: number;
+}
+
+/** ツリーを開いたときの通知（/tree/events の bottle）。newKey・mysteryKey は見たら /tree/events/seen へ */
+export interface BottleNotice {
+  eventId: string;
+  unread: number;
+  /** 未読のボトルの科目 */
+  subjects?: string[];
+  newKey: string | null;
+  mystery: boolean;
+  mysteryKey: string;
+}
+
+export interface BottleInboxItem {
+  id: string;
+  subject: string;
+  stage: TreeStage;
+  qtype: QType;
+  /** 宛先を指定して流したボトルだけ差出人のニックネーム。ランダムは null（「だれかから」）*/
+  from: string | null;
+  sentAt: number;
+  state: 'new' | 'started' | 'answered';
+  correct: boolean | null;
+  unread: boolean;
+}
+
+/** イベント画面（GET /tree/bottle）*/
+export interface BottleState {
+  event: (Omit<SeasonEventInfo, 'ticketFrom' | 'ticketUntil'> & { mode: 'bottle' }) | null;
+  staff?: boolean;
+  points: number;
+  sent: number;
+  solved: number;
+  daily: number;
+  todayLeft: number;
+  inviteAt: number;
+  clearAt: number;
+  cleared: boolean;
+  inbox: BottleInboxItem[];
+  mystery: boolean;
+  invite: { state: 'opened' | 'correct' | 'wrong'; subject: string | null } | null;
+  /** 招待状が届く科目（化学・生物のうち選んでいるもの）*/
+  inviteSubjects: string[];
+  fragment: BottleFragment | null;
+}
+
+/** 流す前の確認（GET /tree/bottle/preview）*/
+export interface BottlePreview {
+  qid: string;
+  subject: string;
+  stage: TreeStage;
+  type: QType;
+  field: string;
+  fieldName: string;
+  exam: string;
+  n: string | null;
+  label: string | null;
+  img: string | null;
+  /** 自分が一度でも解いたか（解いていない問題は流せない）*/
+  solved: boolean;
+  /** このイベントで流したことがある（同じ問題は 1 回だけ）*/
+  sent: boolean;
+}
+
+export interface BottlePoints {
+  before: number;
+  after: number;
+}
+
+/** 流した結果（returned = その科目に相手がいなかった・ポイントも今日の数も減らない）*/
+export interface BottleSendResult {
+  ok: boolean;
+  returned: boolean;
+  bottleId?: string;
+  subject: string;
+  stage?: TreeStage;
+  /** 宛先を指定したとき、その人のニックネーム */
+  to?: string | null;
+  points?: BottlePoints;
+  todayLeft?: number;
+  cleared?: boolean;
+  trophies?: TrophyGet[];
+  /** 今回で 50 pt に届いた（??? が出る）*/
+  mysteryNow?: boolean;
+  inviteAt?: number;
+  clearAt?: number;
+}
+
+/** 届いたボトルの出題（TreeSession の形 + bottleId）。ended = 開いて 15 秒より後に開き直した（決定済みの解答だけで提出）*/
+export interface BottleSession extends TreeSession {
+  bottleId: string;
+  ended?: boolean;
+  from: string | null;
+  event: { id: string; kind: string; mode: 'bottle' };
+}
+
+export interface BottleResult {
+  bottleId: string;
+  correct: boolean;
+  results: { qid: string; type: QType; correct: boolean; value: PartValue[]; timeMs: number; bonus: number; gain: number }[];
+  points: BottlePoints;
+  gained: number;
+  cleared: boolean;
+  trophies: TrophyGet[];
+  mysteryNow?: boolean;
+  inviteAt?: number;
+  clearAt?: number;
+  stored?: boolean;
+}
+
+/** 招待状の出題（ABYSS の 1 問）*/
+export interface InviteSession extends TreeSession {
+  invite: true;
+  ended?: boolean;
+  event: { id: string; kind: string; mode: 'bottle' };
+}
+
+export interface InviteResult {
+  invite?: true;
+  correct: boolean;
+  results: { qid: string; type: QType; correct: boolean; value: PartValue[]; timeMs: number; bonus: number; gain: number }[];
+  fragment: BottleFragment | null;
+  stored?: boolean;
+}
+
+/** イベント画面。古い Proxy（404）・D1 0020 の前（503）は event: null */
+export async function fetchBottle(): Promise<BottleState | { event: null }> {
+  try {
+    return await get<BottleState | { event: null }>(`/tree/bottle?${C2}${evQ()}`);
+  } catch (e) {
+    if (e instanceof TreeApiError && (e.status === 404 || e.status === 503)) return { event: null };
+    throw e;
+  }
+}
+export const fetchBottlePreview = (qid: string) => call<BottlePreview>(`/tree/bottle/preview?qid=${encodeURIComponent(qid)}${evQ()}`);
+export const sendBottle = (qid: string, to: string) => post<BottleSendResult>(`/tree/bottle/send?${C2}${evQ()}`, to ? { qid, to } : { qid });
+export const openBottle = (bottleId: string) => post<BottleSession>(`/tree/bottle/open?${C2}${evQ()}`, { bottleId });
+export const submitBottle = (bottleId: string, answers: { qid: string; value: PartValue[]; timeMs: number }[], opts: EndedSubmit = {}) =>
+  postEnded<BottleResult>(`/tree/bottle/submit?${C2}${evQ()}`, { bottleId, answers }, opts);
+export const openInvite = () => post<InviteSession>(`/tree/bottle/invite/open?${C2}${evQ()}`, {});
+export const submitInvite = (answers: { qid: string; value: PartValue[]; timeMs: number }[], opts: EndedSubmit = {}) =>
+  postEnded<InviteResult>(`/tree/bottle/invite/submit?${C2}${evQ()}`, { answers }, opts);

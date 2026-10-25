@@ -5,6 +5,15 @@
    発光は SVG フィルタ・box-shadow だけ（アニメーションなし）。
    ============================================================ */
 
+/* ホームのバナーの英字（Message in a Bottle のロゴ・2026-10-25）。ホームでは tree-trophy.css を読まないので、同じ subset をここでも宣言する */
+@font-face {
+  font-family: 'Press Start 2P';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/PressStart2P-subset.woff2') format('woff2');
+}
+
 /* ── ホームのバナー ── */
 .tb-banner {
   position: relative;
@@ -48,6 +57,11 @@
 }
 .tb-bg.is-pixel {
   image-rendering: pixelated;
+}
+/* Message in a Bottle（2026-10-25）: 地と影は夜の海の紺 */
+.tb-banner.is-ev.is-ev-bottle {
+  background: #0e2748;
+  box-shadow: 0 6px 18px rgba(6, 19, 42, 0.36);
 }
 
 /* ── ログイン画面 ── */

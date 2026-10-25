@@ -35,7 +35,10 @@ import {
   RETRO,
   BRAND,
 } from './treeTheme';
-import { EventNode, eventNodeState } from './event/EventNode';
+import { EventNode, eventNodeState, isBottleEvent } from './event/EventNode';
+import { PxBottle } from './event/BottleParts';
+import { AbyssLockedSheet } from './event/AbyssLockedSheet';
+import { PxLock } from './event/EvParts';
 import { EV_ASSET, EV_HAS_ART, evMd } from './event/evTheme';
 
 /** イベントノード（.ev-node）の幅・その中の立方体の左端までの距離（(124 - 66) / 2）・長方形とのすき間 */
@@ -124,6 +127,12 @@ export function TreeScreen(props: Props) {
   //   イベントの立方体を 16px あけて置き、立方体の上端を長方形の上辺にそろえる。
   //   生物基礎だけは横は前の位置（根の分野の右上）のまま、縦は他の科目と同じ（長方形の上辺）
   const showEvent = props.stage === 'front' && !!props.seasonEvent && eventNodeState(props.seasonEvent) != null;
+  // ABYSS が未開放のときの鍵つきのボタン（B12）: 化学・生物で、ボトルのイベント中か欠片を持っているとき
+  const abyssFragment = props.progress.abyss?.fragment ?? null;
+  const showAbyssLock =
+    props.stage === 'front' && (manifest.subject === 'chemistry' || manifest.subject === 'biology') &&
+    (!!abyssFragment || (isBottleEvent(props.seasonEvent) && props.seasonEvent?.event?.phase === 'open'));
+  const [abyssSheet, setAbyssSheet] = useState(false);
   const topLayer = Math.min(...manifest.fields.map((x) => x.pos.layer));
   const roots = manifest.fields.filter((f) => f.pos.layer === topLayer);
   const rootX = roots.length ? Math.max(...roots.map((f) => geom.x(f.pos.x))) : treeW / 2;
@@ -227,7 +236,7 @@ export function TreeScreen(props: Props) {
 
   const share = props.onShare;
   const rightCount = (props.tickets && props.onTickets ? 1 : 0) + (props.onTrophies ? 1 : 0) + 2 + (props.onClose ? 1 : 0);
-  const chromeCrowd = wide || !props.abyssOpen || rightCount < 4 ? '' : rightCount >= 5 ? ' is-crowded is-packed' : ' is-crowded';
+  const chromeCrowd = wide || !(props.abyssOpen || showAbyssLock) || rightCount < 4 ? '' : rightCount >= 5 ? ' is-crowded is-packed' : ' is-crowded';
   return (
     <div className={rootClass(wide ? 'tr-treeview is-wide' : 'tr-treeview')}>
       <div className="tr-caustic" />
@@ -461,13 +470,17 @@ export function TreeScreen(props: Props) {
           <button
             type="button"
             ref={evMarkRef}
-            className={`ev-mark${dim ? ' is-dim' : ''}`}
+            className={`ev-mark${dim ? ' is-dim' : ''}${isBottleEvent(props.seasonEvent) ? ' is-bottle' : ''}`}
             style={{ display: 'none' }}
             aria-label={`${ev.name} へ移動`}
             onClick={goEvent}
           >
-            <img src={EV_ASSET(ev.kind).icon2x} alt="" className="ev-mark-icon" />
-            <span className="ev-mark-text">{name}</span>
+            {isBottleEvent(props.seasonEvent) ? (
+              <PxBottle size={20} style={{ margin: '0 2px' }} />
+            ) : (
+              <img src={EV_ASSET(ev.kind).icon2x} alt="" className="ev-mark-icon" />
+            )}
+            <span className="ev-mark-text">{isBottleEvent(props.seasonEvent) ? 'BOTTLE' : name}</span>
             <span className="ev-mark-chev" aria-hidden="true">›</span>
             {/* 予告の日付は札の下に小さく（札の幅を開催中と同じにして、375px 幅でも根の分野にかからないように）*/}
             {st === 'soon' && <span className="ev-mark-date">{evMd(ev.startAt)}〜</span>}
@@ -475,6 +488,16 @@ export function TreeScreen(props: Props) {
         );
       })()}
       <div className="tr-stagemark">{T.name}</div>
+      {abyssSheet && (
+        <AbyssLockedSheet
+          fragment={abyssFragment}
+          onEvent={isBottleEvent(props.seasonEvent) && props.seasonEvent?.event?.phase === 'open' ? () => {
+            setAbyssSheet(false);
+            props.onEvent?.();
+          } : undefined}
+          onClose={() => setAbyssSheet(false)}
+        />
+      )}
 
       {/* スマホ幅でボタンが多いとき（トロフィーのボタンを足した 2026-10-19）: 4 つ以上ならステージの切替をアイコンだけに、5 つなら丸ボタンを 32px に */}
       <div className={`tr-chrome${chromeCrowd}`}>
@@ -494,6 +517,21 @@ export function TreeScreen(props: Props) {
           {wide && manifest.name} <span className="tr-num">{pct}%</span>
           {canSwitch && <Ico id="i-chev-down" size={wide ? 14 : 12} />}
         </button>
+        {!props.abyssOpen && showAbyssLock && (
+          // ABYSS が未開放（ボード B12・2026-10-25）: 条件は出さず、鍵つきのボタン → 招待状の欠片のシート。化学・生物で、ボトルのイベント中か欠片を持っているときだけ
+          <div className="tr-stagetoggle" role="group" aria-label="ステージ">
+            <button type="button" className="is-on" aria-label="ROUTE（共通テスト型）" aria-pressed="true">
+              <Ico id="i-route" size={15} />
+              <span className="tr-stagelabel">ROUTE</span>
+            </button>
+            <button type="button" className="bt-abyss-lock" aria-label="ABYSS（未開放）・招待状の欠片を見る" onClick={() => setAbyssSheet(true)}>
+              <Ico id="i-depth" size={15} />
+              <i aria-hidden="true">
+                <PxLock size={8} fill="#E8EEFF" />
+              </i>
+            </button>
+          </div>
+        )}
         {props.abyssOpen && (
           // 選択中の側だけ「アイコン + 名前」、もう片方はアイコンだけ（2026-10-15 先生決定）
           <div className="tr-stagetoggle" role="radiogroup" aria-label="ステージ">

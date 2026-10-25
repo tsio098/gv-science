@@ -8,6 +8,8 @@ import { toastSpeed } from './labSpeed';
 import { CHROME, GRADE_COLOR, LV30_BAND, PRISM, PX_ICON, PxIcon, TrophyIcon } from './TrophyIcon';
 import { toastNameSize, toastWidth, type ToastItem, type ToastKind } from './toastQueue';
 import { EventToastCard } from './EventToast';
+import { BottleToastCard } from './BottleToast';
+import { isBottleToast } from './toastQueue';
 
 const ROUTE_BG = 'linear-gradient(180deg,#0C4250,#062530)';
 const ABYSS_BG = 'linear-gradient(180deg,#111E3E,#050B1C)';
@@ -27,6 +29,9 @@ interface Look {
   icon?: string;
 }
 
+/** Message in a Bottle の札の地とクローム（2026-10-25）*/
+const BOTTLE_BG = 'linear-gradient(180deg,#183C68,#071631)';
+const BOTTLE_CHROME = 'linear-gradient(180deg,#FFFFFF 0%,#FFF1CF 30%,#F6D58E 52%,#A9792E 52%,#E7B85C 74%,#FFE7A8 100%)';
 /** その他の通知の色・アイコン（ボード Toasts の notes）*/
 const NOTE_LOOK: Record<Exclude<ToastKind, 'trophy'>, Look> = {
   node: { c: '#4FC3FF', d: '#1C6FA3', rgb: '79,195,255', chrome: CHROME.sky, bg: ROUTE_BG, subc: '#8ED4E0', icon: PX_ICON.unlock },
@@ -44,6 +49,11 @@ const NOTE_LOOK: Record<Exclude<ToastKind, 'trophy'>, Look> = {
   // 季節イベント（2026-10-20）: 絵は EventToast.tsx。ここは下にのぞく次の通知の色だけ
   evClear: { c: '#FF9A1F', d: '#3A1458', rgb: '255,154,31', chrome: CHROME.E, bg: EV_BG, subc: '#E6D2FF' },
   evTicket: { c: '#C9A2FF', d: '#3A1458', rgb: '201,162,255', chrome: CHROME.evPurple, bg: EV_BG, subc: '#E6D2FF' },
+  // Message in a Bottle（2026-10-25）: 絵は BottleToast.tsx。ここは下にのぞく次の通知の色だけ
+  bottleNew: { c: '#F6D58E', d: '#04102A', rgb: '246,213,142', chrome: BOTTLE_CHROME, bg: BOTTLE_BG, subc: '#C4D1E8' },
+  bottleClear: { c: '#F6D58E', d: '#04102A', rgb: '246,213,142', chrome: BOTTLE_CHROME, bg: BOTTLE_BG, subc: '#C4D1E8' },
+  bottleReturned: { c: '#C9D3E6', d: '#04102A', rgb: '201,211,230', chrome: CHROME.S, bg: BOTTLE_BG, subc: '#C4D1E8' },
+  bottleMystery: { c: '#00E5FF', d: '#01060F', rgb: '0,229,255', chrome: 'linear-gradient(180deg,#FFFFFF 0%,#C9FAFF 30%,#00E5FF 52%,#0089A8 52%,#2CC8E0 74%,#B8F7FF 100%)', bg: 'linear-gradient(180deg,#111E3E,#02050E)', subc: '#C4D1E8' },
 };
 
 export function toastLook(t: ToastItem): Look {
@@ -381,7 +391,9 @@ export function ToastLayer({
         if (swiped.current) e.stopPropagation();
       }}
     >
-      {item.kind === 'evClear' || item.kind === 'evTicket' ? (
+      {isBottleToast(item) ? (
+        <BottleToastCard key={item.key} item={item} wide={wide} out={out} onTap={onTap} />
+      ) : item.kind === 'evClear' || item.kind === 'evTicket' ? (
         <EventToastCard key={item.key} item={item} wide={wide} out={out} onTap={onTap} />
       ) : (
         <ToastCard key={item.key} item={item} more={more} peek={peek} wide={wide} out={out} onTap={onTap} />

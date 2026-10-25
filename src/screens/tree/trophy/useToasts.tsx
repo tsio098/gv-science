@@ -22,6 +22,14 @@ export function sfxFor(t: ToastItem): SfxName {
       return 'evClear';
     case 'evTicket':
       return 'evTicket';
+    case 'bottleNew':
+      return 'evBottle';
+    case 'bottleMystery':
+      return 'evMystery';
+    case 'bottleClear':
+      return 'evBottleClear';
+    case 'bottleReturned':
+      return 'silent';
     case 'node':
     case 'master':
       return 'node';
@@ -59,6 +67,7 @@ export function useToasts({
   onOpenTrophy,
   onOpenTickets,
   onOpenEvent,
+  onOpenBottle,
 }: {
   paused: boolean;
   /** 表示を始めた（畳んで出さない分も含む）*/
@@ -69,6 +78,8 @@ export function useToasts({
   onOpenTickets?: () => void;
   /** EVENT CLEAR!! の通知をタップ → その科目のイベント画面（100% 達成）*/
   onOpenEvent?: (subject: string) => void;
+  /** Message in a Bottle の通知をタップ → イベント画面 / 招待状 */
+  onOpenBottle?: (to: 'event' | 'invite') => void;
 }) {
   const [queue, setQueue] = useState<ToastItem[]>([]);
   const [cur, setCur] = useState<(ToastPick & { n: number }) | null>(null);
@@ -76,8 +87,8 @@ export function useToasts({
   const shown = useRef(new Set<string>());
   const seq = useRef(0);
   const wide = useWideToast();
-  const cb = useRef({ onShown, onOpenTrophy, onOpenTickets, onOpenEvent });
-  cb.current = { onShown, onOpenTrophy, onOpenTickets, onOpenEvent };
+  const cb = useRef({ onShown, onOpenTrophy, onOpenTickets, onOpenEvent, onOpenBottle });
+  cb.current = { onShown, onOpenTrophy, onOpenTickets, onOpenEvent, onOpenBottle };
 
   const push = useCallback((items: ToastItem[]) => {
     if (!items.length) return;
@@ -151,7 +162,8 @@ export function useToasts({
       close();
       return;
     }
-    if (cur.item.kind === 'evClear' && cur.item.ev) cb.current.onOpenEvent?.(cur.item.ev.subject);
+    if (cur.item.bottle) cb.current.onOpenBottle?.(cur.item.bottle.open);
+    else if (cur.item.kind === 'evClear' && cur.item.ev) cb.current.onOpenEvent?.(cur.item.ev.subject);
     else if (!cur.peek && cur.item.trophy) cb.current.onOpenTrophy?.(cur.item.trophy);
     else if (cur.item.ticket) cb.current.onOpenTickets?.();
     close();

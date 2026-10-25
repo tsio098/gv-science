@@ -71,6 +71,7 @@ export function TrophyDetailSheet({ item, fieldInfo, onClose, onReplay, holderNa
               ) : (
                 <TrophyIcon
                   grade={item.grade}
+                  eventKind={item.eventKind}
                   size={104}
                   stroke={0.55}
                   // 残念トロフィー: 倒れた姿（-14°）と足もとのかけら（2026-10-19）

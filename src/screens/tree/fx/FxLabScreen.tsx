@@ -10,7 +10,7 @@ import { setToastSpeed } from '../trophy/labSpeed';
 import { sfxFor } from '../trophy/useToasts';
 import type { ArenaSeason, TreeEvent, TrophyGet } from '../../../lib/treeApi';
 import type { ToastItem } from '../trophy/toastQueue';
-import { eventClearToast, eventTicketToast, level50Toast, noticeToast, trophyToast } from '../trophy/toastItems';
+import { bottleClearToast, bottleMysteryToast, bottleNewToast, bottleReturnedToast, eventClearToast, eventTicketToast, level50Toast, noticeToast, trophyToast } from '../trophy/toastItems';
 import { Ico } from '../TreeIcons';
 import { rootClass } from '../treeTheme';
 import { FxScreen } from './FxScreen';
@@ -159,7 +159,30 @@ export function FxLabScreen({ grade, nickname, subject, subjectName, season, onT
         tg('G', '時は金なり', 6),
       ],
     },
+    // 2026-10-25 Message in a Bottle（ボード Nodes / FX_bottle / FX_trophy）。確認用なので既読のキーは送らない（seenKey を外す）
+    { label: 'NEW BOTTLE!（未読 2 本）', items: () => [labBottle(bottleNewToast({ unread: 2, newKey: `lab-bottle-new:${Date.now()}` }, [subjectName, '生物基礎']))] },
+    { label: '???（50 pt・招待状とは書かない）', items: () => [labBottle(bottleMysteryToast(`lab-bottle-mystery:${Date.now()}`))] },
+    { label: 'RETURNED（相手が見つからなかった・音なし）', items: () => [labBottle(bottleReturnedToast(subjectName))] },
+    {
+      label: 'EVENT CLEAR!!（金のボトル・2 科目まとめ）',
+      items: () => [
+        labBottle(
+          bottleClearToast(
+            [
+              { subject, id: 'ev_bottle', grade: 'E', name: EV_TROPHY_NAME.bottle?.[subject] ?? 'EVENT トロフィー', pt: 6, first: false, desc: '', event: true, eventKind: 'bottle' } as TrophyGet,
+              { subject: 'earth-basic', id: 'ev_bottle', grade: 'E', name: EV_TROPHY_NAME.bottle?.['earth-basic'] ?? '', pt: 6, first: false, desc: '', event: true, eventKind: 'bottle' } as TrophyGet,
+            ],
+            [subjectName, '地学基礎'],
+          ),
+        ),
+      ],
+    },
   ];
+
+  /** 確認用: 既読（/tree/events/seen・トロフィー）を送らない・キーを毎回変える */
+  function labBottle(t: ToastItem): ToastItem {
+    return { ...t, key: `${t.key}:lab:${Date.now()}`, trophy: undefined, moreTrophies: undefined, bottle: t.bottle ? { ...t.bottle, seenKey: undefined } : undefined };
+  }
 
   return (
     <div className={rootClass('tr-rank')}>

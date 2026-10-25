@@ -15,6 +15,7 @@ const who = (h: { grade: string; nickname: string }) => `${gradeLabel(h.grade)} 
  * 札はアカウントで初めての 100% なら「{科目} · トロフィー ＋ アイコン」、2 科目目からは「{科目} · EVENT トロフィー」
  */
 export function eventClearToast(t: TrophyGet, subjectName: string, kind = t.eventKind || 'halloween'): ToastItem {
+  if (kind === 'bottle') return bottleClearToast([t], [subjectName]);
   return {
     key: `trophy:${t.subject}:${t.id}`, kind: 'evClear', grade: 'E', head: 'EVENT CLEAR!!', main: t.name,
     sub: t.firstIcon ? `${subjectName} · トロフィー ＋ アイコン` : `${subjectName} · EVENT トロフィー`,
@@ -217,4 +218,54 @@ export function newsToast(manifest: TreeManifest, progress: TreeProgress, subjec
     key: `news:${manifest.subject}:${manifest.version}`, kind: 'news', head: `NEW +${n}`,
     main: list.length === 1 ? `${list[0]!.name}に新着 ${n} 問` : `新着 ${n} 問`, sub: `${subjectName} · ROUTE`,
   };
+}
+
+/* ── Message in a Bottle（2026-10-25・ボード Nodes / FX_bottle / FX_trophy・実装手順_ボトルメール §0-2）── */
+
+/**
+ * EVENT CLEAR!!（100 pt・選んでいる科目それぞれに EVENT トロフィー → 通知は 1 件にまとめる）。既読はまとめた全部のトロフィー。
+ * 名前は最初の科目のトロフィー・札は「{科目} · EVENT トロフィー」（2 科目以上なら「化学 ほか 1 科目」）
+ */
+export function bottleClearToast(list: TrophyGet[], subjectNames: string[]): ToastItem {
+  const [t, ...rest] = list as [TrophyGet, ...TrophyGet[]];
+  const subj = subjectNames.length > 1 ? `${subjectNames[0]} ほか ${subjectNames.length - 1} 科目` : subjectNames[0] ?? '';
+  return {
+    key: `trophy:${t.subject}:${t.id}`, kind: 'bottleClear', grade: 'E', head: 'EVENT CLEAR!!', main: t.name,
+    sub: `${subj} · EVENT トロフィー`, trophy: { subject: t.subject, id: t.id },
+    moreTrophies: rest.map((x) => ({ subject: x.subject, id: x.id })),
+    ev: { kind: 'bottle', subject: t.subject, stamp: '100PT' },
+    bottle: { stamp: '100PT', open: 'event' },
+  };
+}
+
+/** ボトルの EVENT CLEAR!! が科目ごとに並んでいたら 1 件にまとめる（提出の結果・pending）*/
+export function mergeBottleClear(items: ToastItem[], subjectName: (s: string) => string): ToastItem[] {
+  const clears = items.filter((t) => t.kind === 'bottleClear' && t.trophy);
+  if (clears.length < 2) return items;
+  const merged = bottleClearToast(
+    clears.map((c) => ({ subject: c.trophy!.subject, id: c.trophy!.id, name: c.main }) as TrophyGet),
+    clears.map((c) => subjectName(c.trophy!.subject)),
+  );
+  const at = items.indexOf(clears[0]!);
+  const out = items.filter((t) => !clears.includes(t));
+  out.splice(at, 0, merged);
+  return out;
+}
+
+/** NEW BOTTLE!（ツリーを開いたとき未読のボトルがある・1 件にまとめる）。科目は届いたボトルの科目 */
+export function bottleNewToast(n: { unread: number; newKey: string }, subjects: string[]): ToastItem {
+  return {
+    key: n.newKey, kind: 'bottleNew', head: 'NEW BOTTLE!', main: `ボトルが ${n.unread} 本 流れ着いた`,
+    sub: subjects.join(' · ') || 'MESSAGE IN A BOTTLE', bottle: { stamp: `x${n.unread}`, open: 'event', seenKey: n.newKey },
+  };
+}
+
+/** ???（50 pt に届いた後・化学か生物の人・1 回だけ）。招待状とは書かない */
+export function bottleMysteryToast(key: string): ToastItem {
+  return { key, kind: 'bottleMystery', head: '???', main: '深海から 何かが届いた', sub: 'MESSAGE IN A BOTTLE', bottle: { stamp: '50PT', open: 'invite', seenKey: key } };
+}
+
+/** RETURNED（流したボトルの相手が見つからなかった）*/
+export function bottleReturnedToast(subjectName: string): ToastItem {
+  return { key: `bottle-returned:${Date.now()}`, kind: 'bottleReturned', head: 'RETURNED', main: '流したボトルが戻ってきた', sub: `${subjectName} の相手が見つからなかった`, bottle: { open: 'event' } };
 }

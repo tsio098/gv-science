@@ -6,6 +6,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   ArenaInfo,
+  BottleFragment,
+  BottleInboxItem,
+  BottleResult as BottleResultData,
+  BottleSendResult,
+  BottleSession,
+  BottleState,
+  InviteSession,
+  TrophyGet,
   ArenaResult,
   ArenaSession,
   TreeTicket,
@@ -44,7 +52,17 @@ import {
   clearSeasonEventNow,
   startSeasonEventSession,
   startSeasonEventTest,
+  fetchBottle,
+  openBottle,
+  openInvite,
 } from '../../lib/treeApi';
+import { BottleScreen } from './event/BottleScreen';
+import { BottleSendScreen } from './event/BottleSendScreen';
+import { BottleLetter } from './event/BottleLetter';
+import { BottleResult } from './event/BottleResult';
+import { InviteScreen } from './event/InviteScreen';
+import { InviteResult } from './event/InviteResult';
+import { isBottleEvent } from './event/EventNode';
 import { EventScreen } from './event/EventScreen';
 import { EventTestResult } from './event/EventTestResult';
 import { EventStaffScreen } from './event/EventStaffScreen';
@@ -75,7 +93,21 @@ import { TrophyScreen } from './trophy/TrophyScreen';
 import { TrophyDetailSheet, fieldInfoFrom } from './trophy/TrophyDetailSheet';
 import { TrophySprite, GRADE_COLOR } from './trophy/TrophyIcon';
 import { useToasts } from './trophy/useToasts';
-import { eventTicketToast, level30Toast, level50Toast, newsToast, noticeToast, submitToasts, trophyItemToast, trophyToast } from './trophy/toastItems';
+import {
+  bottleClearToast,
+  bottleMysteryToast,
+  bottleNewToast,
+  bottleReturnedToast,
+  eventTicketToast,
+  level30Toast,
+  level50Toast,
+  mergeBottleClear,
+  newsToast,
+  noticeToast,
+  submitToasts,
+  trophyItemToast,
+  trophyToast,
+} from './trophy/toastItems';
 import { dropTrophyMemo, loadTrophies } from './trophy/trophyData';
 import type { ToastItem } from './trophy/toastQueue';
 import '../../styles/tree.css';
@@ -88,7 +120,7 @@ const isEventSession = (s: TreeSession) => s.field === '_event' || !!(s as { eve
 /** 通知（pending）を取り直す最短の間隔（ツリー・結果画面に移ったとき。D1 の読み取りを増やしすぎない）*/
 const PENDING_GAP_MS = 30_000;
 /** 問題を解いている画面（ここにいる間は通知を取りに行かない）*/
-const isSolvingView = (k: string) => k === 'play' || k === 'arenaPlay' || k === 'eventTest';
+const isSolvingView = (k: string) => k === 'play' || k === 'arenaPlay' || k === 'eventTest' || k === 'bottlePlay' || k === 'invitePlay';
 /**
  * 移ったときに通知を取りに行く画面（2026-10-23 先生決定・D1 読み取り削減）: ツリーと結果画面（ROUTE/ABYSS・季節イベントのテスト）だけ。
  * アリーナの結果・ランキング・トロフィーなどに移ったとき・LINE から戻ったときは取らない
@@ -138,7 +170,19 @@ type View =
   /** 先生用 季節イベントの生徒の状況（2026-10-21・イベント画面と「…」メニューから）*/
   | { kind: 'eventStaff'; back: View }
   /** 錨のアイコンの着せ替え（「…」メニュー・イベント画面・テストの結果から）*/
-  | { kind: 'dressUp'; back: View };
+  | { kind: 'dressUp'; back: View }
+  /**
+   * Message in a Bottle（2026-10-25・ボード B02〜B11b）: イベント画面 → 流す／届いた手紙 → 出題 → 結果。
+   * ABYSS からの招待状 → 出題 → 欠片（正解）/ NOT YET.（不正解）。イベント画面の欠片のカードからも欠片の画面へ
+   */
+  | { kind: 'bottle' }
+  | { kind: 'bottleSend' }
+  | { kind: 'bottleLetter'; item: BottleInboxItem }
+  | { kind: 'bottlePlay'; session: BottleSession }
+  | { kind: 'bottleResult'; session: BottleSession; result: BottleResultData }
+  | { kind: 'invite' }
+  | { kind: 'invitePlay'; session: InviteSession }
+  | { kind: 'inviteResult'; correct: boolean; fragment: BottleFragment | null };
 
 /**
  * 演出を止めるフラグ（LIFF WebView でアニメーションが固まったとき用）。
@@ -244,10 +288,14 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   /** トロフィー一覧の分野チップ用（今の科目以外の manifest）*/
   const [otherManifests, setOtherManifests] = useState<Record<string, TreeManifest>>({});
   // 読み込み中（manifest / progress が無い間）は通知の層を描かないので止める（2026-10-19 レビューで修正）
-  const playing = view.kind === 'play' || view.kind === 'arenaPlay' || view.kind === 'eventTest';
+  const playing = isSolvingView(view.kind);
   const toastPaused = playing || !!events[0] || !manifest || !progress;
   const onToastShown = useCallback((items: ToastItem[]) => {
-    const trophies = items.filter((t) => t.trophy).map((t) => t.trophy!);
+    // まとめた EVENT CLEAR!!（ボトル・選んでいる科目それぞれ）は全部のトロフィーを既読に
+    const trophies = items.flatMap((t) => (t.trophy ? [t.trophy, ...(t.moreTrophies ?? [])] : []));
+    // ボトルの通知（NEW BOTTLE! / ???）は出したら既読（/tree/events/seen・1 回だけ）
+    const bottleSeen = items.map((t) => t.bottle?.seenKey).filter((k): k is string => !!k);
+    if (bottleSeen.length) markTreeEventsSeen(bottleSeen).catch(() => {});
     const keys = items.filter((t) => t.noticeKey).map((t) => t.noticeKey!);
     // 一度に送るのは 50 件ずつ（公開前の到達者は何十件もまとめて届く。Proxy は 1 回 100 件まで）
     for (let i = 0; i < Math.max(trophies.length, keys.length); i += 50) {
@@ -282,7 +330,10 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   /** EVENT CLEAR!! の通知をタップ → その科目のイベント画面（科目が違えば切り替えてから）*/
   const openEventRef = useRef<(subject: string) => void>(() => {});
   const onToastEvent = useCallback((s: string) => openEventRef.current(s), []);
-  const toasts = useToasts({ paused: toastPaused, onShown: onToastShown, onOpenTrophy: onToastOpen, onOpenTickets: onToastTickets, onOpenEvent: onToastEvent });
+  /** ボトルの通知をタップ → イベント画面 / 招待状 */
+  const openBottleRef = useRef<(to: 'event' | 'invite') => void>(() => {});
+  const onToastBottle = useCallback((to: 'event' | 'invite') => openBottleRef.current(to), []);
+  const toasts = useToasts({ paused: toastPaused, onShown: onToastShown, onOpenTrophy: onToastOpen, onOpenTickets: onToastTickets, onOpenEvent: onToastEvent, onOpenBottle: onToastBottle });
   const pushToasts = toasts.push;
   /**
    * 未通知の獲得とお知らせ（ツリーを開いた・科目を切り替えたとき）。古い Proxy は空。
@@ -316,17 +367,25 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       fetchTrophyPending()
         .then((p) => {
           setTrophyReady(p.available);
-          pushToasts([
-            ...p.trophies.map((t) => trophyToast(t, subjectJa(t.subject))),
-            ...p.notices.map((n) => noticeToast(n, subjectJa(n.subject))).filter((x): x is ToastItem => !!x),
-          ]);
+          pushToasts(
+            mergeBottleClear(
+              [
+                ...p.trophies.map((t) => trophyToast(t, subjectJa(t.subject))),
+                ...p.notices.map((n) => noticeToast(n, subjectJa(n.subject))).filter((x): x is ToastItem => !!x),
+              ],
+              subjectJa,
+            ),
+          );
         })
         .catch(() => {})
         .finally(() => {
           if (st.again) {
             st.again = false;
             run();
-          } else st.busy = false;
+          } else {
+            st.busy = false;
+            flushBottleToasts();
+          }
         });
     };
     run();
@@ -342,6 +401,16 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
   const fxSeen = useRef(new Set<string>());
   const eventsShown = useRef(false);
   eventsShown.current = events.length > 0;
+  /**
+   * ボトルの通知（/tree/events の bottle・2026-10-25）。トロフィーの通知の後に出すので、通知（pending）を取り終えてから入れる
+   * （pending を取らない回は演出のすぐ後）
+   */
+  const bottleToasts = useRef<ToastItem[]>([]);
+  const flushBottleToasts = useCallback(() => {
+    const list = bottleToasts.current;
+    bottleToasts.current = [];
+    if (list.length) pushToasts(list);
+  }, [pushToasts]);
   const loadFx = useCallback((then: () => void) => {
     const st = fxRun.current;
     if (fxDisabled() || st.busy || eventsShown.current) {
@@ -353,6 +422,13 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
     st.stale = false;
     fetchTreeEvents()
       .then((r) => {
+        const b = r.bottle;
+        if (b) {
+          bottleToasts.current = [
+            ...(b.unread > 0 && b.newKey ? [bottleNewToast({ unread: b.unread, newKey: b.newKey }, (b.subjects ?? []).map(subjectJa))] : []),
+            ...(b.mystery ? [bottleMysteryToast(b.mysteryKey)] : []),
+          ];
+        }
         const list = (r.events ?? []).filter((e) => !fxSeen.current.has(e.key));
         if (!list.length || eventsShown.current) return;
         void preloadFxImages(); // 演出の画像を先にデコード（カクつき対策）
@@ -386,11 +462,12 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
     if (viewKind === 'tree' && fx.at && (fx.stale || Date.now() - fx.at >= PENDING_GAP_MS)) {
       loadFx(() => {
         if (wantPending) loadPending();
+        else flushBottleToasts();
       });
       return;
     }
     if (wantPending) loadPending();
-  }, [viewKind, loadPending, loadFx]);
+  }, [viewKind, loadPending, loadFx, flushBottleToasts]);
 
   // アリーナは化学・生物だけ（2026-10-17 先生決定）。他の科目では取りに行かずノードも出さない。
   // 科目をすぐ切り替えたとき、遅れて返った前の科目のアリーナで上書きしない（最後に頼んだ科目だけ反映）
@@ -429,6 +506,18 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       .finally(() => {
         if (seasonEventFor.current === s) setSeasonEventLoading(false);
       });
+  }, []);
+
+  /** Message in a Bottle のイベント画面の状態（科目に関係なく 1 つ）。古い Proxy・期間外は null */
+  const [bottle, setBottle] = useState<BottleState | null>(null);
+  const [bottleLoading, setBottleLoading] = useState(false);
+  const [bottleMessage, setBottleMessage] = useState<string | null>(null);
+  const loadBottle = useCallback(() => {
+    setBottleLoading(true);
+    fetchBottle()
+      .then((st) => setBottle(st.event ? (st as BottleState) : null))
+      .catch(() => {})
+      .finally(() => setBottleLoading(false));
   }, []);
 
   // 読み込みに失敗しても前の一覧を残す（2026-10-23 不具合調査 ○8: 前は空にして 0 枚・一覧も空に見えた）。
@@ -764,6 +853,79 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
       .catch(fail);
   };
 
+  /* ── Message in a Bottle（2026-10-25）────────────────────────── */
+
+  /** ボトルの通知・ツリーのノード → イベント画面 / 招待状 */
+  openBottleRef.current = (to) => {
+    setBottleMessage(null);
+    loadBottle();
+    setView(to === 'invite' ? { kind: 'invite' } : { kind: 'bottle' });
+  };
+
+  /** 流した・解いた結果の通知（EVENT CLEAR!! は 1 件にまとめる・50 pt に届いたら ???・相手がいなければ RETURNED）*/
+  const bottleToastsOf = (r: { trophies?: TrophyGet[]; mysteryNow?: boolean; returned?: boolean; subject?: string }) => {
+    const items: ToastItem[] = [];
+    if (r.trophies?.length) items.push(bottleClearToast(r.trophies, r.trophies.map((t) => subjectJa(t.subject))));
+    if (r.mysteryNow && bottle?.event) items.push(bottleMysteryToast(`bottle_mystery:${bottle.event.id}`));
+    if (r.returned && r.subject) items.push(bottleReturnedToast(subjectJa(r.subject)));
+    if (items.length) pushToasts(items);
+  };
+
+  /** 未回答のボトル（新しい順・解き始めたものも）*/
+  const openBottles = (except?: string) => (bottle?.inbox ?? []).filter((b) => b.state !== 'answered' && b.id !== except);
+
+  /** 届いたボトルを開けて解く（制限時間なし・離れたら即採点）*/
+  const beginBottle = async (item: BottleInboxItem) => {
+    setStarting(true);
+    setBottleMessage(null);
+    try {
+      const s = await openBottle(item.id);
+      setView({ kind: 'bottlePlay', session: s });
+    } catch (e) {
+      const code = e instanceof TreeApiError ? e.code : '';
+      if (code === 'UNAUTHORIZED' && mode === 'external') return onLogout?.();
+      setBottleMessage(
+        code === 'ALREADY_SUBMITTED'
+          ? 'このボトルはもう解きました。'
+          : code === 'EVENT_CLOSED'
+            ? 'イベントの期間が終わったので、このボトルは開けません。'
+            : code === 'NO_BOTTLE'
+              ? 'このボトルは見つかりませんでした。'
+              : 'ボトルを開けられませんでした。通信状況を確かめてもう一度お試しください。'
+      );
+      loadBottle();
+      setView({ kind: 'bottle' });
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  /** ABYSS からの招待状を開く（1 問・1 回だけ・制限時間なし）*/
+  const beginInvite = async () => {
+    setStarting(true);
+    setBottleMessage(null);
+    try {
+      const s = await openInvite();
+      setView({ kind: 'invitePlay', session: s });
+    } catch (e) {
+      const code = e instanceof TreeApiError ? e.code : '';
+      if (code === 'UNAUTHORIZED' && mode === 'external') return onLogout?.();
+      setBottleMessage(
+        code === 'INVITE_CLOSED'
+          ? 'この招待状はもう閉じています。'
+          : code === 'INVITE_LOCKED'
+            ? 'まだ届いていません。'
+            : code === 'EVENT_CLOSED'
+              ? 'イベントの期間が終わりました。'
+              : '読み込めませんでした。通信状況を確かめてもう一度お試しください。'
+      );
+      loadBottle();
+      setView({ kind: 'bottle' });
+    } finally {
+      setStarting(false);
+    }
+  };
+
   /** アリーナの挑戦を始める（途中で画面を離れていたら終了扱い＝決定済みで採点）。開始で今シーズンの 1 回を使う */
   const beginArena = async () => {
     if (!subject) return;
@@ -806,7 +968,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
         code === 'LOCKED'
           ? 'この分野はまだ解放されていません。'
           : code === 'ABYSS_LOCKED'
-            ? 'ABYSS は全分野のマスター度を 60% 以上にすると開きます。'
+            ? 'ABYSS はまだ開いていません。'
           : code === 'NO_QUESTIONS'
             ? 'この種別の問題はまだありません。'
             : '問題を読み込めませんでした。通信状況を確かめてもう一度お試しください。'
@@ -992,6 +1154,11 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           onEvent={() => {
             setEventMessage(null);
             if (subject) loadSeasonEvent(subject);
+            // Message in a Bottle は科目に関係なく 1 つのイベント画面
+            if (isBottleEvent(seasonEvent)) {
+              openBottleRef.current('event');
+              return;
+            }
             setView({ kind: 'event' });
           }}
           iconSkin={me.iconSkin ?? null}
@@ -1170,6 +1337,172 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
             loadTickets();
             setView({ kind: 'tickets', back: { kind: 'tree' } });
           }}
+        />
+      )}
+      {view.kind === 'bottle' && bottle?.event && (
+        <BottleScreen
+          state={bottle}
+          subjectName={subjectJa}
+          message={bottleMessage}
+          onBack={() => {
+            setBottleMessage(null);
+            if (subject) loadSeasonEvent(subject);
+            setView({ kind: 'tree' });
+          }}
+          onSend={() => {
+            setBottleMessage(null);
+            setView({ kind: 'bottleSend' });
+          }}
+          onLetter={(item) => {
+            setBottleMessage(null);
+            setView({ kind: 'bottleLetter', item });
+          }}
+          onInvite={() => {
+            setBottleMessage(null);
+            setView({ kind: 'invite' });
+          }}
+          onFragment={() => setView({ kind: 'inviteResult', correct: true, fragment: bottle.fragment })}
+        />
+      )}
+      {(view.kind === 'bottle' || view.kind === 'bottleSend' || view.kind === 'bottleLetter' || view.kind === 'invite') && !bottle?.event && (
+        <div className={rootClass()}>
+          <div className="tr-center">
+            <div>{bottleLoading ? '読み込み中…' : 'イベントを読み込めませんでした。'}</div>
+            {!bottleLoading && (
+              <button type="button" className="tr-ghost" style={{ width: 240 }} onClick={loadBottle}>
+                もう一度読み込む
+              </button>
+            )}
+            <button type="button" className="tr-ghost" style={{ width: 240 }} onClick={() => setView({ kind: 'tree' })}>
+              ツリーへ戻る
+            </button>
+          </div>
+        </div>
+      )}
+      {view.kind === 'bottleSend' && bottle?.event && (
+        <BottleSendScreen
+          state={bottle}
+          subjects={subjects}
+          subjectName={subjectJa}
+          onBack={() => {
+            loadBottle();
+            setView({ kind: 'bottle' });
+          }}
+          onSent={(r: BottleSendResult) => {
+            bottleToastsOf(r);
+            loadBottle();
+          }}
+          onTree={() => {
+            refreshProgress();
+            setView({ kind: 'tree' });
+          }}
+          onEvent={() => {
+            loadBottle();
+            setView({ kind: 'bottle' });
+          }}
+        />
+      )}
+      {view.kind === 'bottleLetter' && bottle?.event && (() => {
+        const list = openBottles();
+        const i = list.findIndex((b) => b.id === view.item.id);
+        return (
+          <BottleLetter
+            item={view.item}
+            index={i >= 0 ? i + 1 : 1}
+            total={Math.max(1, list.length)}
+            subjectName={subjectJa}
+            starting={starting}
+            message={bottleMessage}
+            onBack={() => setView({ kind: 'bottle' })}
+            onOpen={() => void beginBottle(view.item)}
+          />
+        );
+      })()}
+      {view.kind === 'bottlePlay' && (
+        <PlayScreen
+          session={view.session}
+          subjectName={subjectJa(view.session.subject)}
+          fieldName="BOTTLE"
+          group="basic"
+          onExit={() => {
+            loadBottle();
+            setView({ kind: 'bottle' });
+          }}
+          onDone={() => {}}
+          onBottleDone={(result) => {
+            bottleToastsOf(result);
+            loadBottle();
+            const id = view.session.bottleId;
+            setView((v) => (v.kind === 'bottlePlay' && v.session.bottleId === id ? { kind: 'bottleResult', session: v.session, result } : v));
+          }}
+        />
+      )}
+      {view.kind === 'bottleResult' && (
+        <BottleResult
+          result={view.result}
+          session={view.session}
+          subjectName={subjectJa(view.session.subject)}
+          nextCount={openBottles(view.session.bottleId).length}
+          onEvent={() => {
+            loadBottle();
+            setView({ kind: 'bottle' });
+          }}
+          onNext={() => {
+            const next = openBottles(view.session.bottleId)[0];
+            setView(next ? { kind: 'bottleLetter', item: next } : { kind: 'bottle' });
+          }}
+          onReport={(qid, message, label, img) => report(view.session.bottleId, qid, message, label, img)}
+          reported={resultMemo.current.get(view.session.bottleId)?.reports}
+        />
+      )}
+      {view.kind === 'invite' && bottle?.event && (
+        <InviteScreen
+          subjectName={bottle.invite?.subject ? subjectJa(bottle.invite.subject) : null}
+          resume={bottle.invite?.state === 'opened'}
+          starting={starting}
+          message={bottleMessage}
+          onLater={() => setView({ kind: 'bottle' })}
+          onAnswer={() => void beginInvite()}
+        />
+      )}
+      {view.kind === 'invitePlay' && (
+        <PlayScreen
+          session={view.session}
+          subjectName={subjectJa(view.session.subject)}
+          fieldName="INVITATION"
+          group="basic"
+          onExit={() => {
+            loadBottle();
+            setView({ kind: 'bottle' });
+          }}
+          onDone={() => {}}
+          onInviteDone={(result) => {
+            loadBottle();
+            refreshProgress();
+            setView((v) => (v.kind === 'invitePlay' ? { kind: 'inviteResult', correct: result.correct, fragment: result.fragment } : v));
+          }}
+        />
+      )}
+      {view.kind === 'inviteResult' && (
+        <InviteResult
+          correct={view.correct}
+          fragment={view.fragment}
+          onEvent={() => {
+            loadBottle();
+            setView({ kind: 'bottle' });
+          }}
+          onTree={() => {
+            refreshProgress();
+            setView({ kind: 'tree' });
+          }}
+          onAbyss={
+            abyssOpen && ARENA_SUBJECTS.includes(subject)
+              ? () => {
+                  setView({ kind: 'tree' });
+                  void switchStage('back');
+                }
+              : undefined
+          }
         />
       )}
       {view.kind === 'dressUp' && (

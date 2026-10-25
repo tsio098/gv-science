@@ -7,3 +7,10 @@
 - 小物: `deco_ev_halloween_{ghost,star,pumpkin,moon}`（svg・_flat.svg・@1x/@2x.png）
 - バナー背景: `banner-bg_ev_halloween@1x.png`（1200×400）/`@2x.png`（2400×800）。1 ドット 4px / 8px なので **CSS は `image-rendering: pixelated`**、表示は 1200×400 の整数倍か cover で
 - 4px ドットの絵（icon・deco・banner）は @1x/@2x の PNG がにじまない。SVG はなめらかに縮小したいとき
+
+# Message in a Bottle（2026-11-01〜12-04 5:00）
+元は `大学リサーチ+app/ANCHOR_TREE_logo/`（`python3 _gen_ev_bottle.py` で作り直し → ここへコピー）。2026-10-25 に配置。
+- ボトル: `icon_ev_bottle(.svg|_flat.svg|@1x.png|@2x.png)`（傾けない素の向き・画面で −14°）
+- EVENT トロフィー（金のボトル）: `icon_trophy_ev_bottle(.svg|_flat.svg|@1x.png|@2x.png)`
+- バナー背景: `banner-bg_ev_bottle@1x.png`（1200×400）/`@2x.png`（2400×800）。1 ドット 4px / 8px → `image-rendering: pixelated`
+- ドット文字（MESSAGE IN A BOTTLE）は画像にせず CSS の文字（BottleParts の BottleLogo）
