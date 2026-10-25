@@ -17,12 +17,11 @@ const GOLD = 'linear-gradient(180deg,#FFFFFF 0%,#FFF1CF 30%,#F6D58E 52%,#A9792E 
 const CYAN = 'linear-gradient(180deg,#FFFFFF 0%,#C9FAFF 30%,#00E5FF 52%,#0089A8 52%,#2CC8E0 74%,#B8F7FF 100%)';
 const SILVER = 'linear-gradient(180deg,#FFFFFF 0%,#EEF2FA 30%,#C9D3E6 52%,#6E7A92 52%,#A7B2C8 74%,#E6ECF7 100%)';
 
-/** 招待状の ??? の絵（ドットのしずく 8×10・シアン）*/
-function PxDrop() {
+/** 招待状の ??? の絵（深海の「?」8×10・シアン。ボード FX_bottle の SVG のまま・2026-10-26 しずくから戻す）*/
+function PxQuestion() {
   return (
     <svg viewBox="0 0 8 10" width="24" height="30" shapeRendering="crispEdges" aria-hidden="true" style={{ display: 'block', filter: 'drop-shadow(0 0 6px rgba(0,229,255,.8))' }}>
-      <path fill="#00E5FF" d="M3 0h2v2H3zM2 2h4v2H2zM1 4h6v4H1zM2 8h4v2H2z" />
-      <path fill="#B8F7FF" d="M2 5h1v2H2z" />
+      <path fill="#00E5FF" d="M1 0h6v1H1zM0 1h2v2H0zM6 1h2v2H6zM5 3h2v1H5zM4 4h2v1H4zM3 5h2v2H3zM3 8h2v2H3z" />
     </svg>
   );
 }
@@ -93,7 +92,7 @@ export function BottleToastCard({ item, wide, out = false, onTap }: { item: Toas
         <span className="tt-frame tt-px" style={{ background: frame, padding: 4 }}>
           <span className="tt-body tt-px" style={{ background: bg, padding: '8px 10px 11px 8px', gap: 10 }}>
             <span className={`tt-well tt-px2 ${clear ? 'tt-pop' : 'bt-rise'}`} style={{ width: 50, height: 50, overflow: 'hidden', background: well }}>
-              {mystery ? <PxDrop /> : <PxBottle size={34} variant={clear ? 'gold' : returned ? 'dim' : 'glass'} glow={clear} />}
+              {mystery ? <PxQuestion /> : <PxBottle size={34} variant={clear ? 'gold' : returned ? 'dim' : 'glass'} glow={clear} />}
             </span>
             <span className="tt-text" style={{ gap: 5 }}>
               <span className="tt-arc tt-chrome tt-head tt-blink" style={{ backgroundImage: chrome }}>
