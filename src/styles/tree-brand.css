@@ -13,6 +13,14 @@
   font-display: swap;
   src: url('/fonts/PressStart2P-subset.woff2') format('woff2');
 }
+/* 同じく締め切り「12/4 AM5:00 まで」と ▶（Press Start 2P の subset に無い）用。tree.css と同じ subset */
+@font-face {
+  font-family: 'DotGothic16';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/DotGothic16-subset.woff2') format('woff2');
+}
 
 /* ── ホームのバナー ── */
 .tb-banner {
@@ -62,6 +70,82 @@
 .tb-banner.is-ev.is-ev-bottle {
   background: #0e2748;
   box-shadow: 0 6px 18px rgba(6, 19, 42, 0.36);
+}
+
+/* ボトルの重ね（ボード H01 の 1200×400 の HTML。TreeBanner が scale = 幅 ÷ 1200 で縮める）*/
+.tb-bt {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1200px;
+  height: 400px;
+  transform-origin: 0 0;
+  pointer-events: none;
+  color: #f2f5ff;
+  font-family: 'DotGothic16', 'Hiragino Sans', sans-serif;
+  font-weight: 400;
+  line-height: normal;
+  text-align: left;
+  white-space: nowrap;
+}
+.tb-bt-lockup {
+  position: absolute;
+  left: 58px;
+  top: 78px;
+  display: flex;
+  align-items: center;
+  gap: 34px;
+}
+.tb-bt-col,
+.tb-bt-logo {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.tb-bt-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.tb-bt-chrome {
+  font-family: 'Press Start 2P', monospace;
+  line-height: 1;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  background-image: linear-gradient(180deg, #ffffff 0%, #fff1cf 30%, #f6d58e 52%, #a9792e 52%, #e7b85c 74%, #ffe7a8 100%);
+  filter: drop-shadow(3px 3px 0 #120a00);
+}
+.tb-bt-ina {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px;
+  line-height: 1;
+  color: #7eebc6;
+  text-shadow: 2px 2px 0 #04102a;
+}
+.tb-bt-ina > i {
+  display: block;
+  width: 16px;
+  height: 4px;
+  background: #7eebc6;
+}
+.tb-bt-when {
+  position: absolute;
+  left: 84px;
+  top: 280px;
+  font-size: 24px;
+  text-shadow: 2px 2px 0 #04102a;
+}
+.tb-bt-cta {
+  position: absolute;
+  left: 84px;
+  top: 334px;
+  font-family: 'Press Start 2P', 'DotGothic16', monospace;
+  font-size: 14px;
+  letter-spacing: 0.28em;
 }
 
 /* ── ログイン画面 ── */

@@ -68,6 +68,63 @@
   top: calc(var(--tr-top) + 90px);
 }
 
+/* ── B02 上部の絵（2026-10-25 夜・ボード B02 案）: 上 210px（--tr-top が 12px のとき）に月夜の海・右寄せ（月と大きいボトル 2 本）。
+   下 28% はマスクで地へぼかし、左から暗く（ロゴを読みやすく）。中身はその 12px 上から重ねる ── */
+.bt-hero {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: calc(var(--tr-top) + 198px);
+  overflow: hidden;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(180deg, #000 72%, rgba(0, 0, 0, 0) 100%);
+  mask-image: linear-gradient(180deg, #000 72%, rgba(0, 0, 0, 0) 100%);
+}
+.bt-hero > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 100% 50%;
+  display: block;
+}
+.bt-hero-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(6, 19, 42, 0.55) 0%, rgba(6, 19, 42, 0) 62%);
+}
+.bt-hero-title {
+  position: absolute;
+  /* 広い画面（iPad）は中身（ev-body・幅 600 の中央）の左にそろえる */
+  left: max(18px, calc(50% - 282px));
+  top: calc(var(--tr-top) + 60px);
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  font-weight: 400;
+  z-index: 1;
+}
+.bt-hero-ina {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.bt-hero-ina > i {
+  display: block;
+  width: 8px;
+  height: 2px;
+  background: #7eebc6;
+}
+.bt-hero-period {
+  font-size: 11px;
+  color: #f2f5ff;
+  text-shadow: 1px 1px 0 #04102a;
+}
+.bt-body.is-hero {
+  top: calc(var(--tr-top) + 186px);
+}
+
 /* ── B02 ポイントのカード ── */
 .bt-points {
   padding: 12px 14px 13px;

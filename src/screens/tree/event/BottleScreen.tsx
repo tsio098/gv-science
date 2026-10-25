@@ -4,12 +4,14 @@
  *   → 今日流せる（ボトル 2 本の印・n/2）→ ???（50 pt・招待状が届いた人だけ・ABYSS の色）→ INBOX → 招待状の欠片のカード（正解した人だけ）
  *   → 下に「ボトルを流す +1PT」
  * 50 pt の中身（ABYSS からの招待状）はここでも書かない（「???」「深海から 何かが届いた」だけ・先生 2026-10-25）
+ * 上部（2026-10-25 夜・ボード B02 案・先生採用）: ホームのバナーと同じ月夜の海の絵（上 210px・右寄せ・下 28% を地へぼかし・左から暗く）の上に
+ *   ロゴ（MESSAGE 11px / —IN A— 8px / BOTTLE 29px）と期間。前の月の飾り（bt-glow・bt-moon）は外した。中身は絵の高さ −12px から
  */
 import type { BottleInboxItem, BottleState } from '../../../lib/treeApi';
 import { rootClass } from '../treeTheme';
 import { evPeriod } from './evTheme';
 import { PxBackIcon } from './EvParts';
-import { BottleLogo, FragGrid, PointBar, PxAnchor, PxBottle, PxInviteSeal, bottleWhen } from './BottleParts';
+import { FragGrid, PointBar, PxAnchor, PxBottle, PxInviteSeal, bottleWhen } from './BottleParts';
 import '../../../styles/tree-event.css';
 import '../../../styles/tree-bottle.css';
 import '../../../styles/tree-bottle-screens.css';
@@ -41,8 +43,10 @@ export function BottleScreen({ state, subjectName, message, onBack, onSend, onLe
 
   return (
     <div className={rootClass('ev-screen is-ev-bottle')}>
-      <div className="bt-glow" aria-hidden="true" />
-      <div className="bt-moon" aria-hidden="true" />
+      <div className="bt-hero" aria-hidden="true">
+        <img src="/tree/brand/ev/banner-bg_ev_bottle@2x.png" alt="" draggable={false} />
+        <span className="bt-hero-shade" />
+      </div>
 
       <div className="ev-head">
         <button type="button" className="ev-sqbtn ev-px2" aria-label="ツリーへ戻る" onClick={onBack}>
@@ -50,16 +54,26 @@ export function BottleScreen({ state, subjectName, message, onBack, onSend, onLe
             <PxBackIcon fill="#F2F5FF" />
           </span>
         </button>
-        <h1 style={{ margin: 0, display: 'flex', flexDirection: 'column', gap: 7 }}>
-          <BottleLogo size="lg" />
-          <span className="ev-dot bt-period">
-            <span className="ev-arc" style={{ fontSize: 8, color: '#F2F5FF' }}>{evPeriod(ev.startAt, ev.endAt)}</span>
-            {open ? ` · あと ${ev.daysLeft} 日` : ev.phase === 'soon' ? ' · まもなく' : ' · 終了'}
-          </span>
-        </h1>
       </div>
+      <h1 className="bt-hero-title">
+        <span className="bt-logo" role="img" aria-label="MESSAGE IN A BOTTLE" style={{ gap: 8 }}>
+          <span className="bt-logo-row" style={{ gap: 8 }}>
+            <span className="ev-arc bt-chrome" style={{ fontSize: 11 }}>MESSAGE</span>
+            <span className="bt-hero-ina">
+              <i />
+              <span className="ev-arc bt-ina" style={{ fontSize: 8 }}>IN A</span>
+              <i />
+            </span>
+          </span>
+          <span className="ev-arc bt-chrome" style={{ fontSize: 29 }}>BOTTLE</span>
+        </span>
+        <span className="ev-dot bt-hero-period">
+          <span className="ev-arc" style={{ fontSize: 8 }}>{evPeriod(ev.startAt, ev.endAt)}</span>
+          {open ? ` · あと ${ev.daysLeft} 日` : ev.phase === 'soon' ? ' · まもなく' : ' · 終了'}
+        </span>
+      </h1>
 
-      <div className="ev-body bt-body is-wide-top">
+      <div className="ev-body bt-body is-hero">
         {message && (
           <div className="ev-msg ev-dot" role="alert">
             {message}

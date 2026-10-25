@@ -618,14 +618,16 @@ export interface TreeHomeFlags {
   season: ArenaSeason;
   /** 着せ替えの錨（季節イベント・2026-10-20）。古い Proxy は無し */
   iconSkin?: string | null;
-  /** 開催中の季節イベント（バナー・2026-10-23）。予告中・終わった後は null。古い Proxy は無し */
+  /** 開催中・予告中の季節イベント（バナー・2026-10-23・予告は 2026-10-25〜）。終わった後は null。古い Proxy は無し */
   event?: TreeHomeEvent | null;
 }
 
-/** ホームのバナーに出す季節イベント（end = 終わりの時刻 ms・含まない）*/
+/** ホームのバナーに出す季節イベント（end = 終わりの時刻 ms・含まない）。phase 'soon' = 予告（2026-10-25〜。古い Proxy は phase・start 無し = 開催中）*/
 export interface TreeHomeEvent {
   id: string;
   kind: string;
+  phase?: 'open' | 'soon';
+  start?: number;
   end: number;
 }
 
