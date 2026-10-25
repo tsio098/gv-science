@@ -125,7 +125,6 @@ export function BottleSendScreen({ state, subjects, subjectName, onBack, onSent,
       // 受け取りは 1 人 1 日 3 本まで（2026-10-25 先生）
       else if (code === 'TO_FULL') setErr({ where: 'to', text: `${name} さんは今日もう 3 本受け取りました。明日また流すか、宛先を空欄にしてください` });
       else if (code === 'NOTE_TOO_LONG') setErr({ where: 'note', text: `ひとことは ${BOTTLE_NOTE_MAX} 字までです` });
-      else if (code === 'NOTE_NG') setErr({ where: 'note', text: 'ひとことに使えないことばが入っています。書き直してください' });
       else if (code === 'EVENT_CLOSED') setErr({ where: 'all', text: 'イベントの期間ではないので流せません' });
       else setErr({ where: 'all', text: '流せませんでした。通信状況を確かめて、もう一度お試しください' });
     } finally {
