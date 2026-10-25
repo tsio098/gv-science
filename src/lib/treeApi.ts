@@ -663,7 +663,8 @@ export async function fetchTreeTickets(): Promise<TreeTicket[]> {
 export const redeemTreeTicket = (kind: TreeTicketKind, id: string, sig: string) =>
   kind === 'grand' ? redeemArenaTicket(id, sig) : post<{ ok: boolean; usedAt: number }>('/tree/ticket/use', { kind, id, sig });
 export const redeemArenaTicket = (id: string, sig: string) => post<{ ok: boolean; usedAt: number }>('/tree/arena/ticket/use', { id, sig });
-export const fetchTreeEvents = () => get<{ events: TreeEvent[]; bottle?: BottleNotice }>('/tree/events');
+// 先生の ?evnow のときはその日付でボトルの通知を出す（11/1 より前に NEW BOTTLE! / ??? を確かめる・2026-10-25）
+export const fetchTreeEvents = () => get<{ events: TreeEvent[]; bottle?: BottleNotice }>(`/tree/events${evQ().replace(/^&/, '?')}`);
 export const markTreeEventsSeen = (keys: string[]) => post<{ ok: boolean }>('/tree/events/seen', { keys });
 // 先生の ?evnow のときはその日付でイベントのバナーを出す（Proxy は先生だけ now= を使う・2026-10-23）
 export const fetchTreeHome = (subject: string) =>
@@ -1156,7 +1157,7 @@ export const examLabel = (exam: string) => exam.replace(/_/g, ' ');
 
 /* ── Message in a Bottle（2026-11-01 0:00〜12-04 5:00・vault 実装手順_ボトルメール.md・Proxy src/bottles.js）──────────────
  * 1 日 2 通、自分が解いた問題の ID を入れてボトルを流す（+1 pt）。届いたボトルに正解すると +2 pt。ポイントは科目をまたいで合計。
- * 50 pt で ???（ABYSS からの招待状・化学か生物の人に 1 通）・100 pt で EVENT トロフィー。解答は普段の記録に入らない */
+ * 50 pt で ???（ABYSS からの招待状・化学か生物の人に 1 通）・100 pt で EVENT トロフィー（基礎科目だけの人は 50 pt が上限でトロフィー）。解答は普段の記録に入らない */
 
 /** 招待状の欠片: 条件の文 len 字のうち、自分の位置の文字（cells）だけ */
 export interface BottleFragment {
@@ -1173,7 +1174,9 @@ export interface BottleNode {
   /** 50 pt 以上・招待状をまだ開いていない（化学か生物の人だけ）*/
   mystery: boolean;
   cleared: boolean;
-  inviteAt: number;
+  /** ??? のポイント。基礎科目だけの生徒は null（招待状が無い）*/
+  inviteAt: number | null;
+  /** クリア（EVENT トロフィー）＝上限のポイント。化学・生物の生徒は 100・基礎科目だけの生徒は 50 */
   clearAt: number;
 }
 
@@ -1210,7 +1213,8 @@ export interface BottleState {
   solved: number;
   daily: number;
   todayLeft: number;
-  inviteAt: number;
+  /** 基礎科目だけの生徒は null（招待状なし・上限 50 pt）*/
+  inviteAt: number | null;
   clearAt: number;
   cleared: boolean;
   inbox: BottleInboxItem[];
@@ -1259,7 +1263,7 @@ export interface BottleSendResult {
   trophies?: TrophyGet[];
   /** 今回で 50 pt に届いた（??? が出る）*/
   mysteryNow?: boolean;
-  inviteAt?: number;
+  inviteAt?: number | null;
   clearAt?: number;
 }
 
@@ -1280,7 +1284,7 @@ export interface BottleResult {
   cleared: boolean;
   trophies: TrophyGet[];
   mysteryNow?: boolean;
-  inviteAt?: number;
+  inviteAt?: number | null;
   clearAt?: number;
   stored?: boolean;
 }

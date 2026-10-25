@@ -30,10 +30,16 @@ export function BottleResult({ result, session, subjectName, nextCount, onEvent,
   const root = useRef<HTMLDivElement>(null);
   const first = session.questions[session.units[0]?.qids[0] ?? ''];
   const qtype = first?.type ?? result.results[0]?.type ?? session.qtype;
-  const inviteAt = result.inviteAt ?? 50;
+  // 基礎科目だけの生徒は inviteAt = null（招待状なし）・clearAt = 50。古い Proxy は返さない（undefined → 50 / 100）
+  const inviteAt = result.inviteAt === undefined ? 50 : result.inviteAt;
   const clearAt = result.clearAt ?? 100;
   const after = result.points.after;
-  const toGo = after < inviteAt ? { label: '??? まで', n: inviteAt - after, color: '#7FEFFF' } : after < clearAt ? { label: 'トロフィーまで', n: clearAt - after, color: '#F6D58E' } : null;
+  const toGo =
+    inviteAt != null && after < inviteAt
+      ? { label: '??? まで', n: inviteAt - after, color: '#7FEFFF' }
+      : after < clearAt
+        ? { label: 'トロフィーまで', n: clearAt - after, color: '#F6D58E' }
+        : null;
 
   return (
     <div className={rootClass('ev-screen is-ev-bottle')} ref={root}>

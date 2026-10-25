@@ -159,24 +159,26 @@ export function BottleWave({ width = 120, style }: { width?: number; style?: CSS
   );
 }
 
-/* ── ポイントのバー（20 マス・50 の印は「50 ???」・100 トロフィー）── */
-export function PointBar({ points, max = 100, inviteAt = 50, segs = 20, label = true }: { points: number; max?: number; inviteAt?: number; segs?: number; label?: boolean }) {
+/* ── ポイントのバー（20 マス・50 の印は「50 ???」・100 トロフィー）。inviteAt = null（基礎科目だけの生徒）は印なし・max = 50 ── */
+export function PointBar({ points, max = 100, inviteAt = 50, segs = 20, label = true }: { points: number; max?: number; inviteAt?: number | null; segs?: number; label?: boolean }) {
   const per = max / segs;
   const filled = Math.min(segs, Math.floor(points / per));
   return (
     <div className="bt-bar-wrap">
-      <div className="bt-bar" role="img" aria-label={`${points} pt / ${max} pt。${inviteAt} pt で ???、${max} pt でトロフィー`}>
+      <div className="bt-bar" role="img" aria-label={`${points} pt / ${max} pt。${inviteAt != null ? `${inviteAt} pt で ???、` : ''}${max} pt でトロフィー`}>
         {Array.from({ length: segs }, (_, i) => (
           <span key={i} className={i < filled ? 'is-on' : i === filled && points < max ? 'is-next' : undefined} />
         ))}
-        <i className="bt-bar-mark" style={{ left: `calc(${(inviteAt / max) * 100}% - 1px)` }} />
+        {inviteAt != null && <i className="bt-bar-mark" style={{ left: `calc(${(inviteAt / max) * 100}% - 1px)` }} />}
       </div>
       {label && (
         <div className="bt-bar-labels ev-dot">
           <span className="ev-arc" style={{ fontSize: 7 }}>0</span>
-          <span className="bt-bar-mid" style={{ left: `${(inviteAt / max) * 100}%` }}>
-            <span className="ev-arc" style={{ fontSize: 7 }}>{inviteAt} ???</span>
-          </span>
+          {inviteAt != null && (
+            <span className="bt-bar-mid" style={{ left: `${(inviteAt / max) * 100}%` }}>
+              <span className="ev-arc" style={{ fontSize: 7 }}>{inviteAt} ???</span>
+            </span>
+          )}
           <span style={{ color: '#F6D58E' }}>
             <span className="ev-arc" style={{ fontSize: 7 }}>{max}</span> トロフィー
           </span>

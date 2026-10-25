@@ -1,6 +1,7 @@
 /**
  * ABYSS からの招待状（ボード B10・50 pt で 1 通・化学か生物の人だけ）。ABYSS の色・英語の文言（実装手順_ボトルメール §0-4）。
  * ANSWER で ABYSS の 1 問（制限時間なし・画面を離れたら即採点・1 回だけ）。LATER はイベント画面へ（問題はまだ決まらない）
+ * 開いたが答えていない（resume）ときは、開いてから 15 秒を過ぎると決めた答えで採点される（Proxy playEndedOnResume）→ ボトルの手紙と同じ注意を出す（2026-10-25）
  */
 import { rootClass } from '../treeTheme';
 import { PxBackIcon } from './EvParts';
@@ -83,6 +84,11 @@ export function InviteScreen({ subjectName, resume = false, starting, message, o
               <span className="bt-en" lang="en" style={{ fontSize: 12, lineHeight: 1.6, color: '#8A9AC8' }}>
                 If you leave this screen, your answer is sealed.
               </span>
+              {resume && (
+                <span className="ev-dot" role="note" style={{ fontSize: 12, lineHeight: 1.6, color: '#FFB38A' }}>
+                  前に開いた招待状です。開いてから 15 秒を過ぎていると、開いたときに決めた答えで採点します（続きは解けません・やり直しはありません）。
+                </span>
+              )}
               <span className="ev-arc" style={{ alignSelf: 'flex-end', fontSize: 8, color: '#00E5FF' }}>— THE ABYSS</span>
               <div className="ev-scan" style={{ opacity: 0.3 }} />
             </div>
@@ -96,7 +102,7 @@ export function InviteScreen({ subjectName, resume = false, starting, message, o
             <span className="ev-px2 ev-arc" style={{ fontSize: 9 }}>LATER</span>
           </button>
           <button type="button" className="bt-deep-cta" disabled={starting} onClick={onAnswer}>
-            <span className="ev-px2 ev-arc" style={{ fontSize: 10 }}>{starting ? '...' : resume ? 'CONTINUE' : 'ANSWER'}</span>
+            <span className="ev-px2 ev-arc" style={{ fontSize: 10 }}>{starting ? '...' : resume ? 'OPEN & SEAL' : 'ANSWER'}</span>
           </button>
         </div>
       </div>

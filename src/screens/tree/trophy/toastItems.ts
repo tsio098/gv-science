@@ -66,7 +66,8 @@ export function trophyToast(t: TrophyGet, subjectName: string, stage: TreeStage 
 
 /** 一覧のトロフィー → 獲得したときの通知（詳細の「再生」・2026-10-24）。pt はグレードの表示 pt */
 export function trophyItemToast(item: TrophyItem, subject: string, subjectName: string, pt: number): ToastItem {
-  return trophyToast({ subject, id: item.id, grade: item.grade, name: item.name, pt, first: item.first, desc: item.desc, event: item.event }, subjectName);
+  // eventKind も渡す（無いと EVENT CLEAR!! がハロウィンの札・音になる・2026-10-25）
+  return trophyToast({ subject, id: item.id, grade: item.grade, name: item.name, pt, first: item.first, desc: item.desc, event: item.event, eventKind: item.eventKind }, subjectName);
 }
 
 /** トロフィーレベル 30（LV.30 チケット）。既読は level30:{科目}（提出の直後もツリーを開いたときも同じキー）*/
@@ -224,17 +225,19 @@ export function newsToast(manifest: TreeManifest, progress: TreeProgress, subjec
 
 /**
  * EVENT CLEAR!!（100 pt・選んでいる科目それぞれに EVENT トロフィー → 通知は 1 件にまとめる）。既読はまとめた全部のトロフィー。
- * 名前は最初の科目のトロフィー・札は「{科目} · EVENT トロフィー」（2 科目以上なら「化学 ほか 1 科目」）
+ * 名前は最初の科目のトロフィー・札は「{科目} · EVENT トロフィー」（2 科目以上なら「化学 ほか 1 科目」）。
+ * 基礎科目だけの生徒は 50 pt でクリア（招待状が無い・2026-10-25 先生）→ 付いたのが基礎科目だけならスタンプは 50PT
  */
 export function bottleClearToast(list: TrophyGet[], subjectNames: string[]): ToastItem {
   const [t, ...rest] = list as [TrophyGet, ...TrophyGet[]];
+  const stamp = list.every((x) => x.subject.endsWith('-basic')) ? '50PT' : '100PT';
   const subj = subjectNames.length > 1 ? `${subjectNames[0]} ほか ${subjectNames.length - 1} 科目` : subjectNames[0] ?? '';
   return {
     key: `trophy:${t.subject}:${t.id}`, kind: 'bottleClear', grade: 'E', head: 'EVENT CLEAR!!', main: t.name,
     sub: `${subj} · EVENT トロフィー`, trophy: { subject: t.subject, id: t.id },
     moreTrophies: rest.map((x) => ({ subject: x.subject, id: x.id })),
-    ev: { kind: 'bottle', subject: t.subject, stamp: '100PT' },
-    bottle: { stamp: '100PT', open: 'event' },
+    ev: { kind: 'bottle', subject: t.subject, stamp },
+    bottle: { stamp, open: 'event' },
   };
 }
 
