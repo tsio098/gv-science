@@ -120,6 +120,8 @@ export function BottleSendScreen({ state, subjects, subjectName, onBack, onSent,
       else if (code === 'QID_NOT_SOLVED') setErr({ where: 'id', text: 'まだ解いていない問題は流せません（自分が解いた問題だけ）' });
       else if (code === 'TO_NOT_FOUND') setErr({ where: 'to', text: `「${name}」という名前の人は ${subjectLabel} にいません` });
       else if (code === 'TO_SELF') setErr({ where: 'to', text: '自分には流せません' });
+      // 受け取りは 1 人 1 日 3 本まで（2026-10-25 先生）
+      else if (code === 'TO_FULL') setErr({ where: 'to', text: `${name} さんは今日もう 3 本受け取りました。明日また流すか、宛先を空欄にしてください` });
       else if (code === 'EVENT_CLOSED') setErr({ where: 'all', text: 'イベントの期間ではないので流せません' });
       else setErr({ where: 'all', text: '流せませんでした。通信状況を確かめて、もう一度お試しください' });
     } finally {
@@ -287,6 +289,10 @@ export function BottleSendScreen({ state, subjects, subjectName, onBack, onSent,
             <span>
               <i />
               相手には問題だけが届く
+            </span>
+            <span>
+              <i />
+              1 人が受け取れるのは 1 日 3 本まで
             </span>
           </div>
         </div>
