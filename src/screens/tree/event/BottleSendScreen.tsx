@@ -1,7 +1,7 @@
 /**
  * ボトルを流す（ボード B03）→ 流した（B04）。実装手順_ボトルメール §3-4。
  *   問題 ID の入力＋「貼り付け」→ 入力が止まって 400ms で /tree/bottle/preview（問題の画像の縮小・科目 · 種別 · 分野・試験 · 問）
- *   → 宛先のニックネーム（空欄なら同じ科目のだれかへ）→ 注意 3 行 → 「ボトルを流す +1PT」
+ *   → 宛先のニックネーム（空欄なら同じ科目のだれかへ）→ ひとこと（30 字まで・空欄なら相手の手紙は「この問題、解ける？」）→ 注意 4 行 → 「ボトルを流す +1PT」
  *   相手がいなかった（returned）ときはこの画面に知らせて、ポイント・今日の数は減らない（RETURNED の通知は TreeRoot）
  */
 import { useEffect, useRef, useState } from 'react';
@@ -10,7 +10,7 @@ import { TreeApiError, examLabel, fetchBottlePreview, sendBottle, treeImage } fr
 import { rootClass } from '../treeTheme';
 import { PxBackIcon } from './EvParts';
 import { PxBottle, PxCheck, PxWarn } from './BottleParts';
-import { BOTTLE_QTYPE } from './BottleScreen';
+import { BOTTLE_NOTE_DEFAULT, BOTTLE_NOTE_MAX, BOTTLE_QTYPE } from './BottleScreen';
 import '../../../styles/tree-event.css';
 import '../../../styles/tree-bottle.css';
 import '../../../styles/tree-bottle-screens.css';
@@ -34,16 +34,18 @@ export function BottleSendScreen({ state, subjects, subjectName, onBack, onSent,
   const staff = !!state.staff;
   const [qid, setQid] = useState('');
   const [to, setTo] = useState('');
+  const [note, setNote] = useState('');
   const [pv, setPv] = useState<Pv>({ status: 'idle' });
   const [img, setImg] = useState<string | 'error' | null>(null);
   const [sending, setSending] = useState(false);
   const sendingRef = useRef(false);
-  const [err, setErr] = useState<{ where: 'id' | 'to' | 'all'; text: string } | null>(null);
+  const [err, setErr] = useState<{ where: 'id' | 'to' | 'note' | 'all'; text: string } | null>(null);
   const [pasteNote, setPasteNote] = useState<string | null>(null);
   const [returned, setReturned] = useState<string | null>(null);
   const [left, setLeft] = useState(state.todayLeft);
   const [sent, setSent] = useState<BottleSendResult | null>(null);
   const id = qid.trim();
+  const noteLen = Array.from(note.trim()).length;
 
   // 入力が止まってから 400ms でプレビュー（遅れて返った前の ID の結果で上書きしない）
   const seq = useRef(0);
@@ -101,7 +103,7 @@ export function BottleSendScreen({ state, subjects, subjectName, onBack, onSent,
     setReturned(null);
     const name = to.trim();
     try {
-      const r = await sendBottle(id, name);
+      const r = await sendBottle(id, name, note.trim());
       if (r.returned || !r.ok) {
         setReturned(`${subjectName(r.subject)} に相手がいなかったので、ボトルが戻ってきました（ポイント・今日の数は減っていません）`);
         onSent(r);
@@ -122,6 +124,8 @@ export function BottleSendScreen({ state, subjects, subjectName, onBack, onSent,
       else if (code === 'TO_SELF') setErr({ where: 'to', text: '自分には流せません' });
       // 受け取りは 1 人 1 日 3 本まで（2026-10-25 先生）
       else if (code === 'TO_FULL') setErr({ where: 'to', text: `${name} さんは今日もう 3 本受け取りました。明日また流すか、宛先を空欄にしてください` });
+      else if (code === 'NOTE_TOO_LONG') setErr({ where: 'note', text: `ひとことは ${BOTTLE_NOTE_MAX} 字までです` });
+      else if (code === 'NOTE_NG') setErr({ where: 'note', text: 'ひとことに使えないことばが入っています。書き直してください' });
       else if (code === 'EVENT_CLOSED') setErr({ where: 'all', text: 'イベントの期間ではないので流せません' });
       else setErr({ where: 'all', text: '流せませんでした。通信状況を確かめて、もう一度お試しください' });
     } finally {
@@ -134,6 +138,7 @@ export function BottleSendScreen({ state, subjects, subjectName, onBack, onSent,
 
   const idText = err?.where === 'id' ? err.text : idNg;
   const toNg = err?.where === 'to' ? err.text : null;
+  const noteNg = err?.where === 'note' ? err.text : null;
 
   return (
     <div className={rootClass('ev-screen is-ev-bottle')}>
@@ -256,6 +261,40 @@ export function BottleSendScreen({ state, subjects, subjectName, onBack, onSent,
           </div>
         )}
 
+        <label htmlFor="bt-note" className="ev-dot bt-flabel" style={{ marginTop: 10 }}>
+          <span>
+            <span className="ev-arc" style={{ fontSize: 8, color: '#F6D58E' }}>03</span>　ひとこと
+          </span>
+          <span style={{ fontSize: 11, color: noteLen >= BOTTLE_NOTE_MAX ? '#F6D58E' : '#A9BBD9' }}>
+            任意 · <span className="ev-arc" style={{ fontSize: 8 }}>{noteLen}/{BOTTLE_NOTE_MAX}</span>
+          </span>
+        </label>
+        <span className={`ev-px2 bt-input-frame${noteNg ? ' is-ng' : note.trim() ? ' is-ok' : ' is-plain'}`} style={{ flex: 'none' }}>
+          <input
+            id="bt-note"
+            className="ev-px2 bt-input"
+            value={note}
+            placeholder={`空欄なら「${BOTTLE_NOTE_DEFAULT}」`}
+            autoComplete="off"
+            enterKeyHint="done"
+            onChange={(e) => {
+              // 改行は入れない・字数は Array.from で数えて切る（絵文字を半分に切らない）
+              setNote(Array.from(e.target.value.replace(/[\r\n]/g, '')).slice(0, BOTTLE_NOTE_MAX).join(''));
+              if (err?.where === 'note') setErr(null);
+            }}
+          />
+        </span>
+        {noteNg ? (
+          <div className="ev-dot bt-hint" style={{ color: '#FFB38A' }} role="alert">
+            <PxWarn />
+            {noteNg}
+          </div>
+        ) : (
+          <div className="ev-dot bt-hint" style={{ color: '#A9BBD9', fontSize: 12 }}>
+            {note.trim() ? '相手の手紙に、この文が出ます' : `相手の手紙には「${BOTTLE_NOTE_DEFAULT}」と出ます`}
+          </div>
+        )}
+
         {err?.where === 'all' && (
           <div className="ev-px2 bt-err-frame" role="alert">
             <div className="ev-px2 bt-err">
@@ -288,7 +327,7 @@ export function BottleSendScreen({ state, subjects, subjectName, onBack, onSent,
             </span>
             <span>
               <i />
-              相手には問題だけが届く
+              相手には問題とひとことだけが届く
             </span>
             <span>
               <i />

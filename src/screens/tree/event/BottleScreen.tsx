@@ -18,6 +18,10 @@ import '../../../styles/tree-bottle-screens.css';
 
 /** 種別の短い名前（行・手紙・見出し）*/
 export const BOTTLE_QTYPE: Record<string, string> = { tf: '正誤', calc: '計算', reason: '考察' };
+/** 届いた手紙の一文。流す人がひとことを書かなかったらこれ（2026-10-26 先生）*/
+export const BOTTLE_NOTE_DEFAULT = 'この問題、解ける？';
+/** ひとことの上限の字数（Proxy の BOTTLE_NOTE_MAX と同じ・字数は Array.from で数える）*/
+export const BOTTLE_NOTE_MAX = 30;
 
 interface Props {
   state: BottleState;

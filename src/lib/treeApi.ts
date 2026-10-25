@@ -1204,6 +1204,8 @@ export interface BottleInboxItem {
   state: 'new' | 'started' | 'answered';
   correct: boolean | null;
   unread: boolean;
+  /** 流した人のひとこと（空欄なら null →「この問題、解ける？」）*/
+  note?: string | null;
 }
 
 /** イベント画面（GET /tree/bottle）*/
@@ -1316,7 +1318,7 @@ export async function fetchBottle(): Promise<BottleState | { event: null }> {
   }
 }
 export const fetchBottlePreview = (qid: string) => call<BottlePreview>(`/tree/bottle/preview?qid=${encodeURIComponent(qid)}${evQ()}`);
-export const sendBottle = (qid: string, to: string) => post<BottleSendResult>(`/tree/bottle/send?${C2}${evQ()}`, to ? { qid, to } : { qid });
+export const sendBottle = (qid: string, to: string, note = '') => post<BottleSendResult>(`/tree/bottle/send?${C2}${evQ()}`, { qid, ...(to ? { to } : {}), ...(note ? { note } : {}) });
 export const openBottle = (bottleId: string) => post<BottleSession>(`/tree/bottle/open?${C2}${evQ()}`, { bottleId });
 export const submitBottle = (bottleId: string, answers: { qid: string; value: PartValue[]; timeMs: number }[], opts: EndedSubmit = {}) =>
   postEnded<BottleResult>(`/tree/bottle/submit?${C2}${evQ()}`, { bottleId, answers }, opts);

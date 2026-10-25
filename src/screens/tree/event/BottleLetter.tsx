@@ -1,12 +1,12 @@
 /**
- * 届いたボトルを開く（ボード B05・羊皮紙の手紙）。From・科目 / 種別 / 1 問・「この問題、解ける？ 正解すると +2PT」・赤い封蝋。
+ * 届いたボトルを開く（ボード B05・羊皮紙の手紙）。From・科目 / 種別 / 1 問・流した人のひとこと（空欄なら「この問題、解ける？」）・「正解すると +2PT」・赤い封蝋。
  * 「ボトルを開けて解く」で出題（制限時間なし・画面を離れたら即採点）。「あとで」はイベント画面へ戻る（時計は動かない）
  */
 import type { BottleInboxItem } from '../../../lib/treeApi';
 import { rootClass } from '../treeTheme';
 import { PxBackIcon } from './EvParts';
 import { PxBottle, PxLetterSeal } from './BottleParts';
-import { BOTTLE_QTYPE } from './BottleScreen';
+import { BOTTLE_NOTE_DEFAULT, BOTTLE_QTYPE } from './BottleScreen';
 import '../../../styles/tree-event.css';
 import '../../../styles/tree-bottle.css';
 import '../../../styles/tree-bottle-screens.css';
@@ -79,8 +79,8 @@ export function BottleLetter({ item, index, total, subjectName, starting, messag
                 <span className="ev-px2 ev-dot bt-letter-chip">1 問</span>
                 {item.stage === 'back' && <span className="ev-px2 ev-arc bt-letter-chip" style={{ fontSize: 8 }}>ABYSS</span>}
               </div>
-              <span className="ev-dot" style={{ fontSize: 15, lineHeight: 1.85, color: '#3A2608' }}>
-                この問題、解ける？
+              <span className="ev-dot" style={{ fontSize: 15, lineHeight: 1.85, color: '#3A2608', wordBreak: 'break-all' }}>
+                {item.note?.trim() || BOTTLE_NOTE_DEFAULT}
                 <br />
                 正解すると <span className="ev-arc" style={{ fontSize: 10, color: '#9A3A1E' }}>+2PT</span>
               </span>
