@@ -123,9 +123,10 @@ const PENDING_GAP_MS = 30_000;
 const isSolvingView = (k: string) => k === 'play' || k === 'arenaPlay' || k === 'eventTest' || k === 'bottlePlay' || k === 'invitePlay';
 /**
  * 移ったときに通知を取りに行く画面（2026-10-23 先生決定・D1 読み取り削減）: ツリーと結果画面（ROUTE/ABYSS・季節イベントのテスト）だけ。
+ * 2026-10-26 先生: イベントで解いた後の結果画面（ボトル・招待状）も取る。
  * アリーナの結果・ランキング・トロフィーなどに移ったとき・LINE から戻ったときは取らない
  */
-const isPendingView = (k: string) => k === 'tree' || k === 'result' || k === 'eventTestResult';
+const isPendingView = (k: string) => k === 'tree' || k === 'result' || k === 'eventTestResult' || k === 'bottleResult' || k === 'inviteResult';
 
 /**
  * LINE 内で開いたときの自分の LINE の ID（userId）。「塾生専用です」画面に出し、
@@ -1395,10 +1396,6 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
           onTree={() => {
             refreshProgress();
             setView({ kind: 'tree' });
-          }}
-          onEvent={() => {
-            loadBottle();
-            setView({ kind: 'bottle' });
           }}
         />
       )}

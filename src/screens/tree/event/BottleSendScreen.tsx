@@ -23,14 +23,13 @@ interface Props {
   onBack: () => void;
   onSent: (r: BottleSendResult) => void;
   onTree: () => void;
-  onEvent: () => void;
 }
 
 type Pv = { status: 'idle' | 'loading' } | { status: 'ok'; p: BottlePreview } | { status: 'ng'; text: string };
 
 const PREVIEW_WAIT_MS = 400;
 
-export function BottleSendScreen({ state, subjects, subjectName, onBack, onSent, onTree, onEvent }: Props) {
+export function BottleSendScreen({ state, subjects, subjectName, onBack, onSent, onTree }: Props) {
   const staff = !!state.staff;
   const [qid, setQid] = useState('');
   const [to, setTo] = useState('');
@@ -133,7 +132,7 @@ export function BottleSendScreen({ state, subjects, subjectName, onBack, onSent,
     }
   };
 
-  if (sent) return <SentView r={sent} subjectName={subjectName} onTree={onTree} onEvent={onEvent} />;
+  if (sent) return <SentView r={sent} subjectName={subjectName} onTree={onTree} />;
 
   const idText = err?.where === 'id' ? err.text : idNg;
   const toNg = err?.where === 'to' ? err.text : null;
@@ -356,8 +355,8 @@ export function BottleSendScreen({ state, subjects, subjectName, onBack, onSent,
   );
 }
 
-/** 流した（B04）: 月夜の海に流したボトル・BOTTLE SENT!・+1PT・前 → 後 */
-function SentView({ r, subjectName, onTree, onEvent }: { r: BottleSendResult; subjectName: (s: string) => string; onTree: () => void; onEvent: () => void }) {
+/** 流した（B04）: 月夜の海に流したボトル・BOTTLE SENT!・+1PT・前 → 後。ボタンは「ツリーへ戻る」だけ（2026-10-26 先生）*/
+function SentView({ r, subjectName, onTree }: { r: BottleSendResult; subjectName: (s: string) => string; onTree: () => void }) {
   const lines: [number, number, string, number][] = [
     [312, 0, 'rgba(255,241,207,.4) 0 20px,rgba(0,0,0,0) 20px 44px', 0],
     [332, -12, 'rgba(126,235,198,.35) 0 28px,rgba(0,0,0,0) 28px 60px', 0],
@@ -404,18 +403,11 @@ function SentView({ r, subjectName, onTree, onEvent }: { r: BottleSendResult; su
       </div>
 
       <div className="ev-foot" style={{ background: 'transparent', borderTop: 0 }}>
-        <div className="bt-foot-row">
-          <button type="button" className="ev-ghost-wrap ev-px2" style={{ flex: 1 }} onClick={onTree}>
-            <span className="ev-px2 ev-ghost">
-              <span className="ev-dot" style={{ fontSize: 15 }}>ツリーへ</span>
-            </span>
-          </button>
-          <button type="button" className="ev-cta-wrap" style={{ flex: 1.3 }} onClick={onEvent}>
-            <span className="ev-px2 ev-cta" style={{ height: 50 }}>
-              <span className="ev-dot" style={{ fontSize: 15 }}>イベントへ</span>
-            </span>
-          </button>
-        </div>
+        <button type="button" className="ev-cta-wrap" onClick={onTree}>
+          <span className="ev-px2 ev-cta">
+            <span className="ev-dot" style={{ fontSize: 17 }}>ツリーへ戻る</span>
+          </span>
+        </button>
       </div>
     </div>
   );
