@@ -963,6 +963,19 @@ div.ev-node {
 .tk.is-event .tk-daytag {
   margin-top: 4px;
 }
+/* 横向きは高さ 230px 固定だと中身（2 行のロゴ・MASTER/TEST の行・使える日の札）が入りきらず、
+   札が「先生へ提示してください」に重なって下へはみ出した → 高さを中身に合わせる（2026-10-26）*/
+.tk--h.is-event {
+  height: auto;
+  min-height: 230px;
+}
+.tk--h.is-event .tk-content {
+  position: relative;
+  left: auto;
+  top: auto;
+  right: auto;
+  padding: 22px 18px 46px 26px;
+}
 /* 使える日の前・期限切れは半券を出さないので、本体の角を丸め、点線をやめる */
 .tk--v.is-event.no-stub .tk-main .tk-face {
   border-radius: 22px;
