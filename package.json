@@ -10,7 +10,7 @@
     "typecheck": "tsc -b --noEmit"
   },
   "dependencies": {
-    "@line/liff": "^2.24.0",
+    "@line/liff": "^2.31.2",
     "modern-screenshot": "^4.7.0",
     "qrcode.react": "^3.2.0",
     "react": "^18.3.1",
