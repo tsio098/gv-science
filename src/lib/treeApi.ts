@@ -1067,6 +1067,14 @@ export interface SeasonEventTestMore {
 export const submitSeasonEventTest = (sessionId: string, answers: { qid: string; value: PartValue[]; timeMs: number }[], opts: EndedSubmit = {}) =>
   postEnded<SeasonEventTestResult | SeasonEventTestMore>(`/tree/season-event/test/submit?${C2}${evQ()}`, { sessionId, answers }, opts);
 
+/**
+ * 1 回だけの挑戦（アリーナ・イベントのテスト・ボトル・招待状）の 1 問目が画面に出た（2026-10-28 不具合: 開始の応答が CPU 上限で落ち、
+ * 押し直したら問題を一度も見ないまま「画面を離れた」で 0 点になった）。Proxy はこの印があるときだけ、開き直しを終了扱いにする。
+ * 何度送っても同じ。届かなくても出題は続ける（失敗は投げない）
+ */
+export const markPlayShown = (sessionId: string) =>
+  withRetry(() => post<{ ok: true }>(`/tree/play/shown?${C2}`, { sessionId }), { retries: 2, shouldRetry: retryable }).catch(() => null);
+
 /* ── 先生用 イベントの生徒の状況（2026-10-21）: 達成率・挑戦回数・テストの点数。生徒は key（本名は GAS treeNames から）── */
 
 export interface SeasonEventStaffRow {

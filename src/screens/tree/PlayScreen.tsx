@@ -30,6 +30,8 @@
  * - 途中で画面を離れたら終了（2026-10-23 先生の指示）: アリーナとイベントのテストは、解答中に画面が隠れたら（アプリの切り替え・ホーム・画面ロック・
  *   閉じる）その時点で終了し、決定した問題だけで採点する（ended: true で提出・keepalive）。中断ボタンも同じ（終了して採点）。
  *   閉じた・落ちた後に開くと Proxy が ended のセッション（画像なし）を返すので、端末に残った決定済みの解答を提出するだけ。再開はできない
+ *   ただし問題が一度も画面に出ていないうちは終了しない（2026-10-28 不具合: 開始の応答が CPU 上限で落ちて押し直したら 0 点）。1 問目の画像が出たら
+ *   POST /tree/play/shown で Proxy に知らせ、Proxy はその印があるときだけ開き直しを終了扱いにする。出る前の中断はツリーに戻るだけ
  * - 分野テスト（2026-10-24 先生決定・session.qtype = 'mix'）: 1 分野の正誤・計算・考察が混ざる 10 問。見出しは「分野テスト › 計算問題」のように
  *   問題ごとの種別（パンくずが長いと種別が切れるので分野名は出さない）。ほかは種別の挑戦と同じ（タイムボーナス・あとで復習・提出）
  * - 復習チェック（2026-10-19 先生の要望・設計書 §5.1）: 「あとで復習」を付けた問題は、正解でも結果画面の一覧に出す。
@@ -41,7 +43,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AbyssPart, ArenaResult, BottleResult, FieldGroup, InviteResult, PlayQuestion, SeasonEventTestResult, SubmitResult, TreeSession } from '../../lib/treeApi';
 /** 途中で終了した 1 回だけの挑戦（画面を離れた・中断・前回離れたまま開いた）*/
-type EndReason = 'away' | 'quit' | 'resume' | 'timeup';
 interface EndState {
   reason: EndReason;
   /** 決定した問題の数（採点に入る）*/
@@ -52,8 +53,9 @@ interface EndState {
   /** 送り直しても通らないエラー */
   final: boolean;
 }
-import { FIELD_TEST, TreeApiError, choiceText, playKindLabel, circled, storedResultOf, submitArena, submitBottle, submitInvite, submitSeasonEventTest, submitTreeSession, treeImage } from '../../lib/treeApi';
+import { FIELD_TEST, TreeApiError, choiceText, markPlayShown, playKindLabel, circled, storedResultOf, submitArena, submitBottle, submitInvite, submitSeasonEventTest, submitTreeSession, treeImage } from '../../lib/treeApi';
 import { EV_NAME } from './event/evTheme';
+import { endAction, type EndReason } from '../../lib/playEnd';
 import { Ico } from './TreeIcons';
 import { ZoomImage } from './ZoomImage';
 import { PlayZoomScreen, type ZoomTab } from './PlayZoomScreen';
@@ -276,6 +278,14 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [now, setNow] = useState(() => performance.now());
   const unitStart = useRef<number | null>(null);
+  /**
+   * 1 回だけの挑戦で、問題が一度でも画面に出たか（2026-10-28 不具合: 開始の応答が CPU 上限で落ち、押し直したら問題を一度も見ないまま
+   * 「画面を離れた」で 0 点になった）。出る前は画面を離れても終了しない・中断はツリーに戻るだけ（開き直すと Proxy が続きから出す）。
+   * 端末に途中経過がある = 前に出ている
+   */
+  const [shown, setShown] = useState(() => saved != null);
+  const shownRef = useRef(shown);
+  const shownSent = useRef(false);
   const times = useRef<Record<string, number>>(saved?.times ?? {});
   const areaRef = useRef<HTMLDivElement>(null);
   const [away, reveal] = useAway(isArena);
@@ -345,6 +355,13 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
   useEffect(() => {
     // 終了した後に画像がそろっても、端末の途中経過（ended の印）を上書きしない
     if (!ready || unitStart.current !== null || endedRef.current) return;
+    // 問題が画面に出た → Proxy に印を残す（これより後に開き直すと終了扱い・前に出ていても念のため送り直す）
+    if (oneShot && !shownSent.current) {
+      shownSent.current = true;
+      shownRef.current = true;
+      setShown(true);
+      void markPlayShown(session.sessionId);
+    }
     const r = resumeAt.current;
     resumeAt.current = null;
     if (autoNext && r && r.idx === idx) {
@@ -561,6 +578,12 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
   /** 1 回だけの挑戦をここで終了する（画面を離れた・中断・前回離れたまま開いた）*/
   const endNow = (reason: EndReason) => {
     if (!oneShot || endedRef.current || submittingRef.current) return;
+    // 問題がまだ画面に出ていない（読み込み中・開始の通信が不安定）: 離れても終了しない・中断はツリーに戻るだけ（2026-10-28 不具合）
+    const act = endAction(shownRef.current, reason);
+    if (act !== 'end') {
+      if (act === 'exit') onExit();
+      return;
+    }
     endedRef.current = true;
     setConfirmExit(false);
     setZoomPath(null);
@@ -887,7 +910,14 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
     <div className={rootClass(playRoot)}>
       <div className="tr-bar">
         {/* 採点中（提出の応答待ち）は中断できない（2026-10-22 修正: 中断して別の挑戦を始めると、後から返った結果で出題中の画面が結果画面に置き換わっていた）*/}
-        <button type="button" className="tr-iconbtn" aria-label="中断してツリーへ" disabled={submitting} onClick={() => !submitting && setConfirmExit(true)}>
+        {/* 1 回だけの挑戦で問題がまだ画面に出ていなければ、確認なしでツリーへ（終了しない・2026-10-28）*/}
+        <button
+          type="button"
+          className="tr-iconbtn"
+          aria-label="中断してツリーへ"
+          disabled={submitting}
+          onClick={() => !submitting && (oneShot && !shown ? onExit() : setConfirmExit(true))}
+        >
           <Ico id={RETRO ? 'i-px-close' : 'i-close'} size={RETRO ? 14 : 16} />
         </button>
         <div className="tr-bar-mid">
