@@ -214,7 +214,8 @@ export function AbyssAnswer({ q, values, onChange, numFocus, onNumFocus }: Props
   );
 }
 
-/** 数値キーパッド（モック BackPlay）。sci は「指数」で欄を切り替え、「±」で指数の符号 */
+/** 数値キーパッド（モック BackPlay）。sci は「指数」で欄を切り替え、「±」は入力中の欄（仮数・指数）の符号。
+ *  plain でも ± で負の数を入れられる（2026-10-28 先生決定・都立大 2026 化学 3 問2 ΔH = −98。どの数値欄でも押せるので答えの符号のヒントにならない）*/
 export function AbyssKeypad({
   part,
   value,
@@ -236,13 +237,10 @@ export function AbyssKeypad({
     const cur = value[f];
     if (k === '⌫') return onChange({ ...value, [f]: cur.slice(0, -1) });
     if (k === '指数') return setField(f === 'm' ? 'e' : 'm');
-    if (k === '±') {
-      if (f === 'e') onChange({ ...value, e: cur.startsWith('-') ? cur.slice(1) : '-' + cur });
-      return;
-    }
+    if (k === '±') return onChange({ ...value, [f]: cur.startsWith('-') ? cur.slice(1) : '-' + cur });
     if (k === '.' && (f === 'e' || cur.includes('.'))) return;
     if (f === 'e' && cur.replace('-', '').length >= 2) return;
-    if (f === 'm' && cur.replace('.', '').length >= 8) return;
+    if (f === 'm' && cur.replace(/[.-]/g, '').length >= 8) return;
     onChange({ ...value, [f]: cur + k });
   };
   const keys = ['7', '8', '9', '⌫', '4', '5', '6', '指数', '1', '2', '3', '±', '0', '.'];
@@ -254,7 +252,7 @@ export function AbyssKeypad({
   return (
     <div className="ab-keypad">
       <div className="ab-keypad-head">
-        <span>{sci ? (f === 'm' ? '仮数を入力中（1.6 のように）' : '指数を入力中（± で符号）') : '整数・小数をそのまま入力'}</span>
+        <span>{sci ? (f === 'm' ? '仮数を入力中（1.6 のように・± で符号）' : '指数を入力中（± で符号）') : '整数・小数をそのまま入力（± で符号）'}</span>
         <span style={{ display: 'flex', gap: 8 }}>
           {onNext && (
             <button type="button" className="tr-link" onClick={onNext}>
@@ -282,7 +280,7 @@ export function AbyssKeypad({
       <div className="ab-keys">
         {keys.map((k) => {
           const special = k === '⌫' || k === '指数' || k === '±';
-          const disabled = !sci && (k === '指数' || k === '±');
+          const disabled = !sci && k === '指数';
           const active = k === '指数' && f === 'e';
           return (
             <button
@@ -290,7 +288,7 @@ export function AbyssKeypad({
               type="button"
               className={`ab-key${special ? ' is-special' : ''}${active ? ' is-active' : ''}`}
               disabled={disabled}
-              aria-label={k === '⌫' ? '1 文字消す' : k === '指数' ? '指数に切り替え' : k === '±' ? '指数の符号' : k}
+              aria-label={k === '⌫' ? '1 文字消す' : k === '指数' ? '指数に切り替え' : k === '±' ? (f === 'e' ? '指数の符号' : '符号') : k}
               onClick={() => tap(k)}
             >
               {k}
