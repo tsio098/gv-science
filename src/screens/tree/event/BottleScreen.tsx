@@ -9,7 +9,7 @@
  */
 import type { BottleInboxItem, BottleState } from '../../../lib/treeApi';
 import { rootClass } from '../treeTheme';
-import { evPeriod } from './evTheme';
+import { evLeftText, evPeriod, useEvNow } from './evTheme';
 import { PxBackIcon } from './EvParts';
 import { FragGrid, PointBar, PxAnchor, PxBottle, PxInviteSeal, bottleWhen } from './BottleParts';
 import '../../../styles/tree-event.css';
@@ -35,6 +35,7 @@ interface Props {
 }
 
 export function BottleScreen({ state, subjectName, message, onBack, onSend, onLetter, onInvite, onFragment }: Props) {
+  const now = useEvNow();
   const ev = state.event!;
   const open = ev.phase === 'open';
   const staff = !!state.staff;
@@ -73,7 +74,7 @@ export function BottleScreen({ state, subjectName, message, onBack, onSend, onLe
         </span>
         <span className="ev-dot bt-hero-period">
           <span className="ev-arc" style={{ fontSize: 8 }}>{evPeriod(ev.startAt, ev.endAt)}</span>
-          {open ? ` · あと ${ev.daysLeft} 日` : ev.phase === 'soon' ? ' · まもなく' : ' · 終了'}
+          {open ? ` · ${evLeftText(ev.endAt, now)}` : ev.phase === 'soon' ? ' · まもなく' : ' · 終了'}
         </span>
       </h1>
 

@@ -7,7 +7,7 @@
  *   {pt}PT（下から 8 段で満ちる・100 pt で満タン）/ ???（シアン・50 pt で招待状が未開封）/ CLEAR ★。ノード名は BottleLogo・下に「{pt} pt · あと n 日」
  */
 import type { SeasonEventState } from '../../../lib/treeApi';
-import { EV_ASSET, evColor, evMd, evPct } from './evTheme';
+import { EV_ASSET, evColor, evLeftText, evMd, evPct, useEvNow } from './evTheme';
 import { PxLock } from './EvParts';
 import { BottleLogo, PxBottle } from './BottleParts';
 import '../../../styles/tree-event.css';
@@ -44,6 +44,7 @@ interface Props {
 }
 
 export function EventNode({ state, x, y, onOpen }: Props) {
+  const now = useEvNow();
   const st = eventNodeState(state);
   if (!st || !state.event) return null;
   if (isBottleEvent(state)) return <BottleNode state={state} st={st} x={x} y={y} onOpen={onOpen} />;
@@ -55,14 +56,14 @@ export function EventNode({ state, x, y, onOpen }: Props) {
   const dim = st === 'soon' || st === 'lock';
   const fill = full ? '100%' : `${Math.floor(pct / 12.5) * 12.5}%`;
   const badge = ({ soon: 'SOON', lock: 'LOCK', open: 'NEW', prog: `${pct}%`, test: 'TEST', clear: 'CLEAR', mail: '', invite: '' } as Record<EventNodeState, string>)[st];
-  const label = st === 'soon' ? `${evMd(ev.startAt)} から` : st === 'lock' ? '' : `あと ${ev.daysLeft} 日`;
+  const label = st === 'soon' ? `${evMd(ev.startAt)} から` : st === 'lock' ? '' : evLeftText(ev.endAt, now);
   const name = ev.name;
   const aria =
     st === 'soon'
       ? `${name}（${evMd(ev.startAt)} から）`
       : st === 'lock'
         ? `${name}（鍵つき）`
-        : `${name}（${st === 'test' ? 'MASTER 100%・テストを受けられます' : st === 'clear' ? 'クリア' : `${pct}%`}・あと ${ev.daysLeft} 日）を開く`;
+        : `${name}（${st === 'test' ? 'MASTER 100%・テストを受けられます' : st === 'clear' ? 'クリア' : `${pct}%`}・${evLeftText(ev.endAt, now)}）を開く`;
 
   const body = (
     <>
@@ -112,6 +113,7 @@ export function EventNode({ state, x, y, onOpen }: Props) {
 
 /** Message in a Bottle のノード（ボード Nodes）*/
 function BottleNode({ state, st, x, y, onOpen }: Props & { st: EventNodeState }) {
+  const now = useEvNow();
   const ev = state.event!;
   const b = state.bottle;
   const pt = b?.points ?? 0;
@@ -129,11 +131,11 @@ function BottleNode({ state, st, x, y, onOpen }: Props & { st: EventNodeState })
         : soon
           ? { background: 'rgba(234,251,255,.3)', color: '#EAFBFF' }
           : { background: c.main, color: c.onMain, boxShadow: `0 0 10px rgba(${c.rgb},.6)` };
-  const label = soon ? `${evMd(ev.startAt)} から` : full ? 'トロフィー獲得' : `${pt} pt · あと ${ev.daysLeft} 日`;
+  const label = soon ? `${evMd(ev.startAt)} から` : full ? 'トロフィー獲得' : `${pt} pt · ${evLeftText(ev.endAt, now)}`;
   const name = 'MESSAGE IN A BOTTLE';
   const aria = soon
     ? `${name}（${evMd(ev.startAt)} から）`
-    : `${name}（${pt} pt${st === 'mail' ? `・未読のボトル ${b?.unread ?? 0} 本` : ''}${st === 'invite' ? '・??? が届いた' : ''}・あと ${ev.daysLeft} 日）を開く`;
+    : `${name}（${pt} pt${st === 'mail' ? `・未読のボトル ${b?.unread ?? 0} 本` : ''}${st === 'invite' ? '・??? が届いた' : ''}・${evLeftText(ev.endAt, now)}）を開く`;
   const body = (
     <>
       <div

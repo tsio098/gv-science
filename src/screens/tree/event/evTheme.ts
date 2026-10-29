@@ -1,3 +1,6 @@
+import { useEffect, useState } from 'react';
+import { seasonEventNowParam } from '../../../lib/treeApi';
+
 /**
  * 季節イベントの見た目（素材・配色・文言）。実装手順_季節イベント.md §0-3 の配色・public/tree/brand/ev/ の素材。
  * 今はハロウィンだけ素材がある（クリスマス以降は期間と一緒に足す。無い kind はハロウィンの絵で代用しない＝「?」）
@@ -97,6 +100,36 @@ const evAmPm = (ms: number) => {
 };
 /** 'M/D AMh:MM'（JST）。締め切り「10/30 AM5:00」*/
 export const evMdHm = (ms: number) => `${evMd(ms)} ${evAmPm(ms)}`;
+/**
+ * 残り時間「あと 6 日」。24 時間を切ったら「あと 05:23」（時:分・2026-10-29 先生の指示）。
+ * 日数は Proxy の daysLeft と同じ切り上げ。分も切り上げ（残り 30 秒は 00:01）
+ */
+export const evLeft = (endAt: number, now: number) => {
+  const ms = Math.max(0, endAt - now);
+  if (ms >= DAY) return { v: String(Math.ceil(ms / DAY)), day: true };
+  const min = Math.ceil(ms / 60_000);
+  return { v: `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`, day: false };
+};
+export const evLeftText = (endAt: number, now: number) => {
+  const l = evLeft(endAt, now);
+  return `あと ${l.v}${l.day ? ' 日' : ''}`;
+};
+/** いまの時刻（先生の ?evnow のときはその時刻のまま）を 15 秒ごとに取り直す。時:分の残り時間を進めるため */
+export function useEvNow() {
+  const [now, setNow] = useState(evClock);
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(evClock()), 15_000);
+    return () => window.clearInterval(t);
+  }, []);
+  return now;
+}
+const DAY = 24 * 3600_000;
+const evClock = () => {
+  const p = seasonEventNowParam();
+  const t = p ? Date.parse(p) : NaN;
+  return Number.isFinite(t) ? t : Date.now();
+};
+
 /**
  * 期間「10/22-10/30 AM5:00」（2026-10-21 先生）。終わりが 0:00 ちょうどなら前の日まで「10/22-10/29」（終わりは含まない）
  */

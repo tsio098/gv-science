@@ -9,7 +9,7 @@ import { useState } from 'react';
  */
 import type { SeasonEventState } from '../../../lib/treeApi';
 import { rootClass } from '../treeTheme';
-import { EV_ASSET, EV_TEST_PASS_PCT, EV_TROPHY_NAME, evMd, evMdHm, evPct, evPeriod } from './evTheme';
+import { EV_ASSET, EV_TEST_PASS_PCT, EV_TROPHY_NAME, evLeftText, evMd, evMdHm, evPct, evPeriod, useEvNow } from './evTheme';
 import { EvCells, EvLegend, PxBackIcon, PxLock } from './EvParts';
 import '../../../styles/tree-event.css';
 
@@ -32,6 +32,7 @@ interface Props {
 }
 
 export function EventScreen({ state, subject, subjectName, starting, message, onBack, onChallenge, onTest, onDressUp, onTickets, onStaffView }: Props) {
+  const now = useEvNow();
   const ev = state.event!;
   const a = EV_ASSET(ev.kind);
   const p = state.progress;
@@ -118,7 +119,7 @@ export function EventScreen({ state, subject, subjectName, starting, message, on
                     </div>
                     <div className="ev-master-days">
                       <div className="ev-dot ev-days-row">
-                        <span>あと {ev.daysLeft} 日</span>
+                        <span>{evLeftText(ev.endAt, now)}</span>
                         <span className="ev-arc" style={{ fontSize: 8, color: 'var(--ev-text)', alignSelf: 'center' }}>
                           {evPeriod(ev.startAt, ev.endAt)}
                         </span>

@@ -23,7 +23,7 @@ import { numericLabel } from './AbyssAnswer';
 import { PlayShot, SHOT_SKIP } from './PlayShot';
 import { CHECK_COLOR, REVIEW_COLOR, RETRO, T, alpha, fmtScore, fmtTime, groupColor, groupSide, rootClass } from './treeTheme';
 import { Pips } from './NodeSheet';
-import { EV_ASSET, EV_NAME, evPct } from './event/evTheme';
+import { EV_ASSET, EV_NAME, evLeft, evPct, useEvNow } from './event/evTheme';
 import { PxCopy } from './event/BottleParts';
 import '../../styles/tree-bottle.css';
 
@@ -741,8 +741,9 @@ export function ResultScreen({ result, session, marked, manifest, grade, nicknam
   );
 }
 
-/** 季節イベントの挑戦の結果: 「EVENT MASTER 64% → 70%」（後の % はクローム・バーは前の分を主色・増えた分を淡い色）と「定着 +4 題 · あと 6 日」*/
+/** 季節イベントの挑戦の結果: 「EVENT MASTER 64% → 70%」（後の % はクローム・バーは前の分を主色・増えた分を淡い色）と「定着 +4 題 · あと 6 日」（24 時間を切ったら「あと 05:23」）*/
 function EventMasterRow({ ev }: { ev: NonNullable<SubmitResult['event']> }) {
+  const left = evLeft(ev.endAt, useEvNow());
   const b = ev.cleared && !ev.clearedNow ? 100 : evPct(ev.before.mastery);
   const a = ev.cleared ? 100 : evPct(ev.after.mastery);
   return (
@@ -770,7 +771,7 @@ function EventMasterRow({ ev }: { ev: NonNullable<SubmitResult['event']> }) {
           <>{ev.cleared ? '復習（マスター度は下がりません）' : 'イベントの期間の後の提出（記録されません）'}</>
         ) : (
           <>
-            定着 <span className="tr-arc">{ev.settledGain >= 0 ? `+${ev.settledGain}` : ev.settledGain}</span> 題 · あと <span className="tr-arc">{ev.daysLeft}</span> 日
+            定着 <span className="tr-arc">{ev.settledGain >= 0 ? `+${ev.settledGain}` : ev.settledGain}</span> 題 · あと <span className="tr-arc">{left.v}</span>{left.day ? ' 日' : ''}
           </>
         )}
       </div>
