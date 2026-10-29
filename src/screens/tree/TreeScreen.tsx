@@ -311,7 +311,8 @@ export function TreeScreen(props: Props) {
               const ds = (sd: string, blur = 0, glow = '') => `drop-shadow(5px 5px 0 ${sd})${glow ? ` drop-shadow(0 0 ${blur}px ${glow})` : ''}`;
               let filter = !ready ? 'none' : !open ? ds(T.sideDark) : !started ? ds(side, 5, alpha(col, 0.4)) : ds(side, 7, alpha(col, 0.55));
               if (master) filter = `${ds(side, 9, alpha(col, 0.8))} drop-shadow(0 0 16px ${alpha(col, 0.4)})`;
-              if (isSel) filter = `${ready ? ds(open ? side : T.sideDark) + ' ' : ''}drop-shadow(0 0 2px ${alpha(T.text, 0.7)}) drop-shadow(0 0 14px ${alpha(col, 0.65)})`;
+              // 選択中の大きな光は filter に入れず .tr-selglow（box-shadow）で描く。拡大する要素の drop-shadow は iPad の Safari / ホーム画面のアプリで光が直線で切れた（2026-10-29）
+              if (isSel) filter = `${ready ? ds(open ? side : T.sideDark) + ' ' : ''}drop-shadow(0 0 2px ${alpha(T.text, 0.7)})`;
               const label = `${f.name}${!ready ? ' 準備中' : open ? ` マスター度 ${Math.round(m * 100)}%` : ' 未解放'}`;
               return (
                 <div key={f.id}>
@@ -327,6 +328,13 @@ export function TreeScreen(props: Props) {
                       onSelect(isSel ? null : f.id);
                     }}
                   />
+                  {isSel && (
+                    <span
+                      className="tr-selglow"
+                      style={{ left: x - 26, top: y - 26, boxShadow: `0 0 24px 4px ${alpha(col, 0.65)}` }}
+                      aria-hidden="true"
+                    />
+                  )}
                   <div
                     className="tr-cube"
                     style={{

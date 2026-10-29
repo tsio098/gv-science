@@ -406,6 +406,16 @@
   filter: var(--tr-cfl, none);
   transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+/* 選択中のノードの光（拡大した立方体 52px の外側）。filter の drop-shadow だと iPad の Safari / ホーム画面のアプリで直線で切れた（2026-10-29）*/
+.tr-root.is-retro .tr-selglow {
+  display: block;
+  position: absolute;
+  width: 52px;
+  height: 52px;
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 9;
+}
 .tr-root.is-retro .tr-cube-b {
   display: block;
   position: absolute;

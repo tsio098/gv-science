@@ -334,6 +334,10 @@ html.tr-noswipe #root * {
   justify-content: center;
   transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.18s ease;
 }
+/* 選択中の光はレトロ寄りの見た目だけ（tree-retro.css）。ふだんは立方体の box-shadow */
+.tr-selglow {
+  display: none;
+}
 .tr-cube .tr-cube-fill {
   position: absolute;
   left: 0;
