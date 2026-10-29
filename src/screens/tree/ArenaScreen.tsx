@@ -10,7 +10,7 @@ import { useState } from 'react';
 import type { ArenaInfo, TreeManifest } from '../../lib/treeApi';
 import { arenaIsStaffSelf, arenaStaffScore, gradeLabel } from '../../lib/treeApi';
 import { Ico } from './TreeIcons';
-import { ARENA_LOGO, CROWN, CROWN_MONO, RETRO, arenaLeft, arenaPeriod, arenaSeasonName, fmtScore, fmtTime, rootClass } from './treeTheme';
+import { ARENA_LOGO, CROWN, CROWN_MONO, RETRO, arenaLeft, arenaPeriod, arenaSeasonName, fmtScore, fmtTime, rootClass, useArenaNow } from './treeTheme';
 import '../../styles/tree.css';
 // レトロ寄りの見た目（2026-10-20）。tree.css の後に読む（TreeRoot はこの画面を tree.css より先に import するので、ここで順番を決める）
 import '../../styles/tree-retro.css';
@@ -59,6 +59,7 @@ export function ArenaSparks() {
 
 export function ArenaScreen({ info, manifest, starting, message, tickets = 0, ticketLabel = 'チケット', onStart, onRanking, onTickets, onBack }: Props) {
   const [confirm, setConfirm] = useState(false);
+  const now = useArenaNow();
   const e = info.entry;
   const staffSelf = arenaIsStaffSelf(info);
   const staffScore = arenaStaffScore(info);
@@ -86,7 +87,7 @@ export function ArenaScreen({ info, manifest, starting, message, tickets = 0, ti
             {arenaSeasonName(info.season.n)} · {arenaPeriod(info.season)}
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginTop: 10, flexWrap: 'wrap' }}>
-            <span className="tr-ar-big">{arenaLeft(info.season.end)}</span>
+            <span className="tr-ar-big">{arenaLeft(info.season.end, now)}</span>
             <span style={{ fontSize: 13, color: 'var(--tr-sub)' }}>
               参加 <b style={{ color: 'var(--tr-text)' }}>{info.count}</b> 人
             </span>

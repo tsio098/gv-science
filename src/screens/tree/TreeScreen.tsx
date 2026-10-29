@@ -29,6 +29,7 @@ import {
   ARENA_LOGO,
   CROWN,
   arenaLeft,
+  useArenaNow,
   groupColor,
   groupSide,
   rootClass,
@@ -798,6 +799,7 @@ export function TreeScreen(props: Props) {
  */
 function ArenaNode({ info, x, y, wide, onOpen }: { info: ArenaInfo; x: number; y: number; wide: boolean; onOpen: () => void }) {
   const open = info.open;
+  const now = useArenaNow();
   const [lit, setLit] = useState(false);
   const going = useRef(false);
   const w = wide ? 244 : 234;
@@ -809,7 +811,7 @@ function ArenaNode({ info, x, y, wide, onOpen }: { info: ArenaInfo; x: number; y
         type="button"
         className={`tr-arena-gate${open ? ' is-open' : ''}${lit && open ? ' is-lit' : ''}`}
         style={{ left: x - w / 2, top: y - h / 2, width: w, height: h }}
-        aria-label={`チャンピオンアリーナ${open ? '' : '（未開放）'} シーズン終了まで${arenaLeft(info.season.end).replace('あと', '')}`}
+        aria-label={`チャンピオンアリーナ${open ? '' : '（未開放）'} シーズン終了まで${arenaLeft(info.season.end, now).replace('あと', '')}`}
         onPointerDown={() => setLit(true)}
         onPointerUp={() => !going.current && setLit(false)}
         onPointerLeave={() => !going.current && setLit(false)}
@@ -831,7 +833,7 @@ function ArenaNode({ info, x, y, wide, onOpen }: { info: ArenaInfo; x: number; y
           <>
             <img className="tr-arena-crown" src={CROWN} alt="" style={{ width: wide ? 42 : 40 }} />
             <img className="tr-arena-logo" src={ARENA_LOGO} alt="" style={{ width: wide ? 190 : 182 }} />
-            <span className="tr-arena-meta tr-ar-dot">{arenaLeft(info.season.end)}</span>
+            <span className="tr-arena-meta tr-ar-dot">{arenaLeft(info.season.end, now)}</span>
           </>
         ) : (
           <>
@@ -841,7 +843,7 @@ function ArenaNode({ info, x, y, wide, onOpen }: { info: ArenaInfo; x: number; y
               </span>
               <img className="tr-arena-logo is-off" src={ARENA_LOGO} alt="" style={{ width: 164 }} />
             </span>
-            <span className="tr-arena-meta">{arenaLeft(info.season.end)}</span>
+            <span className="tr-arena-meta">{arenaLeft(info.season.end, now)}</span>
           </>
         )}
       </button>

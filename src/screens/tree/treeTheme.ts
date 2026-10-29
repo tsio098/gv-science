@@ -2,6 +2,7 @@
  * ANCHOR TREE の色・寸法（ブリーフ §2.1 v31 ネオン / モック NeonPalette.dc.html・Main.dc.html）。
  * 色は「消灯 → 点灯 → 全面発光」のネオン管。発光は box-shadow だけ（アニメーションは足さない）。
  */
+import { useEffect, useState } from 'react';
 import type { Dist, FieldGroup, QType } from '../../lib/treeApi';
 
 /** 系統色（面・枠・枝線）。ROUTE / ABYSS で共通 */
@@ -265,11 +266,25 @@ export const CROWN = BRAND + 'icon_crown.svg';
 export const CROWN_MONO = BRAND + 'icon_crown_mono.svg';
 export const ARENA_LOGO = BRAND + 'arena_logo-1line.svg';
 
-/** 残り時間の表示（「あと 9 日」「あと 5 時間」）*/
+/**
+ * 残り時間の表示「あと 9 日」。24 時間を切ったら「あと 05:23」（時:分・イベントの evLeft と同じ・2026-10-29 先生の指示）。
+ * 日数は今まで通り切り捨て。分は切り上げ（残り 30 秒は 00:01）
+ */
 export function arenaLeft(end: number, now = Date.now()) {
   const ms = Math.max(0, end - now);
   const h = Math.floor(ms / 3600_000);
-  return h >= 24 ? `あと ${Math.floor(h / 24)} 日` : h >= 1 ? `あと ${h} 時間` : `あと ${Math.max(1, Math.ceil(ms / 60_000))} 分`;
+  if (h >= 24) return `あと ${Math.floor(h / 24)} 日`;
+  const min = Math.ceil(ms / 60_000);
+  return `あと ${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
+}
+/** いまの時刻を 15 秒ごとに取り直す。時:分の残り時間を進めるため（イベントの useEvNow と同じ）*/
+export function useArenaNow() {
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(Date.now()), 15_000);
+    return () => window.clearInterval(t);
+  }, []);
+  return now;
 }
 
 /** シーズンの呼び名（起点より前は「プレシーズン」）*/
