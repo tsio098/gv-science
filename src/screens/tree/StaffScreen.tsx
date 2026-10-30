@@ -14,15 +14,18 @@ interface Props {
   onBack: () => void;
 }
 
-type SortKey = 'gain' | 'score' | 'plays' | 'rate' | 'name';
+type SortKey = 'gain' | 'recent' | 'score' | 'plays' | 'rate' | 'name';
 const SORTS: { key: SortKey; label: string }[] = [
   { key: 'gain', label: '増加' },
+  { key: 'recent', label: '最近プレイ' },
   { key: 'score', label: '総スコア' },
   { key: 'plays', label: 'プレイ' },
   { key: 'rate', label: '正答率' },
   { key: 'name', label: '学年・名前' },
 ];
 const GRADE_ORDER = ['H3', '既卒', 'H2', 'H1', 'J3', 'J2', 'J1'];
+/** 最近プレイの並べ替え（2026-10-31 先生）: 最終プレイが新しい順・記録なしは最後 */
+const byRecent = (a: number | null, b: number | null) => (b ?? 0) - (a ?? 0);
 
 /** 'chemistry@back' → { subject, back } */
 const splitDs = (ds: string) => ({ subject: ds.replace(/@back$/, '') as TreeSubject, back: ds.endsWith('@back') });
@@ -173,6 +176,7 @@ export function StaffScreen({ onBack }: Props) {
     };
     const cmp: Record<SortKey, (a: Row, b: Row) => number> = {
       gain: (a, b) => b.day.gain - a.day.gain || b.day.plays - a.day.plays || b.score - a.score,
+      recent: (a, b) => byRecent(a.s.lastAt, b.s.lastAt),
       score: (a, b) => b.score - a.score,
       plays: (a, b) => b.day.plays - a.day.plays || b.day.gain - a.day.gain,
       rate: (a, b) => (rateOf(b.day) ?? -1) - (rateOf(a.day) ?? -1) || b.day.plays - a.day.plays,

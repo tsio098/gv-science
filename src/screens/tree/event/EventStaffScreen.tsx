@@ -22,14 +22,17 @@ interface Props {
   onBack: () => void;
 }
 
-type SortKey = 'mastery' | 'plays' | 'test' | 'name';
+type SortKey = 'mastery' | 'recent' | 'plays' | 'test' | 'name';
 const SORTS: { key: SortKey; label: string }[] = [
   { key: 'mastery', label: '達成率' },
+  { key: 'recent', label: '最近プレイ' },
   { key: 'plays', label: '挑戦回数' },
   { key: 'test', label: 'テスト' },
   { key: 'name', label: '学年・名前' },
 ];
 const GRADE_ORDER = ['H3', '既卒', 'H2', 'H1', 'J3', 'J2', 'J1'];
+/** 最近プレイの並べ替え（2026-10-31 先生）: 最終が新しい順・記録なしは最後 */
+const byRecent = (a: number | null, b: number | null) => (b ?? 0) - (a ?? 0);
 const PHASE_LABEL: Record<string, string> = { soon: '開催前', open: '開催中', closed: '終了' };
 
 interface Row {
@@ -104,6 +107,7 @@ export function EventStaffScreen({ subject: initial, onBack }: Props) {
     };
     const cmp: Record<SortKey, (a: Row, b: Row) => number> = {
       mastery: (a, b) => b.s.mastery - a.s.mastery || b.s.plays - a.s.plays,
+      recent: (a, b) => byRecent(a.s.lastAt, b.s.lastAt),
       plays: (a, b) => b.s.plays - a.s.plays || b.s.mastery - a.s.mastery,
       test: (a, b) => testKey(b.s) - testKey(a.s) || b.s.mastery - a.s.mastery,
       name: byName,
@@ -333,9 +337,10 @@ function Cell({ label, main, sub, hot }: { label: string; main: string; sub?: st
 
 /* ── Message in a Bottle（2026-10-30 先生「送った数・受け取った数・正解した数・ポイントの累計・ABYSS からの招待状の成否」）── */
 
-type BtSortKey = 'points' | 'sent' | 'received' | 'correct' | 'invite' | 'name';
+type BtSortKey = 'points' | 'recent' | 'sent' | 'received' | 'correct' | 'invite' | 'name';
 const BT_SORTS: { key: BtSortKey; label: string }[] = [
   { key: 'points', label: 'ポイント' },
+  { key: 'recent', label: '最近プレイ' },
   { key: 'sent', label: '送った' },
   { key: 'received', label: '受け取った' },
   { key: 'correct', label: '正解' },
@@ -381,6 +386,7 @@ function BottleStaffView({ data, names }: { data: BottleEventStaff; names: Recor
     const inv = (x: R) => INVITE_ORDER.indexOf(x.s.invite.status);
     const cmp: Record<BtSortKey, (a: R, b: R) => number> = {
       points: (a, b) => b.s.points - a.s.points || b.s.sent - a.s.sent,
+      recent: (a, b) => byRecent(a.s.lastAt, b.s.lastAt),
       sent: (a, b) => b.s.sent - a.s.sent || b.s.points - a.s.points,
       received: (a, b) => b.s.received - a.s.received || b.s.answered - a.s.answered,
       correct: (a, b) => b.s.correct - a.s.correct || b.s.answered - a.s.answered,
