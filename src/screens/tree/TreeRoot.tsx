@@ -1363,6 +1363,7 @@ export function TreeRoot({ mode, onClose, onLogout }: Props) {
             setView({ kind: 'invite' });
           }}
           onFragment={() => setView({ kind: 'inviteResult', correct: true, fragment: bottle.fragment })}
+          onStaffView={me.grade === '先生' ? () => setView({ kind: 'eventStaff', back: { kind: 'bottle' } }) : undefined}
         />
       )}
       {(view.kind === 'bottle' || view.kind === 'bottleSend' || view.kind === 'bottleLetter' || view.kind === 'invite') && !bottle?.event && (

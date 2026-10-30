@@ -32,9 +32,11 @@ interface Props {
   onLetter: (item: BottleInboxItem) => void;
   onInvite: () => void;
   onFragment: () => void;
+  /** 先生用 生徒の状況（2026-10-30・イベントの状況と同じ画面）*/
+  onStaffView?: () => void;
 }
 
-export function BottleScreen({ state, subjectName, message, onBack, onSend, onLetter, onInvite, onFragment }: Props) {
+export function BottleScreen({ state, subjectName, message, onBack, onSend, onLetter, onInvite, onFragment, onStaffView }: Props) {
   const now = useEvNow();
   const ev = state.event!;
   const open = ev.phase === 'open';
@@ -197,6 +199,13 @@ export function BottleScreen({ state, subjectName, message, onBack, onSend, onLe
           <div className="ev-dot" style={{ fontSize: 11, lineHeight: 1.6, color: '#A9BBD9' }}>
             先生用: 1 日の上限なし・招待状は何度でも開き直せます。トロフィーは出ません。
           </div>
+        )}
+        {staff && onStaffView && (
+          <button type="button" className="ev-ghost-wrap ev-px2" onClick={onStaffView}>
+            <span className="ev-px2 ev-ghost">
+              <span className="ev-dot" style={{ fontSize: 14 }}>生徒の状況を見る（先生用）</span>
+            </span>
+          </button>
         )}
       </div>
 

@@ -5,9 +5,11 @@
  * 数字は Proxy の /tree/season-event/staff（生徒は key で、氏名なし）、本名は GAS の treeNames から直接（Proxy を通さない）。
  * 2026-10-21 先生「チケットを獲得した生徒一覧を追加」→ タイルの下に、その科目でチケットを持っている生徒（獲得の早い順・使ったか）。
  * 獲得日時 = テストの提出日時（チケットは合格の提出と同じ batch で出る）。
+ * 2026-10-30 先生「11/1 からイベントの状況を Message in a Bottle のものに」→ Proxy が mode 'bottle' を返したら BottleStaffView
+ *   （科目に関係なく 1 人 1 行なので科目の切り替えは出さない）。
  */
 import { useEffect, useMemo, useState } from 'react';
-import type { SeasonEventStaff, SeasonEventStaffRow } from '../../../lib/treeApi';
+import type { BottleEventStaff, BottleStaffRow, SeasonEventStaff, SeasonEventStaffRow } from '../../../lib/treeApi';
 import { fetchSeasonEventStaff, fetchStaffNames, gradeLabel } from '../../../lib/treeApi';
 import { TREE_SUBJECTS, TREE_SUBJECT_NAME, type TreeSubject } from '../../../lib/treeSubject';
 import { Ico } from '../TreeIcons';
@@ -53,7 +55,7 @@ export function EventStaffScreen({ subject: initial, onBack }: Props) {
   const [subject, setSubject] = useState<TreeSubject>(
     (TREE_SUBJECTS as readonly string[]).includes(initial ?? '') ? (initial as TreeSubject) : TREE_SUBJECTS[0]
   );
-  const [data, setData] = useState<SeasonEventStaff | null>(null);
+  const [data, setData] = useState<SeasonEventStaff | BottleEventStaff | null>(null);
   const [error, setError] = useState(false);
   const [nonce, setNonce] = useState(0);
   const [names, setNames] = useState<Record<string, string> | null>(null);
@@ -87,8 +89,12 @@ export function EventStaffScreen({ subject: initial, onBack }: Props) {
     };
   }, [subject, nonce]);
 
+  /** 70 題チャレンジ（ハロウィン）/ ボトル */
+  const ch = data && data.mode !== 'bottle' ? data : null;
+  const bt = data && data.mode === 'bottle' ? data : null;
+
   const rows = useMemo<Row[]>(() => {
-    const list: Row[] = (data?.students ?? []).map((s) => ({ s, name: names?.[s.key] ?? null }));
+    const list: Row[] = (ch?.students ?? []).map((s) => ({ s, name: names?.[s.key] ?? null }));
     const byName = (a: Row, b: Row) => {
       const g = (x: Row) => {
         const i = GRADE_ORDER.indexOf(x.s.grade);
@@ -103,10 +109,10 @@ export function EventStaffScreen({ subject: initial, onBack }: Props) {
       name: byName,
     };
     return list.sort((a, b) => cmp[sort](a, b) || byName(a, b));
-  }, [data, names, sort]);
+  }, [ch, names, sort]);
 
   const sum = useMemo(() => {
-    const list = data?.students ?? [];
+    const list = ch?.students ?? [];
     const j = list.filter(joined);
     const done = list.filter((s) => s.test?.status === 'done');
     return {
@@ -116,7 +122,7 @@ export function EventStaffScreen({ subject: initial, onBack }: Props) {
       passed: done.filter((s) => s.test?.status === 'done' && s.test.pass).length,
       avg: j.length ? Math.round(j.reduce((a, s) => a + s.mastery, 0) / j.length) : null,
     };
-  }, [data]);
+  }, [ch]);
 
   /** チケットを獲得した生徒（獲得の早い順）*/
   const ticketRows = useMemo(
@@ -145,9 +151,11 @@ export function EventStaffScreen({ subject: initial, onBack }: Props) {
           <div className="st-date">
             <div className="st-date-main">{ev ? ev.name : data ? 'イベントはありません' : '…'}</div>
             <div className="st-date-sub">
-              {ev
-                ? `${PHASE_LABEL[ev.phase] ?? ''} · ${evPeriod(ev.startAt, ev.endAt)} · ${data?.size ?? 0} 題 · テスト合格 ${data?.passAt ?? 0}/${data?.testSize ?? 0}（${Math.round((data?.passRate ?? 0) * 100)}%）`
-                : ''}
+              {!ev
+                ? ''
+                : bt
+                  ? `${PHASE_LABEL[ev.phase] ?? ''} · ${evPeriod(ev.startAt, ev.endAt)} · 1 日 ${bt.daily} 通 · 正解 +2 pt · ${bt.inviteAt} pt で招待状`
+                  : `${PHASE_LABEL[ev.phase] ?? ''} · ${evPeriod(ev.startAt, ev.endAt)} · ${ch?.size ?? 0} 題 · テスト合格 ${ch?.passAt ?? 0}/${ch?.testSize ?? 0}（${Math.round((ch?.passRate ?? 0) * 100)}%）`}
             </div>
           </div>
           <button type="button" className="st-chipbtn" aria-label="再読み込み" onClick={() => setNonce((n) => n + 1)}>
@@ -155,6 +163,7 @@ export function EventStaffScreen({ subject: initial, onBack }: Props) {
           </button>
         </div>
 
+        {!bt && (
         <div className="tr-chips" role="listbox" aria-label="科目">
           {TREE_SUBJECTS.map((s) => (
             <button key={s} type="button" role="option" aria-selected={subject === s} className={subject === s ? 'is-on' : ''} onClick={() => pickSubject(s)}>
@@ -163,6 +172,9 @@ export function EventStaffScreen({ subject: initial, onBack }: Props) {
           ))}
         </div>
 
+        )}
+
+        {!bt && (
         <div className="st-sortbar">
           <span>並べ替え</span>
           <div className="tr-chips" role="listbox" aria-label="並べ替え">
@@ -173,6 +185,7 @@ export function EventStaffScreen({ subject: initial, onBack }: Props) {
             ))}
           </div>
         </div>
+        )}
 
         {nameErr && (
           <div className="tr-alert">
@@ -196,6 +209,8 @@ export function EventStaffScreen({ subject: initial, onBack }: Props) {
           <div className="tr-panel" style={{ textAlign: 'center', fontSize: 13, padding: '28px 16px' }}>
             表示できるイベントはありません。
           </div>
+        ) : bt ? (
+          <BottleStaffView data={bt} names={names} />
         ) : (
           <>
             <div className="st-tiles">
@@ -283,7 +298,7 @@ export function EventStaffScreen({ subject: initial, onBack }: Props) {
             )}
             <div className="st-foot">
               達成率 = 生徒のイベント画面の EVENT MASTER（2 回続けて正解で「定着」・100% の後は 100%）。挑戦回数 = イベントの挑戦（5 問）を提出した回数と解いた問題数。
-              正答率 = イベントの挑戦で解いた問題のうち正解の割合。テスト = MASTER 100% の後に 1 回だけ受けられる {data.testSize ?? 20} 問のテストの点数（合格で{ticketDays ? ` ${ticketDays} 限定の` : ''}チケット）。
+              正答率 = イベントの挑戦で解いた問題のうち正解の割合。テスト = MASTER 100% の後に 1 回だけ受けられる {ch?.testSize ?? 20} 問のテストの点数（合格で{ticketDays ? ` ${ticketDays} 限定の` : ''}チケット）。
               先生用アカウントの記録は入りません。数字は 30 秒ごとに新しくなります（「更新」）。
             </div>
           </>
@@ -313,5 +328,152 @@ function Cell({ label, main, sub, hot }: { label: string; main: string; sub?: st
       <span className="st-cell-main tr-num">{main}</span>
       {sub && <span className="st-cell-sub tr-num">{sub}</span>}
     </span>
+  );
+}
+
+/* ── Message in a Bottle（2026-10-30 先生「送った数・受け取った数・正解した数・ポイントの累計・ABYSS からの招待状の成否」）── */
+
+type BtSortKey = 'points' | 'sent' | 'received' | 'correct' | 'invite' | 'name';
+const BT_SORTS: { key: BtSortKey; label: string }[] = [
+  { key: 'points', label: 'ポイント' },
+  { key: 'sent', label: '送った' },
+  { key: 'received', label: '受け取った' },
+  { key: 'correct', label: '正解' },
+  { key: 'invite', label: '招待状' },
+  { key: 'name', label: '学年・名前' },
+];
+type InviteStatus = BottleStaffRow['invite']['status'];
+/** 招待状の並べ替えの順（成功 → 失敗 → 挑戦中 → 未開封 → 50 pt 前 → 対象外）*/
+const INVITE_ORDER: InviteStatus[] = ['correct', 'wrong', 'opened', 'ready', 'locked', 'none'];
+/** 参加した = 流したか、届いたボトルを解いた */
+const btJoined = (s: BottleStaffRow) => s.sent > 0 || s.answered > 0;
+
+function inviteCell(s: BottleStaffRow, inviteAt: number): { main: string; sub?: string; hot?: boolean } {
+  const subj = s.invite.subject ? TREE_SUBJECT_NAME[s.invite.subject as TreeSubject] ?? '' : '';
+  switch (s.invite.status) {
+    case 'correct':
+      return { main: '成功', sub: subj, hot: true };
+    case 'wrong':
+      return { main: '失敗', sub: subj };
+    case 'opened':
+      return { main: '挑戦中', sub: subj };
+    case 'ready':
+      return { main: '未開封', sub: '届いた' };
+    case 'locked':
+      return { main: '—', sub: `あと ${Math.max(0, inviteAt - s.points)} pt` };
+    default:
+      return { main: '対象外', sub: '基礎科目のみ' };
+  }
+}
+
+function BottleStaffView({ data, names }: { data: BottleEventStaff; names: Record<string, string> | null }) {
+  const [sort, setSort] = useState<BtSortKey>('points');
+  const rows = useMemo(() => {
+    const list = data.students.map((s) => ({ s, name: names?.[s.key] ?? null }));
+    type R = (typeof list)[number];
+    const byName = (a: R, b: R) => {
+      const g = (x: R) => {
+        const i = GRADE_ORDER.indexOf(x.s.grade);
+        return i < 0 ? 99 : i;
+      };
+      return g(a) - g(b) || (a.name ?? a.s.nickname).localeCompare(b.name ?? b.s.nickname, 'ja');
+    };
+    const inv = (x: R) => INVITE_ORDER.indexOf(x.s.invite.status);
+    const cmp: Record<BtSortKey, (a: R, b: R) => number> = {
+      points: (a, b) => b.s.points - a.s.points || b.s.sent - a.s.sent,
+      sent: (a, b) => b.s.sent - a.s.sent || b.s.points - a.s.points,
+      received: (a, b) => b.s.received - a.s.received || b.s.answered - a.s.answered,
+      correct: (a, b) => b.s.correct - a.s.correct || b.s.answered - a.s.answered,
+      invite: (a, b) => inv(a) - inv(b) || b.s.points - a.s.points,
+      name: byName,
+    };
+    return list.sort((a, b) => cmp[sort](a, b) || byName(a, b));
+  }, [data, names, sort]);
+
+  const sum = useMemo(() => {
+    const list = data.students;
+    const add = (f: (s: BottleStaffRow) => number) => list.reduce((a, s) => a + f(s), 0);
+    const st = (k: InviteStatus) => list.filter((s) => s.invite.status === k).length;
+    return {
+      joined: list.filter(btJoined).length,
+      cleared: list.filter((s) => s.clearedAt != null).length,
+      sent: add((s) => s.sent),
+      answered: add((s) => s.answered),
+      correct: add((s) => s.correct),
+      invited: st('ready') + st('opened') + st('correct') + st('wrong'),
+      inviteOk: st('correct'),
+      inviteDone: st('correct') + st('wrong'),
+    };
+  }, [data]);
+
+  return (
+    <>
+      <div className="st-sortbar">
+        <span>並べ替え</span>
+        <div className="tr-chips" role="listbox" aria-label="並べ替え">
+          {BT_SORTS.map((x) => (
+            <button key={x.key} type="button" role="option" aria-selected={sort === x.key} className={sort === x.key ? 'is-on' : ''} onClick={() => setSort(x.key)}>
+              {x.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="st-tiles">
+        <Tile label="参加した生徒" value={`${sum.joined}`} unit={` / ${rows.length} 人`} sub={`クリア ${sum.cleared} 人`} />
+        <Tile label="流したボトル" value={`${sum.sent}`} unit=" 通" sub={`1 人 1 日 ${data.daily} 通まで`} />
+        <Tile label="正解したボトル" value={`${sum.correct}`} unit={` / ${sum.answered} 通`} sub="届いたボトルを解いた数のうち" />
+        <Tile label="招待状 成功" value={`${sum.inviteOk}`} unit={` / ${sum.inviteDone} 人`} sub={`届いた ${sum.invited} 人`} />
+      </div>
+
+      {rows.length === 0 ? (
+        <div className="tr-panel" style={{ textAlign: 'center', fontSize: 13, padding: '28px 16px' }}>
+          生徒はいません。
+        </div>
+      ) : (
+        <div className="st-list">
+          <div className="st-row is-bt st-headrow" aria-hidden>
+            <span>名前</span>
+            <span>送った</span>
+            <span>受け取った</span>
+            <span>正解</span>
+            <span>ポイント</span>
+            <span>招待状</span>
+            <span>最終</span>
+          </div>
+          {rows.map((r) => {
+            const s = r.s;
+            const iv = inviteCell(s, data.inviteAt);
+            const cleared = s.clearedAt != null;
+            return (
+              <div key={s.key} className={`st-row is-bt${btJoined(s) ? ' is-active' : ''}`}>
+                <span className="st-name">
+                  <span className="tr-grade">{gradeLabel(s.grade)}</span>
+                  <span className="st-name-txt">
+                    <b>{r.name ?? (names ? '（名簿に無し）' : s.nickname)}</b>
+                    <small>
+                      {r.name || names ? s.nickname : ''}
+                      <span className="st-last-inline"> · 最終 {fmtLast(s.lastAt)}</span>
+                    </small>
+                  </span>
+                </span>
+                <Cell label="送った" main={`${s.sent} 通`} />
+                <Cell label="受け取った" main={`${s.received} 通`} sub={`解いた ${s.answered}`} />
+                <Cell label="正解" main={`${s.correct} 通`} sub={s.answered ? `正答率 ${fmtRate(s.correct, s.answered)}` : undefined} />
+                <Cell label="ポイント" main={`${s.points} pt`} sub={cleared ? 'クリア' : `/ ${s.clearAt}`} hot={cleared} />
+                <Cell label="招待状" main={iv.main} sub={iv.sub} hot={iv.hot} />
+                <span className="st-cell st-last tr-num">{fmtLast(s.lastAt)}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <div className="st-foot">
+        送った = 流して相手に届いたボトルの数（だれにも届かず戻ってきたボトルは数えない）。受け取った = 届いたボトルの数（解いた数）。正解 = 届いたボトルのうち正解した数。
+        ポイント = イベントのポイントの累計（流すと +1・正解で +2。化学・生物の生徒は {data.clearAt} pt、基礎科目だけの生徒は {data.basicClearAt} pt でクリアして、それより増えない）。
+        招待状 = {data.inviteAt} pt で届く ABYSS からの招待状（化学・生物の生徒だけ・1 人 1 回）の成否。科目に関係なく 1 人 1 行です。
+        先生用アカウントの記録は入りません。数字は 30 秒ごとに新しくなります（「更新」）。
+      </div>
+    </>
   );
 }

@@ -2552,6 +2552,10 @@ button.tr-stat {
 .st-row:last-child {
   border-bottom: 0;
 }
+/* Message in a Bottle（2026-10-30）: 数字が 5 つ */
+.st-row.is-bt {
+  grid-template-columns: minmax(170px, 2fr) repeat(5, minmax(64px, 1fr)) 56px;
+}
 .st-row.is-open {
   background: rgba(var(--tr-text-rgb), 0.08);
 }
@@ -2804,6 +2808,9 @@ button.tr-stat {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     row-gap: 6px;
     padding: 10px 14px;
+  }
+  .st-row.is-bt {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
   .st-name {
     grid-column: 1 / -1;

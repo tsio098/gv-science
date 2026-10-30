@@ -1097,6 +1097,7 @@ export interface SeasonEventStaffRow {
 
 export interface SeasonEventStaff {
   event: SeasonEventInfo | null;
+  mode?: undefined;
   subject?: string;
   size?: number;
   testSize?: number;
@@ -1106,8 +1107,42 @@ export interface SeasonEventStaff {
   names?: StaffOverview['names'];
 }
 
+/**
+ * 先生用 Message in a Bottle の生徒の状況（2026-10-30 先生「11/1 からイベントの状況をボトルのものに」）。
+ * Proxy は 11/1 0:00 から mode 'bottle' を返す（科目に関係なく 1 人 1 行）
+ */
+export interface BottleStaffRow {
+  key: string;
+  grade: string;
+  nickname: string;
+  /** 流して届いた数（戻ってきたボトルは数えない）*/
+  sent: number;
+  /** 届いた数・そのうち解いた数・正解の数 */
+  received: number;
+  answered: number;
+  correct: number;
+  points: number;
+  /** クリアのポイント（化学・生物の生徒は 100・基礎科目だけは 50）*/
+  clearAt: number;
+  clearedAt: number | null;
+  /** none = 招待状なし（基礎科目だけ）/ locked = 50 pt 前 / ready = 届いた・未開封 / opened = 開いた・未回答 / correct / wrong */
+  invite: { status: 'none' | 'locked' | 'ready' | 'opened' | 'correct' | 'wrong'; subject: string | null };
+  lastAt: number | null;
+}
+
+export interface BottleEventStaff {
+  event: SeasonEventInfo | null;
+  mode: 'bottle';
+  daily: number;
+  inviteAt: number;
+  clearAt: number;
+  basicClearAt: number;
+  students: BottleStaffRow[];
+  names?: StaffOverview['names'];
+}
+
 export const fetchSeasonEventStaff = (subject: string) =>
-  get<SeasonEventStaff>(`/tree/season-event/staff?subject=${encodeURIComponent(subject)}${evQ()}`);
+  get<SeasonEventStaff | BottleEventStaff>(`/tree/season-event/staff?subject=${encodeURIComponent(subject)}${evQ()}`);
 
 /** 着せ替え（錨のアイコンだけ・フレームは作らない）。kinds = 着せ替えの並び（いつもの + この順）*/
 export interface TreeCosmetics {
