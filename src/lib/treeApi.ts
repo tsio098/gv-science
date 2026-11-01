@@ -517,6 +517,8 @@ export interface ArenaResult {
   /** 先生用アカウント: 「記録として提出」を押せる（2026-10-18。押すまでアリーナ画面の先生のスコアに出ない）*/
   canRecord?: boolean;
   rank: RankInfo;
+  /** シーズンが終わってから（猶予 30 分）の提出: 採点するが順位表に載らない（2026-11-02 先生）*/
+  late?: boolean;
   season: ArenaSeason;
   /** この挑戦で獲得したトロフィー（2026-10-19〜）*/
   trophies?: TrophyGet[];

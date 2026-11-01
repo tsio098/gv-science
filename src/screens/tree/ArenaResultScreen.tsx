@@ -98,6 +98,11 @@ export function ArenaResultScreen({ result, session, staff, grade, nickname, cra
             <div className="tr-ar-dot" style={{ fontSize: 26, marginTop: 2 }}>
               {result.rank.rank != null ? `${result.rank.rank}位` : '—'}
             </div>
+            {result.late && (
+              <div style={{ fontSize: 12, color: 'var(--tr-sub)', marginTop: 4 }}>
+                シーズンが終わってからの提出なので、ランキングには載りません
+              </div>
+            )}
           </div>
           <span style={{ color: 'var(--ar-gold)', display: 'flex' }}>
             <Ico id={RETRO ? 'i-px-next' : 'i-chev-right'} size={RETRO ? 14 : 18} />
