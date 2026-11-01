@@ -730,6 +730,8 @@ export type TreeNotice =
     }
   | { key: string; type: 'teacher_record'; subject: string; season: ArenaSeason; score: number }
   | { key: string; type: 'arena_last_day'; subject: string; season: ArenaSeason }
+  /** 先生からのお知らせ（2026-11-01・文面はサーバが決める）*/
+  | { key: string; type: 'message'; subject: string; head: string; main: string; sub: string }
   /** 科目ランキングの順位ダウン（2026-10-19・ほかの人に抜かれた。ツリーを開いたとき 1 回）*/
   | { key: string; type: 'rank_down'; subject: string; rank: number; prevRank: number; of: number }
   /** 分野ランキングの順位ダウン（2026-10-23・1 分野 1 件。fieldName は manifest の分野名・読めなければ空）*/

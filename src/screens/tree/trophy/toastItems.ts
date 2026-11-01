@@ -134,6 +134,8 @@ export function noticeToast(n: TreeNotice, subjectName: string): ToastItem | nul
       return level50Toast(n, subjectName);
     case 'event_ticket':
       return eventTicketToast(n, subjectName);
+    case 'message':
+      return { key: n.key, noticeKey: n.key, kind: 'arenaRank', head: n.head, main: n.main, sub: n.sub };
     case 'arena_last_day':
       return {
         key: n.key, noticeKey: n.key, kind: 'lastday', head: 'LAST DAY!',
