@@ -32,7 +32,10 @@ const EXAM_FILTERS: { key: ExamFilter; label: string }[] = [
   { key: 'exam', label: '今年度の演習' },
   { key: 'basic', label: '基本問題' },
 ];
-/** Proxy の新着と同じ（addedAt から 14 日・manifest.newDays で変わる）*/
+/**
+ * 試験の新着（addedAt から 14 日・manifest.newDays で変わる）。Proxy の newQuestionTest（トロフィーの新着の試験）と同じ。
+ * 生徒の画面の新着（2026-11-02〜: その生徒に見えるようになってから 7 日・正解したら消える）とは別
+ */
 const NEW_DAYS = 14;
 
 /**
