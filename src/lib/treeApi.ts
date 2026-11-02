@@ -1350,12 +1350,16 @@ export interface BottleResult {
 /** 招待状の出題（ABYSS の 1 問）*/
 export interface InviteSession extends TreeSession {
   invite: true;
+  /** 選ばれた計算 / 考察の小問の ID。セットの小問ならセット全部が units に入り、全部正解で正解（2026-11-03 先生）。古い Proxy は無し */
+  qid?: string;
   ended?: boolean;
   event: { id: string; kind: string; mode: 'bottle' };
 }
 
 export interface InviteResult {
   invite?: true;
+  qid?: string;
+  /** セットなら全部正解のときだけ true */
   correct: boolean;
   results: { qid: string; type: QType; correct: boolean; value: PartValue[]; timeMs: number; bonus: number; gain: number }[];
   fragment: BottleFragment | null;
