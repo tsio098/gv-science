@@ -198,7 +198,10 @@ export type PartValue = string | string[];
 export interface PlayUnit {
   set: string | null;
   qids: string[];
+  /** 制限時間（秒）。セットはセット固有の時間か小問の時間の合計（2026-11-03 先生決定）*/
   limitSec: number;
+  /** タイムボーナスが減らない猶予（秒）。単独 25・セットは 20 × 小問の数（2026-11-03）。古い Proxy は無し（= 25）*/
+  graceSec?: number;
   lead: string | null;
 }
 

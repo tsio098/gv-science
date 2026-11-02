@@ -121,7 +121,7 @@ function saveArena(sessionId: string, v: ArenaSaved | null) {
 type ImgState = Record<string, string | 'error'>;
 
 /** ROUTE のマーク欄（ABYSS の設問は空）*/
-/** タイムボーナスが減り始めるまでの猶予（Proxy の BONUS_GRACE_SEC）*/
+/** タイムボーナスが減り始めるまでの猶予（Proxy の BONUS_GRACE_SEC）。セットは Proxy が unit.graceSec（20 秒 × 小問の数・2026-11-03）で返す */
 const BONUS_GRACE_MS = 25_000;
 /** イベントのテスト: 残りがこれ以下で時計を赤くする */
 const TIME_LOW_MS = 10_000;
@@ -381,8 +381,9 @@ function PlayBody({ session, subjectName, fieldName, group, onExit, onDone, onAr
 
   const elapsed = unitStart.current === null ? 0 : now - unitStart.current;
   const limitMs = unit.limitSec * 1000;
-  // 開始から 25 秒は満点、その後は制限時間まで直線で 0 へ（Proxy の bonusSpeed と同じ・2026-10-17 先生決定）
-  const graceMs = limitMs > BONUS_GRACE_MS ? BONUS_GRACE_MS : 0;
+  // 開始から 25 秒（セットは 20 秒 × 小問の数）は満点、その後は制限時間まで直線で 0 へ（Proxy の bonusSpeed と同じ・2026-10-17 先生決定・2026-11-03 セット）
+  const unitGraceMs = unit.graceSec != null && Number.isFinite(unit.graceSec) ? Math.max(0, unit.graceSec) * 1000 : BONUS_GRACE_MS;
+  const graceMs = limitMs > unitGraceMs ? unitGraceMs : 0;
   const bonus = Math.round(bonusMax * Math.min(1, Math.max(0, (limitMs - elapsed) / (limitMs - graceMs))));
   const doneQ = units.slice(0, idx).reduce((s, u) => s + u.qids.length, 0);
   // アリーナの全体の時間: 決定した問題の時間の合計 + いまの問題の時計（決定した問題はもう数えない）
