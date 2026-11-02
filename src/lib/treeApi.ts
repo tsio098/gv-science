@@ -1292,6 +1292,8 @@ export interface BottlePreview {
   solved: boolean;
   /** このイベントで流したことがある（同じ問題は 1 回だけ）*/
   sent: boolean;
+  /** セットの小問なら一緒に届く前半の設問（2026-11-02 先生「後半だけでは解けない」）。先頭の小問・セットでなければ []。古い Proxy は無し */
+  setBefore?: { qid: string; label: string | null; n: string | null }[];
 }
 
 export interface BottlePoints {
@@ -1321,6 +1323,8 @@ export interface BottleSendResult {
 /** 届いたボトルの出題（TreeSession の形 + bottleId）。ended = 開いて 15 秒より後に開き直した（決定済みの解答だけで提出）*/
 export interface BottleSession extends TreeSession {
   bottleId: string;
+  /** 流された設問の ID（セットの小問なら前半も units に入るので、その中のどれか）。古い Proxy は無し */
+  qid?: string;
   ended?: boolean;
   from: string | null;
   event: { id: string; kind: string; mode: 'bottle' };
@@ -1328,7 +1332,10 @@ export interface BottleSession extends TreeSession {
 
 export interface BottleResult {
   bottleId: string;
+  /** 流された設問の ID（correct・+2PT はこの設問の正誤）。古い Proxy は無し */
+  qid?: string;
   correct: boolean;
+  /** 採点（セットの小問なら前半の設問も入る）*/
   results: { qid: string; type: QType; correct: boolean; value: PartValue[]; timeMs: number; bonus: number; gain: number }[];
   points: BottlePoints;
   gained: number;

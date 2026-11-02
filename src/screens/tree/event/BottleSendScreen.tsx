@@ -1,6 +1,6 @@
 /**
  * ボトルを流す（ボード B03）→ 流した（B04）。実装手順_ボトルメール §3-4。
- *   問題 ID の入力＋「貼り付け」→ 入力が止まって 400ms で /tree/bottle/preview（問題の画像の縮小・科目 · 種別 · 分野・試験 · 問）
+ *   問題 ID の入力＋「貼り付け」→ 入力が止まって 400ms で /tree/bottle/preview（問題の画像の縮小・科目 · 種別 · 分野・試験 · 問・セットの前半も届く注意）
  *   → 宛先のニックネーム（空欄なら同じ科目のだれかへ）→ ひとこと（30 字まで・空欄なら相手の手紙は「この問題、解ける？」）→ 注意 4 行 → 「ボトルを流す +1PT」
  *   相手がいなかった（returned）ときはこの画面に知らせて、ポイント・今日の数は減らない（RETURNED の通知は TreeRoot）
  */
@@ -213,6 +213,12 @@ export function BottleSendScreen({ state, subjects, subjectName, onBack, onSent,
                   {examLabel(p.exam)}
                   {p.label ? ` · ${p.label}` : p.n ? ` · 問 ${p.n}` : ''}
                 </span>
+                {!!p.setBefore?.length && (
+                  // セットの後半だけでは解けないので、前半の設問も一緒に届く（2026-11-02 先生）
+                  <span className="ev-dot" style={{ fontSize: 11, color: '#F6D58E', lineHeight: 1.5 }}>
+                    セット問題の前半（{p.setBefore.map((x) => x.label ?? (x.n ? `問 ${x.n}` : x.qid)).join('・')}）も一緒に届きます。相手は前半から順に解きます
+                  </span>
+                )}
               </span>
             </div>
           </div>

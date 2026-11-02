@@ -2,6 +2,8 @@
  * 届いたボトルの結果（ボード B07 正解・B08 不正解）。正解 / 不正解だけ（タイムボーナス・スコアは出さない）。
  *   正解: CORRECT! と +2PT・前 → 後・20 マスのバー・「??? まで あと n pt」/「トロフィーまで あと n pt」
  *   不正解: MISS と間違えた問題のカード（ResultScreen の WrongList = 問題・あなたの答え・スクショ・改善要望・問題 ID＋コピー。正解は出さない）
+ *   セットの小問は前半も一緒に出る（2026-11-02 先生）: 正解 / 不正解（+2PT）は流された設問（session.qid）だけで決まり、
+ *   前半で間違えた設問は正解のときも「間違えた問題」に出す（正解は出さない）
  *   下に「イベントへ」と「次のボトル n」
  */
 import { useRef } from 'react';
@@ -28,8 +30,12 @@ interface Props {
 
 export function BottleResult({ result, session, subjectName, nextCount, onEvent, onNext, onReport, reported }: Props) {
   const root = useRef<HTMLDivElement>(null);
-  const first = session.questions[session.units[0]?.qids[0] ?? ''];
-  const qtype = first?.type ?? result.results[0]?.type ?? session.qtype;
+  // 流された設問（古い Proxy は qid を返さない → 最後の設問 = 1 問のときはそれ）
+  const mineId = session.qid ?? result.qid ?? session.units[session.units.length - 1]?.qids.slice(-1)[0] ?? '';
+  const mine = session.questions[mineId];
+  const qtype = mine?.type ?? result.results.find((r) => r.qid === mineId)?.type ?? session.qtype;
+  /** セットの前半（流された設問より前）で間違えた設問があるか */
+  const wrongBefore = result.results.some((r) => r.qid !== mineId && !r.correct);
   // 基礎科目だけの生徒は inviteAt = null（招待状なし）・clearAt = 50。古い Proxy は返さない（undefined → 50 / 100）
   const inviteAt = result.inviteAt === undefined ? 50 : result.inviteAt;
   const clearAt = result.clearAt ?? 100;
@@ -89,6 +95,14 @@ export function BottleResult({ result, session, subjectName, nextCount, onEvent,
                 </div>
               </div>
             </div>
+            {wrongBefore && (
+              <>
+                <div className="ev-dot" style={{ fontSize: 12, lineHeight: 1.6, color: '#A9BBD9', textAlign: 'center' }}>
+                  流された設問は正解。セットの前半で間違えた設問があります。
+                </div>
+                <WrongList results={result.results} session={session} layer={root} onReport={onReport} reported={reported} />
+              </>
+            )}
           </>
         ) : (
           <>
@@ -99,7 +113,7 @@ export function BottleResult({ result, session, subjectName, nextCount, onEvent,
               <span className="ev-arc bt-chrome is-miss" style={{ fontSize: 24, filter: 'drop-shadow(3px 3px 0 #2A0E00)' }}>MISS</span>
             </div>
             <div className="ev-dot" style={{ fontSize: 12, lineHeight: 1.6, color: '#A9BBD9', textAlign: 'center' }}>
-              ポイントは増えません（正解したときだけ +2PT）。問題を見直して、次のボトルへ。
+              ポイントは増えません（{result.results.length > 1 ? '流された設問に' : ''}正解したときだけ +2PT）。問題を見直して、次のボトルへ。
             </div>
             <WrongList results={result.results} session={session} layer={root} onReport={onReport} reported={reported} />
           </>
