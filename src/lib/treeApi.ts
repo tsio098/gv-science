@@ -1335,8 +1335,9 @@ export interface BottleSession extends TreeSession {
 
 export interface BottleResult {
   bottleId: string;
-  /** 流された設問の ID（correct・+2PT はこの設問の正誤）。古い Proxy は無し */
+  /** 流された設問の ID。古い Proxy は無し */
   qid?: string;
+  /** セットなら前半も含めて全部正解のときだけ true（2026-11-03 先生・招待状と同じ）*/
   correct: boolean;
   /** 採点（セットの小問なら前半の設問も入る）*/
   results: { qid: string; type: QType; correct: boolean; value: PartValue[]; timeMs: number; bonus: number; gain: number }[];

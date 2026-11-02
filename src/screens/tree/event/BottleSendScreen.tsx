@@ -216,7 +216,7 @@ export function BottleSendScreen({ state, subjects, subjectName, onBack, onSent,
                 {!!p.setBefore?.length && (
                   // セットの後半だけでは解けないので、前半の設問も一緒に届く（2026-11-02 先生）
                   <span className="ev-dot" style={{ fontSize: 11, color: '#F6D58E', lineHeight: 1.5 }}>
-                    セット問題の前半（{p.setBefore.map((x) => x.label ?? (x.n ? `問 ${x.n}` : x.qid)).join('・')}）も一緒に届きます。相手は前半から順に解きます
+                    セット問題の前半（{p.setBefore.map((x) => x.label ?? (x.n ? `問 ${x.n}` : x.qid)).join('・')}）も一緒に届きます。相手は前半から順に解き、全部正解で +2PT
                   </span>
                 )}
               </span>
