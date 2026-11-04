@@ -398,6 +398,16 @@
   justify-content: center;
   font-size: 13px;
 }
+.bt-paste.is-random {
+  width: 100%;
+  height: 40px;
+  flex: none;
+  background: rgba(126, 235, 198, 0.45);
+}
+.bt-paste.is-random:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
 .bt-preview-frame {
   padding: 2px;
   background: rgba(246, 213, 142, 0.4);

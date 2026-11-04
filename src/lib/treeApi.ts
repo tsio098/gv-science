@@ -1291,7 +1291,7 @@ export interface BottlePreview {
   n: string | null;
   label: string | null;
   img: string | null;
-  /** 自分が一度でも解いたか（解いていない問題は流せない）*/
+  /** 自分が一度でも解いたか（解いていない問題は流せない・先生はいつも true＝2026-11-04）*/
   solved: boolean;
   /** このイベントで流したことがある（同じ問題は 1 回だけ）*/
   sent: boolean;
@@ -1380,6 +1380,8 @@ export async function fetchBottle(): Promise<BottleState | { event: null }> {
   }
 }
 export const fetchBottlePreview = (qid: string) => call<BottlePreview>(`/tree/bottle/preview?qid=${encodeURIComponent(qid)}${evQ()}`);
+/** 先生だけ: ランダムの問題 ID（ROUTE の計算 / 考察からまだ流していない問題・2026-11-04 先生）。生徒は 403 STAFF_ONLY・無ければ 404 NO_QUESTIONS */
+export const fetchBottleRandom = () => call<{ qid: string; subject: string }>(`/tree/bottle/random?${C2}${evQ()}`);
 export const sendBottle = (qid: string, to: string, note = '') => post<BottleSendResult>(`/tree/bottle/send?${C2}${evQ()}`, { qid, ...(to ? { to } : {}), ...(note ? { note } : {}) });
 export const openBottle = (bottleId: string) => post<BottleSession>(`/tree/bottle/open?${C2}${evQ()}`, { bottleId });
 export const submitBottle = (bottleId: string, answers: { qid: string; value: PartValue[]; timeMs: number }[], opts: EndedSubmit = {}) =>

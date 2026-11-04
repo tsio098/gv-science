@@ -1,12 +1,12 @@
 /**
  * ボトルを流す（ボード B03）→ 流した（B04）。実装手順_ボトルメール §3-4。
- *   問題 ID の入力＋「貼り付け」→ 入力が止まって 400ms で /tree/bottle/preview（問題の画像の縮小・科目 · 種別 · 分野・試験 · 問・セットの前半も届く注意）
+ *   問題 ID の入力＋「貼り付け」（先生だけ「ランダム」= ROUTE の計算 / 考察からまだ流していない問題の ID を入れる・2026-11-04）→ 入力が止まって 400ms で /tree/bottle/preview（問題の画像の縮小・科目 · 種別 · 分野・試験 · 問・セットの前半も届く注意）
  *   → 宛先のニックネーム（空欄なら同じ科目のだれかへ）→ ひとこと（30 字まで・空欄なら相手の手紙は「この問題、解ける？」）→ 注意 4 行 → 「ボトルを流す +1PT」
  *   相手がいなかった（returned）ときはこの画面に知らせて、ポイント・今日の数は減らない（RETURNED の通知は TreeRoot）
  */
 import { useEffect, useRef, useState } from 'react';
 import type { BottlePreview, BottleSendResult, BottleState } from '../../../lib/treeApi';
-import { TreeApiError, examLabel, fetchBottlePreview, sendBottle, treeImage } from '../../../lib/treeApi';
+import { TreeApiError, examLabel, fetchBottlePreview, fetchBottleRandom, sendBottle, treeImage } from '../../../lib/treeApi';
 import { rootClass } from '../treeTheme';
 import { PxBackIcon } from './EvParts';
 import { PxBottle, PxCheck, PxWarn } from './BottleParts';
@@ -40,6 +40,7 @@ export function BottleSendScreen({ state, subjects, subjectName, onBack, onSent,
   const sendingRef = useRef(false);
   const [err, setErr] = useState<{ where: 'id' | 'to' | 'note' | 'all'; text: string } | null>(null);
   const [pasteNote, setPasteNote] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
   const [returned, setReturned] = useState<string | null>(null);
   const [left, setLeft] = useState(state.todayLeft);
   const [sent, setSent] = useState<BottleSendResult | null>(null);
@@ -91,6 +92,24 @@ export function BottleSendScreen({ state, subjects, subjectName, onBack, onSent,
       else setPasteNote('コピーした ID がありません。結果画面で「コピー」を押してから貼り付けてください');
     } catch {
       setPasteNote('この画面では自動で貼り付けられません。入力欄を長押しして貼り付けてください');
+    }
+  };
+
+  // 先生だけ: ランダムの問題 ID を入れる（その後はいつものプレビュー → 流す）
+  const pickRandom = async () => {
+    if (picking) return;
+    setPicking(true);
+    setPasteNote(null);
+    setReturned(null);
+    if (err?.where === 'id') setErr(null);
+    try {
+      const r = await fetchBottleRandom();
+      setQid(r.qid);
+    } catch (e) {
+      const none = e instanceof TreeApiError && (e.status === 404 || e.code === 'NO_QUESTIONS');
+      setPasteNote(none ? 'まだ流していない計算・考察の問題がありません' : 'ランダムの問題を取れませんでした。通信状況を確かめてください');
+    } finally {
+      setPicking(false);
     }
   };
 
@@ -187,6 +206,11 @@ export function BottleSendScreen({ state, subjects, subjectName, onBack, onSent,
             <span className="ev-px2 ev-dot">貼り付け</span>
           </button>
         </div>
+        {staff && (
+          <button type="button" className="ev-px2 bt-paste is-random" disabled={picking} onClick={() => void pickRandom()}>
+            <span className="ev-px2 ev-dot">{picking ? '選んでいます…' : 'ランダムな問題 ID を入れる（先生だけ）'}</span>
+          </button>
+        )}
         {pasteNote && <div className="ev-dot" style={{ fontSize: 12, lineHeight: 1.5, color: '#A9BBD9' }}>{pasteNote}</div>}
 
         {pv.status === 'loading' && <div className="ev-dot" style={{ fontSize: 12, color: '#A9BBD9' }}>問題を確かめています…</div>}
