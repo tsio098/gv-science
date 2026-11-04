@@ -40,8 +40,26 @@ interface NavProviderProps {
   onExternalLink: (url: string) => void;
 }
 
+/**
+ * 開いたリンクから最初の画面を決める（2026-11-05 クリスマスの招待）。
+ * `?open=tree`（公式ラインの招待カードの「ツリーを見る」）→ ホームの上にツリーを開く（戻るとホーム）。
+ * `?xi=〈招待の印〉` は sessionStorage に残す（クリスマスのイベント画面が /tree/xmas/invited に送る）
+ */
+function initialStack(): Route[] {
+  if (typeof window === 'undefined') return [{ name: 'home' }];
+  try {
+    const q = new URLSearchParams(window.location.search);
+    const xi = q.get('xi');
+    if (xi && /^[0-9a-f]{12}$/.test(xi)) sessionStorage.setItem('gv_xmas_xi', xi);
+    if (q.get('open') === 'tree') return [{ name: 'home' }, { name: 'tree' }];
+  } catch {
+    /* sessionStorage が使えない・URL が読めない → ホームから */
+  }
+  return [{ name: 'home' }];
+}
+
 export function NavProvider({ children, onExternalLink }: NavProviderProps) {
-  const [stack, setStack] = useState<Route[]>([{ name: 'home' }]);
+  const [stack, setStack] = useState<Route[]>(initialStack);
   const [direction, setDirection] = useState<Direction>('none');
 
   /**
